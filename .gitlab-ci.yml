@@ -1,0 +1,86 @@
+stages:
+  - prepare
+  - build-arm
+  - build-arm64
+
+variables:
+  CONTAINER_IMAGE: registry.gitlab.e.foundation:5000/$CI_PROJECT_PATH
+
+build-docker:
+  image: docker:git
+  stage: prepare
+  variables:
+    DOCKER_DRIVER: overlay2
+  services:
+    - docker:dind
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.e.foundation:5000
+    - docker pull $CONTAINER_IMAGE:latest || true
+    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:latest ${CI_PROJECT_DIR}
+    - docker push $CONTAINER_IMAGE:latest
+
+build-bromite-arm:
+  image: $CONTAINER_IMAGE
+  stage: build-arm
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - apks/*
+  script:
+    - cd ${CHROMIUM_DIR}
+    - if [ ! -f .gclient ] ; then echo ">> [$(date)] Init project" ; fetch --nohooks android ; fi
+    - mkdir -p ${CI_PROJECT_DIR}/apks
+    - cd src
+    - if [ -n ${CHROMIUM_VERSION} ] ; then CHROMIUM_VERSION=$(head -n 1 ${CI_PROJECT_DIR}/CHANGELOG.md | sed 's/# \(.*\)/\1/') ; export CHROMIUM_VERSION ; fi
+    - echo ">> [$(date)] Use Chromium v${CHROMIUM_VERSION}"
+    - git fetch
+    - git checkout ${CHROMIUM_VERSION}
+    - gclient sync --with_branch_heads --with_tags
+    - echo ">> [$(date)] Apply Bromite and /e/ patches"
+    - for file in $(cat ${CI_PROJECT_DIR}/build/patches_list.txt) ; do echo " -> Apply $file"; git apply ${CI_PROJECT_DIR}/build/patches/$file; echo " "; done
+    - cp ${CI_PROJECT_DIR}/build/filters/adblock_entries.h net/url_request/
+    - echo ">> [$(date)] Install dependancies"
+    - build/install-build-deps-android.sh
+    - gclient runhooks
+    - echo ">> [$(date)] Build for arm"
+    - gn gen --args="$(cat ${CI_PROJECT_DIR}/build/GN_ARGS) target_cpu=\"arm\" " out/arm
+    - autoninja -C out/arm chrome_modern_public_apk
+    - autoninja -C out/arm system_webview_apk
+    - cp out/arm/apks/ChromeModernPublic.apk ${CI_PROJECT_DIR}/apks/ChromeModernPublic_arm.apk
+    - cp out/arm/apks/SystemWebView.apk ${CI_PROJECT_DIR}/apks/SystemWebView_arm.apk
+    - echo ">> [$(date)] Clean"
+    - git reset --hard
+    - git clean -fd
+
+build-bromite-arm64:
+  image: $CONTAINER_IMAGE
+  stage: build-arm64
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - apks/*
+  script:
+    - cd ${CHROMIUM_DIR}
+    - if [ ! -f .gclient ] ; then echo ">> [$(date)] Init project" ; fetch --nohooks android ; fi
+    - mkdir -p ${CI_PROJECT_DIR}/apks
+    - cd src
+    - if [ -n ${CHROMIUM_VERSION} ] ; then CHROMIUM_VERSION=$(head -n 1 ${CI_PROJECT_DIR}/CHANGELOG.md | sed 's/# \(.*\)/\1/') ; export CHROMIUM_VERSION ; fi
+    - echo ">> [$(date)] Use Chromium v${CHROMIUM_VERSION}"
+    - git fetch
+    - git checkout ${CHROMIUM_VERSION}
+    - gclient sync --with_branch_heads --with_tags
+    - echo ">> [$(date)] Apply Bromite and /e/ patches"
+    - for file in $(cat ${CI_PROJECT_DIR}/build/patches_list.txt) ; do echo " -> Apply $file"; git apply ${CI_PROJECT_DIR}/build/patches/$file; echo " "; done
+    - cp ${CI_PROJECT_DIR}/build/filters/adblock_entries.h net/url_request/
+    - echo ">> [$(date)] Install dependancies"
+    - build/install-build-deps-android.sh
+    - gclient runhooks
+    - echo ">> [$(date)] Build for arm64"
+    - gn gen --args="$(cat ${CI_PROJECT_DIR}/build/GN_ARGS) target_cpu=\"arm64\" " out/arm64
+    - autoninja -C out/arm64 chrome_modern_public_apk
+    - autoninja -C out/arm64 system_webview_apk
+    - cp out/arm64/apks/ChromeModernPublic.apk ${CI_PROJECT_DIR}/apks/ChromeModernPublic_arm64.apk
+    - cp out/arm64/apks/SystemWebView.apk ${CI_PROJECT_DIR}/apks/SystemWebView_arm64.apk
+    - echo ">> [$(date)] Clean"
+    - git reset --hard
+    - git clean -fd
