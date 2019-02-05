@@ -88,6 +88,7 @@ Yes, since version 69. While the desktop version of Chromium has an option to di
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
 
 ## Features not related to privacy
+* AV1 codec support
 * import/export bookmarks
 * allow playing videos in background tabs and disable pause on switching tabs
 * all codecs included (proprietary, open H.264 etc.)
@@ -136,7 +137,7 @@ The [Bromite main repository](https://github.com/bromite/bromite) contains tags 
 
 Please refer to [official Chromium build documentation](https://www.chromium.org/developers/how-tos/get-the-code) to get started on how to build Chromium; if you can build Chromium for Android, you can build Bromite.
 
-The GN args used to build Bromite are available here: [GN_ARGS](./GN_ARGS).
+The GN args used to build Bromite are available here: [GN_ARGS](./build/GN_ARGS).
 The patches are to be applied second the order specified in the `patches_list.txt` file (you can use `git am`); the big file `adblock_entries.h` (containing all the AdBlock filters) needs to be copied under `src/net/url_request/`.
 
 # Credits

@@ -1,3 +1,20 @@
+# 72.0.3626.87
+* update bookmarks view after import
+
+# 72.0.3626.81
+* serve empty content for blocked scripts/images (fixes https://github.com/bromite/bromite/issues/238)
+* keep support of Jelly Bean (workaround for upstream https://bugs.chromium.org/p/chromium/issues/detail?id=923477)
+
+# 72.0.3626.73
+
+# 72.0.3626.68
+* do not ignore save prompt for users without SD card (workaround for upstream wontfix https://bugs.chromium.org/p/chromium/issues/detail?id=916606)
+* remove third_party/analytics patch (now fixed upstream in https://chromium.googlesource.com/chromium/src.git/+/64d6a56f094efbab83802c07ad3ddffa014f9903)
+* AV1 codec support
+
+# 71.0.3578.132
+* add patches from AndroidHardening project (fixes https://github.com/bromite/bromite/issues/226)
+
 # 71.0.3578.123
 * disable jumbo builds (fixes https://github.com/bromite/bromite/issues/216 and https://github.com/bromite/bromite/issues/219)
 * disable preview fetching
