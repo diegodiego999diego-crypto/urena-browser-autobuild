@@ -1,3 +1,38 @@
+# 73.0.3683.79
+* add missing Qwant engine from default engines list (fixes https://github.com/bromite/bromite/issues/262)
+* DoH: include upstream patch for DNS secure mode
+* DoH: enable DNS secure mode by default
+
+# 73.0.3683.70
+
+# 73.0.3683.61
+* drop patches with functionality now available from upstream (DuckDuckGo and Qwant search engines, TLS 1.3 final)
+* add only DuckDuckGo Lite search engine
+* provide image URL for Qwant
+* disable safe browsing subresource filter by default
+* fix PAC URL support in proxy configuration
+
+# 72.0.3626.120
+* add support for resource type in adblock engine (fixes https://github.com/bromite/bromite/issues/115)
+* adblock engine speed optimizations
+* use adblock engine also in SystemWebView
+* add back uBlock Origin and EasyList filters
+* added Fanboy's Annoyance List
+
+# 72.0.3626.119
+* use AdGuard filters
+* fixes for new tile rows usage
+* re-introduce patch to hide NTP tiles
+* disable NTP tile metrics collection
+
+# 72.0.3626.114
+* use 4 tile rows instead of 2 in the new tab page
+* do not grant geolocation permission to default search engine (fixes https://github.com/bromite/bromite/issues/250)
+
+# 72.0.3626.108
+
+# 72.0.3626.99
+
 # 72.0.3626.87
 * update bookmarks view after import
 

@@ -75,7 +75,7 @@ Yes, since version 69. While the desktop version of Chromium has an option to di
 
 # Features
 
-* baked-in adblock engine with filters from EasyList, EasyPrivacy and others
+* baked-in adblock engine
 * remove click-tracking and AMP from search results
 * DNS-over-HTTPS support via Google, Cloudflare, Quad9 and AdGuard servers
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
@@ -88,10 +88,10 @@ Yes, since version 69. While the desktop version of Chromium has an option to di
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
 
 ## Features not related to privacy
-* AV1 codec support
 * import/export bookmarks
 * allow playing videos in background tabs and disable pause on switching tabs
 * all codecs included (proprietary, open H.264 etc.)
+* [AV1 codec support](https://github.com/bromite/bromite/wiki/AV1-support)
 * built with official speed optimizations
 
 You can inspect all functionality/privacy changes by reading the patches: https://github.com/bromite/bromite/tree/master/build/patches
@@ -148,8 +148,14 @@ The patches are to be applied second the order specified in the `patches_list.tx
 * [Inox patchset](https://github.com/gcarq/inox-patchset) for some patches (via ungoogled-chromium)
 * [Brave Browser](https://github.com/brave/browser-android-tabs) for some patches
 * nochromo for the original adblock patch
-* [AdBlock Plus](https://adblockplus.org/), [uBlock Origin](https://github.com/uBlockOrigin), [Peter Lowe's adservers list](https://pgl.yoyo.org/adservers/), [EasyList and EasyPrivacy](https://easylist.to/) for the filters included
 * [Vadim Pleshkov](http://vadimpleshkov.me/) for Bromite's logo
+
+# Filters credits
+* [EasyList](https://easylist.to/#easylist)
+* [EasyPrivacy](https://easylist.to/#easyprivacy)
+* [Fanboy's Annoyance List](https://easylist.to/#fanboy-s-annoyance-list)
+* [uBlock Origin](https://github.com/uBlockOrigin)
+* [Peter Lowe's adservers list](https://pgl.yoyo.org/adservers/)
 
 # License
 
