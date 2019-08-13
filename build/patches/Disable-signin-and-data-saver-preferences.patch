@@ -4,82 +4,74 @@ Subject: Disable signin and data saver preferences
 
 Never show the data saver promo snackbar
 ---
- chrome/android/java/res/xml/main_preferences.xml   |  9 -----
- .../chromium/chrome/browser/ChromeActivity.java    |  6 ++-
- .../browser/preferences/MainPreferences.java       | 46 ++++++----------------
- 3 files changed, 15 insertions(+), 46 deletions(-)
+ chrome/android/java/res/xml/main_preferences.xml   | 20 -----
+ .../android/java/res/xml/privacy_preferences.xml   |  7 --
+ .../browser/preferences/MainPreferences.java       | 92 +---------------------
+ .../preferences/privacy/PrivacyPreferences.java    | 17 ----
+ .../java/strings/android_chrome_strings.grd        |  6 --
+ 5 files changed, 1 insertion(+), 141 deletions(-)
 
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
-@@ -10,10 +10,6 @@
-         android:key="account_section"
-         android:order="0"
-         android:title="@string/prefs_section_account"/>
+@@ -7,21 +7,6 @@
+     android:orderingFromXml="false">
+ 
+     <PreferenceCategory
+-        android:key="account_section"
+-        android:order="0"
+-        android:title="@string/prefs_section_account"/>
 -    <org.chromium.chrome.browser.preferences.SignInPreference
 -        android:key="sign_in"
 -        android:order="1"
 -        android:title="@string/sign_in_to_chrome"/>
-     <org.chromium.chrome.browser.preferences.ChromeBasePreference
-         android:fragment="org.chromium.chrome.browser.preferences.SyncAndServicesPreferences"
-         android:key="sync_and_services"
-@@ -89,11 +85,6 @@
-         android:key="languages"
+-    <org.chromium.chrome.browser.preferences.ChromeBasePreference
+-        android:key="sync_and_services"
+-        android:order="2"
+-        android:layout="@layout/account_management_account_row"
+-        android:title="@string/prefs_sync_and_services"
+-        android:fragment="org.chromium.chrome.browser.preferences.SyncAndServicesPreferences"/>
+-
+-    <PreferenceCategory
+         android:key="basics_section"
+         android:order="3"
+         android:title="@string/prefs_section_basics"/>
+@@ -91,11 +76,6 @@
          android:order="16"
          android:title="@string/prefs_languages"/>
--    <org.chromium.chrome.browser.preferences.datareduction.DataReductionPreference
+     <org.chromium.chrome.browser.preferences.ChromeBasePreference
 -        android:fragment="org.chromium.chrome.browser.preferences.datareduction.DataReductionPreferenceFragment"
 -        android:key="data_reduction"
 -        android:order="17"
--        android:title="@string/data_reduction_title"/>
-     <org.chromium.chrome.browser.preferences.ChromeBasePreference
+-        android:title="@string/data_reduction_title_lite_mode"/>
+-    <org.chromium.chrome.browser.preferences.ChromeBasePreference
          android:fragment="org.chromium.chrome.browser.preferences.download.DownloadPreferences"
          android:key="downloads"
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
---- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
-@@ -125,7 +125,7 @@ import org.chromium.chrome.browser.printing.TabPrinter;
- import org.chromium.chrome.browser.profiles.Profile;
- import org.chromium.chrome.browser.share.ShareMenuActionHandler;
- import org.chromium.chrome.browser.snackbar.BottomContainer;
--import org.chromium.chrome.browser.snackbar.DataReductionPromoSnackbarController;
-+//import org.chromium.chrome.browser.snackbar.DataReductionPromoSnackbarController;
- import org.chromium.chrome.browser.snackbar.SnackbarManager;
- import org.chromium.chrome.browser.snackbar.SnackbarManager.SnackbarManageable;
- import org.chromium.chrome.browser.sync.ProfileSyncService;
-@@ -275,7 +275,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
-     private EphemeralTabPanel mEphemeralTabPanel;
-     protected ReaderModeManager mReaderModeManager;
-     private SnackbarManager mSnackbarManager;
--    private DataReductionPromoSnackbarController mDataReductionPromoSnackbarController;
-+    //private DataReductionPromoSnackbarController mDataReductionPromoSnackbarController;
-     private AppMenuPropertiesDelegate mAppMenuPropertiesDelegate;
-     private AppMenuHandler mAppMenuHandler;
-     private ToolbarManager mToolbarManager;
-@@ -694,6 +694,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
-         mTabModelSelectorTabObserver = new TabModelSelectorTabObserver(mTabModelSelector) {
-             @Override
-             public void didFirstVisuallyNonEmptyPaint(Tab tab) {
-+/*
-                 // Only alert about data savings once the first paint has happened. It
-                 // doesn't make sense to show a snackbar about savings when nothing has been
-                 // displayed yet.
-@@ -707,6 +708,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
-                             DataReductionProxySettings.getInstance()
-                                     .getTotalHttpContentLengthSaved());
-                 }
-+*/
-             }
- 
-             @Override
+         android:order="18"
+diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+--- a/chrome/android/java/res/xml/privacy_preferences.xml
++++ b/chrome/android/java/res/xml/privacy_preferences.xml
+@@ -55,11 +55,4 @@
+         android:title="@string/clear_browsing_data_title"
+         android:summary="@string/clear_browsing_data_summary"
+         android:fragment="org.chromium.chrome.browser.preferences.privacy.ClearBrowsingDataTabsFragment" />
+-    <Preference
+-        android:key="sync_and_services_link_divider"
+-        android:layout="@layout/divider_preference"
+-        android:selectable="false"/>
+-    <org.chromium.chrome.browser.preferences.TextMessagePreference
+-        android:key="sync_and_services_link"
+-        tools:summary="@string/privacy_sync_and_services_link"/>
+ </PreferenceScreen>
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/MainPreferences.java b/chrome/android/java/src/org/chromium/chrome/browser/preferences/MainPreferences.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/preferences/MainPreferences.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/preferences/MainPreferences.java
-@@ -17,11 +17,9 @@ import org.chromium.base.VisibleForTesting;
+@@ -16,17 +16,13 @@ import org.chromium.base.ContextUtils;
+ import org.chromium.base.VisibleForTesting;
  import org.chromium.chrome.R;
  import org.chromium.chrome.browser.ChromeFeatureList;
- import org.chromium.chrome.browser.contextual_suggestions.ContextualSuggestionsEnabledStateUtils;
 -import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
+ import org.chromium.chrome.browser.night_mode.NightModeUtils;
  import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
  import org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer;
  import org.chromium.chrome.browser.preferences.autofill_assistant.AutofillAssistantPreferences;
@@ -87,21 +79,25 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
  import org.chromium.chrome.browser.preferences.developer.DeveloperPreferences;
  import org.chromium.chrome.browser.search_engines.TemplateUrl;
  import org.chromium.chrome.browser.search_engines.TemplateUrlService;
-@@ -37,13 +35,11 @@ import java.util.Map;
+-import org.chromium.chrome.browser.signin.SigninManager;
+-import org.chromium.chrome.browser.sync.ProfileSyncService;
+ import org.chromium.chrome.browser.util.FeatureUtilities;
+ 
+ import java.util.HashMap;
+@@ -36,11 +32,7 @@ import java.util.Map;
+  * The main settings screen, shown when the user first opens Settings.
+  */
  public class MainPreferences extends PreferenceFragment
-         implements SigninManager.SignInStateObserver, TemplateUrlService.LoadListener {
-     public static final String PREF_ACCOUNT_SECTION = "account_section";
+-        implements TemplateUrlService.LoadListener, ProfileSyncService.SyncStateChangedListener,
+-                   SigninManager.SignInStateObserver {
+-    public static final String PREF_ACCOUNT_SECTION = "account_section";
 -    public static final String PREF_SIGN_IN = "sign_in";
-     public static final String PREF_SYNC_AND_SERVICES = "sync_and_services";
+-    public static final String PREF_SYNC_AND_SERVICES = "sync_and_services";
++        implements TemplateUrlService.LoadListener {
      public static final String PREF_SEARCH_ENGINE = "search_engine";
      public static final String PREF_SAVED_PASSWORDS = "saved_passwords";
-     public static final String PREF_CONTEXTUAL_SUGGESTIONS = "contextual_suggestions";
      public static final String PREF_HOMEPAGE = "homepage";
--    public static final String PREF_DATA_REDUCTION = "data_reduction";
-     public static final String PREF_NOTIFICATIONS = "notifications";
-     public static final String PREF_LANGUAGES = "languages";
-     public static final String PREF_DOWNLOADS = "downloads";
-@@ -57,7 +53,6 @@ public class MainPreferences extends PreferenceFragment
+@@ -59,7 +51,6 @@ public class MainPreferences extends PreferenceFragment
  
      private final ManagedPreferenceDelegate mManagedPreferenceDelegate;
      private final Map<String, Preference> mAllPreferences = new HashMap<>();
@@ -109,38 +105,41 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
  
      public MainPreferences() {
          setHasOptionsMenu(true);
-@@ -73,25 +68,29 @@ public class MainPreferences extends PreferenceFragment
+@@ -75,33 +66,16 @@ public class MainPreferences extends PreferenceFragment
      @Override
      public void onDestroy() {
          super.onDestroy();
 -        mSignInPreference.onPreferenceFragmentDestroyed();
-+        //mSignInPreference.onPreferenceFragmentDestroyed();
      }
  
      @Override
      public void onStart() {
          super.onStart();
-+/*
-         if (SigninManager.get().isSigninSupported()) {
-             SigninManager.get().addSignInStateObserver(this);
-             mSignInPreference.registerForUpdates();
-         }
-+*/
+-        if (SigninManager.get().isSigninSupported()) {
+-            SigninManager.get().addSignInStateObserver(this);
+-            mSignInPreference.registerForUpdates();
+-        }
+-        ProfileSyncService syncService = ProfileSyncService.get();
+-        if (syncService != null) {
+-            syncService.addSyncStateChangedListener(this);
+-        }
      }
  
      @Override
      public void onStop() {
          super.onStop();
-+/*
-         if (SigninManager.get().isSigninSupported()) {
-             SigninManager.get().removeSignInStateObserver(this);
-             mSignInPreference.unregisterForUpdates();
-         }
-+*/
+-        if (SigninManager.get().isSigninSupported()) {
+-            SigninManager.get().removeSignInStateObserver(this);
+-            mSignInPreference.unregisterForUpdates();
+-        }
+-        ProfileSyncService syncService = ProfileSyncService.get();
+-        if (syncService != null) {
+-            syncService.removeSyncStateChangedListener(this);
+-        }
      }
  
      @Override
-@@ -104,17 +103,12 @@ public class MainPreferences extends PreferenceFragment
+@@ -114,17 +88,9 @@ public class MainPreferences extends PreferenceFragment
          PreferenceUtils.addPreferencesFromResource(this, R.xml.main_preferences);
          cachePreferences();
  
@@ -150,9 +149,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
 -            getPreferenceScreen().removePreference(findPreference(PREF_ACCOUNT_SECTION));
 -            getPreferenceScreen().removePreference(findPreference(PREF_SYNC_AND_SERVICES));
 -        }
-+        getPreferenceScreen().removePreference(findPreference(PREF_ACCOUNT_SECTION));
-+        getPreferenceScreen().removePreference(findPreference(PREF_SYNC_AND_SERVICES));
- 
+-
          updatePasswordsPreference();
  
          setManagedPreferenceDelegateForPreference(PREF_SEARCH_ENGINE);
@@ -160,16 +157,15 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
  
          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
              // If we are on Android O+ the Notifications preference should lead to the Android
-@@ -178,7 +172,7 @@ public class MainPreferences extends PreferenceFragment
+@@ -180,7 +146,6 @@ public class MainPreferences extends PreferenceFragment
              Preference preference = getPreferenceScreen().getPreference(index);
              mAllPreferences.put(preference.getKey(), preference);
          }
 -        mSignInPreference = (SignInPreference) mAllPreferences.get(PREF_SIGN_IN);
-+        //mSignInPreference = (SignInPreference) mAllPreferences.get(PREF_SIGN_IN);
      }
  
      private void setManagedPreferenceDelegateForPreference(String key) {
-@@ -187,12 +181,6 @@ public class MainPreferences extends PreferenceFragment
+@@ -189,13 +154,6 @@ public class MainPreferences extends PreferenceFragment
      }
  
      private void updatePreferences() {
@@ -179,10 +175,11 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
 -            removePreferenceIfPresent(PREF_SIGN_IN);
 -        }
 -
+-        updateSyncAndServicesPreference();
          updateSearchEnginePreference();
  
-         if (HomepageManager.shouldShowHomepageSetting()) {
-@@ -220,10 +208,6 @@ public class MainPreferences extends PreferenceFragment
+         Preference homepagePref = addPreferenceIfAbsent(PREF_HOMEPAGE);
+@@ -215,10 +173,6 @@ public class MainPreferences extends PreferenceFragment
          } else {
              removePreferenceIfPresent(PREF_DEVELOPER);
          }
@@ -193,22 +190,64 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
      }
  
      private Preference addPreferenceIfAbsent(String key) {
-@@ -283,11 +267,11 @@ public class MainPreferences extends PreferenceFragment
- 
-     private void onSignInPreferenceStateChanged() {
-         // Remove "Account" section header if the personalized sign-in promo is shown.
--        if (mSignInPreference.getState() == SignInPreference.State.PERSONALIZED_PROMO) {
-+//        if (mSignInPreference.getState() == SignInPreference.State.PERSONALIZED_PROMO) {
-             removePreferenceIfPresent(PREF_ACCOUNT_SECTION);
--        } else {
-+/*        } else {
-             addPreferenceIfAbsent(PREF_ACCOUNT_SECTION);
--        }
-+        }*/
+@@ -232,15 +186,6 @@ public class MainPreferences extends PreferenceFragment
+         if (preference != null) getPreferenceScreen().removePreference(preference);
      }
  
+-    private void updateSyncAndServicesPreference() {
+-        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.UNIFIED_CONSENT)) return;
+-
+-        ChromeBasePreference syncAndServices =
+-                (ChromeBasePreference) findPreference(PREF_SYNC_AND_SERVICES);
+-        syncAndServices.setIcon(SyncPreferenceUtils.getSyncStatusIcon(getActivity()));
+-        syncAndServices.setSummary(SyncPreferenceUtils.getSyncStatusSummary(getActivity()));
+-    }
+-
+     private void updateSearchEnginePreference() {
+         if (!TemplateUrlService.getInstance().isLoaded()) {
+             ChromeBasePreference searchEnginePref =
+@@ -272,28 +217,6 @@ public class MainPreferences extends PreferenceFragment
+         pref.setSummary(getResources().getString(isOn ? R.string.text_on : R.string.text_off));
+     }
+ 
+-    // SigninManager.SignInStateObserver implementation.
+-    @Override
+-    public void onSignedIn() {
+-        // After signing in or out of a managed account, preferences may change or become enabled
+-        // or disabled.
+-        new Handler().post(() -> updatePreferences());
+-    }
+-
+-    @Override
+-    public void onSignedOut() {
+-        updatePreferences();
+-    }
+-
+-    private void onSignInPreferenceStateChanged() {
+-        // Remove "Account" section header if the personalized sign-in promo is shown.
+-        if (mSignInPreference.getState() == SignInPreference.State.PERSONALIZED_PROMO) {
+-            removePreferenceIfPresent(PREF_ACCOUNT_SECTION);
+-        } else {
+-            addPreferenceIfAbsent(PREF_ACCOUNT_SECTION);
+-        }
+-    }
+-
      // TemplateUrlService.LoadListener implementation.
-@@ -306,9 +290,6 @@ public class MainPreferences extends PreferenceFragment
+     @Override
+     public void onTemplateUrlServiceLoaded() {
+@@ -301,11 +224,6 @@ public class MainPreferences extends PreferenceFragment
+         updateSearchEnginePreference();
+     }
+ 
+-    @Override
+-    public void syncStateChanged() {
+-        updateSyncAndServicesPreference();
+-    }
+-
+     @VisibleForTesting
+     ManagedPreferenceDelegate getManagedPreferenceDelegateForTest() {
+         return mManagedPreferenceDelegate;
+@@ -315,9 +233,6 @@ public class MainPreferences extends PreferenceFragment
          return new ManagedPreferenceDelegate() {
              @Override
              public boolean isPreferenceControlledByPolicy(Preference preference) {
@@ -218,7 +257,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
                  if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
                      return TemplateUrlService.getInstance().isDefaultSearchManaged();
                  }
-@@ -317,11 +298,6 @@ public class MainPreferences extends PreferenceFragment
+@@ -326,11 +241,6 @@ public class MainPreferences extends PreferenceFragment
  
              @Override
              public boolean isPreferenceClickDisabledByPolicy(Preference preference) {
@@ -230,6 +269,73 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/Mai
                  if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
                      return TemplateUrlService.getInstance().isDefaultSearchManaged();
                  }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java b/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
+@@ -27,7 +27,6 @@ import org.chromium.chrome.browser.preferences.Pref;
+ import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+ import org.chromium.chrome.browser.preferences.PreferenceUtils;
+ import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+-import org.chromium.chrome.browser.preferences.SyncAndServicesPreferences;
+ import org.chromium.chrome.browser.profiles.Profile;
+ import org.chromium.chrome.browser.usage_stats.UsageStatsConsentDialog;
+ import org.chromium.ui.text.NoUnderlineClickableSpan;
+@@ -49,9 +48,6 @@ public class PrivacyPreferences extends PreferenceFragment
+     private static final String PREF_DO_NOT_TRACK = "do_not_track";
+     private static final String PREF_USAGE_AND_CRASH_REPORTING = "usage_and_crash_reports";
+     private static final String PREF_CLEAR_BROWSING_DATA = "clear_browsing_data";
+-    private static final String PREF_SYNC_AND_SERVICES_LINK_DIVIDER =
+-            "sync_and_services_link_divider";
+-    private static final String PREF_SYNC_AND_SERVICES_LINK = "sync_and_services_link";
+     private static final String PREF_USAGE_STATS = "usage_stats_reporting";
+ 
+     private ManagedPreferenceDelegate mManagedPreferenceDelegate;
+@@ -100,22 +96,9 @@ public class PrivacyPreferences extends PreferenceFragment
+             networkPredictionPref.setOrder(canMakePaymentPref.getOrder());
+             preferenceScreen.addPreference(networkPredictionPref);
+ 
+-            Preference syncAndServicesLink = findPreference(PREF_SYNC_AND_SERVICES_LINK);
+-            NoUnderlineClickableSpan linkSpan =
+-                    new NoUnderlineClickableSpan(getResources(), view -> {
+-                        PreferencesLauncher.launchSettingsPage(getActivity(),
+-                                SyncAndServicesPreferences.class,
+-                                SyncAndServicesPreferences.createArguments(false));
+-                    });
+-            syncAndServicesLink.setSummary(
+-                    SpanApplier.applySpans(getString(R.string.privacy_sync_and_services_link),
+-                            new SpanApplier.SpanInfo("<link>", "</link>", linkSpan)));
+-
+             updateSummaries();
+             return;
+         }
+-        preferenceScreen.removePreference(findPreference(PREF_SYNC_AND_SERVICES_LINK_DIVIDER));
+-        preferenceScreen.removePreference(findPreference(PREF_SYNC_AND_SERVICES_LINK));
+ 
+         ChromeBaseCheckBoxPreference navigationErrorPref =
+                 (ChromeBaseCheckBoxPreference) findPreference(PREF_NAVIGATION_ERROR);
+diff --git a/chrome/android/java/strings/android_chrome_strings.grd b/chrome/android/java/strings/android_chrome_strings.grd
+--- a/chrome/android/java/strings/android_chrome_strings.grd
++++ b/chrome/android/java/strings/android_chrome_strings.grd
+@@ -327,9 +327,6 @@ CHAR-LIMIT guidelines:
+       </message>
+ 
+       <!-- Sign-in, sync and personalization preferences -->
+-      <message name="IDS_PREFS_SECTION_ACCOUNT" desc="Title for the group of account-related entries in Settings. [CHAR-LIMIT=32]">
+-        Account
+-      </message>
+       <message name="IDS_SIGN_IN_TO_CHROME" desc="Title for the button to sign in to Chrome using one's Google account. [CHAR-LIMIT=27]">
+         Sign in to Chrome
+       </message>
+@@ -415,9 +412,6 @@ CHAR-LIMIT guidelines:
+       <message name="IDS_URL_KEYED_ANONYMIZED_DATA_SUMMARY" desc="Summary for a checkbox in Settings that controls non-personalized URL collection and informs the user about the data shared by this feature.">
+         Sends URLs of pages you visit to Google
+       </message>
+-      <message name="IDS_PRIVACY_SYNC_AND_SERVICES_LINK" desc="The text for Privacy preferences that is shown after all preference rows.">
+-        For more settings that relate to privacy, security, and data collection, see <ph name="BEGIN_LINK">&lt;link&gt;</ph>Sync and Google services<ph name="END_LINK">&lt;/link&gt;</ph>
+-      </message>
+       <message name="IDS_USAGE_AND_CRASH_REPORTS_TITLE" desc="Title for a preference that enables sending usage statistics and crash reports.">
+         Help improve Chrome's features and performance
+       </message>
 -- 
 2.11.0
 

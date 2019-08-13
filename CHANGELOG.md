@@ -1,3 +1,85 @@
+# 76.0.3809.85
+* add flag to toggle Network Service
+* disable Network Service by default
+* do not record UMA for network errors
+* use fixed User Agent and Android OS version
+* dropped patch for history requirement of user gesture
+
+# 75.0.3770.139
+* disable media router and remoting by default (fixes https://github.com/bromite/bromite/issues/281)
+* enable CFI in builds
+
+# 75.0.3770.132
+
+# 75.0.3770.109
+* disable payment support by default
+* disable background sync by default
+* better patch from GrapheneOS/Vanadium for disabling sensors access (fixes https://github.com/bromite/bromite/issues/319)
+* use new patch for content settings sensors allow/block (fixes https://github.com/bromite/bromite/issues/319)
+* fix impossible values in Battery Status API (fixes https://github.com/bromite/bromite/issues/322)
+
+# 75.0.3770.86
+
+# 75.0.3770.82
+
+# 75.0.3770.70
+* enable changing default downloads storage location by default
+* enable download rename option by default
+* disable offline pages in the downloads home to be opened in CCT by default
+* increase minimum SDK from 17 to 19 (fixes https://github.com/bromite/bromite/issues/310)
+* prefs: disable SigninAllowed by default
+* prefs: always prompt for download directory by default
+* build: remove calling untrusted hooks
+
+# 75.0.3770.53
+* fix crash when downloading or from browser-initiated requests (fixes https://github.com/bromite/bromite/issues/309)
+
+# 75.0.3770.50
+* disable dynamic module loading
+* more fixes to allow building for SDK 17
+
+# 74.0.3729.162
+* remove recent tabs signin
+
+# 74.0.3729.154
+
+# 74.0.3729.141
+
+# 74.0.3729.122
+* remove more unnecessary permissions
+
+# 74.0.3729.106
+* remove account/sync menu entries (fixes https://github.com/bromite/bromite/issues/285)
+* fix failed debug builds
+
+# 74.0.3729.86
+* enable dark mode settings entry by default
+* fix permission request for Play services on reboot (fixes https://github.com/bromite/bromite/issues/281)
+
+# 74.0.3729.80
+* increase minimum SDK version to 17 (Jelly Bean 4.2)
+* dropped obsolete patch for hyperlink auditing disable
+
+# 73.0.3683.107
+* dropped patch to disable smooth scrolling
+* fixed custom tab intents issue (fixes https://github.com/bromite/bromite/issues/279)
+
+# 73.0.3683.105
+* removed Fanboy's Annoyance List and Peter Lowe's adservers list from filters
+
+# 73.0.3683.97 
+* dropped redundant patch to hide NTP tiles (use home page + about:blank)
+
+# 73.0.3683.88
+* add option to use home page as NTP
+
+# 73.0.3683.82
+* remove force home page button flag
+* enable site per process isolation for devices with memory > 1GB
+* use 64-bit processes for SystemWebView
+* disable local field trials seed (redundant)
+* fix patch for classic new tab page (redundant)
+
 # 73.0.3683.79
 * add missing Qwant engine from default engines list (fixes https://github.com/bromite/bromite/issues/262)
 * DoH: include upstream patch for DNS secure mode

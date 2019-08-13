@@ -26,18 +26,18 @@ diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -48,6 +48,11 @@
-         android:title="@string/clear_browsing_data_title"
-         android:summary="@string/clear_browsing_data_summary"
-         android:fragment="org.chromium.chrome.browser.preferences.privacy.ClearBrowsingDataTabsFragment" />
+@@ -42,6 +42,11 @@
+         android:key="contextual_search"
+         android:title="@string/contextual_search_title"
+         android:fragment="org.chromium.chrome.browser.preferences.privacy.ContextualSearchPreferenceFragment" />
 +    <org.chromium.chrome.browser.preferences.ChromeBaseCheckBoxPreference
 +        android:key="allow_custom_tab_intents"
 +        android:title="@string/allow_custom_tab_intents_title"
 +        android:summary="@string/allow_custom_tab_intents_summary"
 +        android:defaultValue="false" />
      <Preference
-         android:key="sync_and_services_link_divider"
-         android:layout="@layout/divider_preference"
+         android:key="clear_browsing_data"
+         android:title="@string/clear_browsing_data_title"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
@@ -48,15 +48,15 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDis
 +import org.chromium.chrome.browser.preferences.privacy.PrivacyPreferences;
  import org.chromium.chrome.browser.searchwidget.SearchActivity;
  import org.chromium.chrome.browser.tab.Tab;
- import org.chromium.chrome.browser.tabmodel.DocumentModeAssassin;
-@@ -275,6 +276,7 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
+ import org.chromium.chrome.browser.util.FeatureUtilities;
+@@ -270,6 +271,7 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
       */
      public static boolean isCustomTabIntent(Intent intent) {
          if (intent == null) return false;
 +        if (!ContextUtils.getAppSharedPreferences().getBoolean(PrivacyPreferences.PREF_ALLOW_CUSTOM_TAB_INTENTS, false)) return false;
-         if (CustomTabsIntent.shouldAlwaysUseBrowserUI(intent)
-                 || !intent.hasExtra(CustomTabsIntent.EXTRA_SESSION)) {
-             return false;
+         // CCT is disabled in noTouch mode except for some Chrome-internal exceptions.
+         if (FeatureUtilities.isNoTouchModeEnabled()
+                 && !IntentHandler.wasIntentSenderChrome(intent)) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java b/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/preferences/privacy/PrivacyPreferences.java
@@ -68,7 +68,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/pri
      private static final String PREF_CAN_MAKE_PAYMENT = "can_make_payment";
      private static final String PREF_CONTEXTUAL_SEARCH = "contextual_search";
      private static final String PREF_NETWORK_PREDICTIONS = "network_predictions";
-@@ -104,6 +105,11 @@ public class PrivacyPreferences extends PreferenceFragment
+@@ -100,6 +101,11 @@ public class PrivacyPreferences extends PreferenceFragment
          navigationErrorPref.setOnPreferenceChangeListener(this);
          navigationErrorPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
  
@@ -80,7 +80,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/pri
          ChromeBaseCheckBoxPreference searchSuggestionsPref =
                  (ChromeBaseCheckBoxPreference) findPreference(PREF_SEARCH_SUGGESTIONS);
          searchSuggestionsPref.setOnPreferenceChangeListener(this);
-@@ -135,6 +141,10 @@ public class PrivacyPreferences extends PreferenceFragment
+@@ -122,6 +128,10 @@ public class PrivacyPreferences extends PreferenceFragment
              recordNetworkPredictionEnablingUMA((boolean) newValue);
          } else if (PREF_NAVIGATION_ERROR.equals(key)) {
              PrefServiceBridge.getInstance().setResolveNavigationErrorEnabled((boolean) newValue);
@@ -94,10 +94,10 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/preferences/pri
 diff --git a/chrome/android/java/strings/android_chrome_strings.grd b/chrome/android/java/strings/android_chrome_strings.grd
 --- a/chrome/android/java/strings/android_chrome_strings.grd
 +++ b/chrome/android/java/strings/android_chrome_strings.grd
-@@ -4012,6 +4012,13 @@ However, you aren’t invisible. Going private doesn’t hide your browsing from
-         Browse
+@@ -4073,6 +4073,13 @@ The site does NOT gain access to the camera. The camera images are only visible
+       <message name="IDS_INCOGNITO_DISCLOSURE_CHECKBOX_TEXT" desc="Text for checkbox inviting to close incognito tabs in incognito disclosure dialog." translateable="false">
+          Close other incognito tabs
        </message>
- 
 +      <message name="IDS_ALLOW_CUSTOM_TAB_INTENTS_TITLE" desc="Text for 'Allow custom tab intents' settings-privacy option.">
 +        Allow custom tab intents
 +      </message>
@@ -105,9 +105,9 @@ diff --git a/chrome/android/java/strings/android_chrome_strings.grd b/chrome/and
 +        Allow applications to open custom tab intents, similar to webview.
 +      </message>
 +
-       <!-- Migration strings -->
-       <message name="IDS_UPDATING_CHROME" desc="String that indicates that Chrome is updating">
-         Updating Chrome...
+ 
+       <!-- Autofill Assistant preferences -->
+       <message name="IDS_PREFS_AUTOFILL_ASSISTANT_TITLE" desc="Title for the Autofill Assistant preferences screen. [CHAR-LIMIT=32]">
 -- 
 2.11.0
 

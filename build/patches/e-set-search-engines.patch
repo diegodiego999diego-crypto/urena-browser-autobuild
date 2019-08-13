@@ -5,25 +5,25 @@ Subject: [PATCH] Set search engine
 ---
  .../chrome/browser/locale/LocaleManager.java  |    1 -
  .../locale/LocaleTemplateUrlLoader.java       |    9 -
- .../locale/locale_template_url_loader.cc      |   37 +-
+ .../locale/locale_template_url_loader.cc      |   39 +-
  .../locale/locale_template_url_loader.h       |    1 -
- .../search_engines/prepopulated_engines.json  | 1009 +----------------
+ .../search_engines/prepopulated_engines.json  | 1000 +----------------
  .../search_engines/search_engine_type.h       |    3 +-
- .../template_url_prepopulate_data.cc          |  635 ++---------
- 7 files changed, 126 insertions(+), 1569 deletions(-)
+ .../template_url_prepopulate_data.cc          |  633 ++---------
+ 7 files changed, 127 insertions(+), 1559 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
-index cb89696fa9b0..8870650a3416 100644
+index 562ee597e47d..91821cd93a4a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
-@@ -189,7 +189,6 @@ public class LocaleManager {
+@@ -191,7 +191,6 @@ public class LocaleManager {
       */
      public void revertDefaultSearchEngineOverride() {
          if (!isSearchEngineAutoSwitchEnabled() || isSpecialLocaleEnabled()) return;
 -        getLocaleTemplateUrlLoader().setGoogleAsDefaultSearch();
          showSnackbar(ContextUtils.getApplicationContext().getString(R.string.using_google));
      }
-
+ 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
 index f076993dc1e8..0ccdbf9dc535 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
@@ -31,7 +31,7 @@ index f076993dc1e8..0ccdbf9dc535 100644
 @@ -62,19 +62,10 @@ public class LocaleTemplateUrlLoader {
          nativeOverrideDefaultSearchProvider(mNativeLocaleTemplateUrlLoader);
      }
-
+ 
 -    /**
 -     * Sets the default search provider back to Google.
 -     */
@@ -49,10 +49,10 @@ index f076993dc1e8..0ccdbf9dc535 100644
 -    private static native void nativeSetGoogleAsDefaultSearch(long nativeLocaleTemplateUrlLoader);
  }
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index cc0accf78f2e..255920bd2734 100644
+index cc0accf78f2e..0b33038995f6 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
-@@ -67,19 +67,6 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(
+@@ -67,20 +67,7 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(
      const TemplateURL* matching_url =
          template_url_service_->GetTemplateURLForKeyword(data_url->keyword());
      bool exists = matching_url != nullptr;
@@ -69,9 +69,11 @@ index cc0accf78f2e..255920bd2734 100644
 -        }
 -      }
 -    }
-
+-
++
      if (exists)
        continue;
+ 
 @@ -114,8 +101,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(
    // If the user has changed their default search provider, no-op.
    const TemplateURL* current_dsp =
@@ -81,11 +83,11 @@ index cc0accf78f2e..255920bd2734 100644
 +  if (!current_dsp) {
      return;
    }
-
+ 
 @@ -127,32 +113,13 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(
    }
  }
-
+ 
 -void LocaleTemplateUrlLoader::SetGoogleAsDefaultSearch(
 -    JNIEnv* env,
 -    const JavaParamRef<jobject>& obj) {
@@ -109,12 +111,12 @@ index cc0accf78f2e..255920bd2734 100644
  LocaleTemplateUrlLoader::GetLocalPrepopulatedEngines() {
    return TemplateURLPrepopulateData::GetLocalPrepopulatedEngines(locale_);
  }
-
+ 
  int LocaleTemplateUrlLoader::GetDesignatedSearchEngineForChina() {
 -  return TemplateURLPrepopulateData::sogou.id;
 +  return TemplateURLPrepopulateData::espot.id;
  }
-
+ 
  LocaleTemplateUrlLoader::~LocaleTemplateUrlLoader() {}
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.h b/chrome/browser/android/locale/locale_template_url_loader.h
 index 3e043e0a156e..ad860a993e13 100644
@@ -125,11 +127,11 @@ index 3e043e0a156e..ad860a993e13 100644
    void OverrideDefaultSearchProvider(JNIEnv* env,
                                       const JavaParamRef<jobject>& obj);
 -  void SetGoogleAsDefaultSearch(JNIEnv* env, const JavaParamRef<jobject>& obj);
-
+ 
    virtual ~LocaleTemplateUrlLoader();
-
+ 
 diff --git a/components/search_engines/prepopulated_engines.json b/components/search_engines/prepopulated_engines.json
-index 8673abf624fa..00c7ea8e08fa 100644
+index 87dd68a8b2c6..fa7d001d3d80 100644
 --- a/components/search_engines/prepopulated_engines.json
 +++ b/components/search_engines/prepopulated_engines.json
 @@ -34,66 +34,6 @@
@@ -171,9 +173,9 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "favicon_url": "https://www.bing.com/sa/simg/bing_p_rr_teal_min.ico",
 -      "search_url": "https://www.bing.com/search?q={searchTerms}&PC=U316&FORM=CHROMN",
 -      "suggest_url": "https://www.bing.com/osjson.aspx?query={searchTerms}&language={language}&PC=U316",
--      "image_url": "https://www.bing.com/images/detail/search?iss=sbi&FORM=CHROMI#enterInsights",
+-      "image_url": "https://www.bing.com/images/detail/search?iss=sbiupload&FORM=CHROMI#enterInsights",
 -      "new_tab_url": "https://www.bing.com/chrome/newtab",
--      "image_url_post_params": "imgurl={google:imageURL}",
+-      "image_url_post_params": "imageBin={google:imageThumbnailBase64}",
 -      "type": "SEARCH_ENGINE_BING",
 -      "id": 3
 -    },
@@ -196,7 +198,7 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "type": "SEARCH_ENGINE_DAUM",
 -      "id": 68
 -    },
-
+ 
      "duckduckgo_light": {
        "name": "DuckDuckGo Light",
 @@ -102,7 +42,7 @@
@@ -206,11 +208,11 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "id": 12
 +      "id": 2
      },
-
+ 
      "duckduckgo": {
-@@ -112,84 +52,9 @@
-       "search_url": "https://duckduckgo.com/?q={searchTerms}",
+@@ -113,74 +53,9 @@
        "suggest_url": "https://duckduckgo.com/ac/?q={searchTerms}&type=list",
+       "new_tab_url": "https://duckduckgo.com/chrome_newtab",
        "type": "SEARCH_ENGINE_DUCKDUCKGO",
 -      "id": 92
 -    },
@@ -222,7 +224,6 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "search_url": "{google:baseURL}search?q={searchTerms}&{google:RLZ}{google:originalQueryForSuggestion}{google:assistedQueryStats}{google:searchFieldtrialParameter}{google:iOSSearchLanguage}{google:searchClient}{google:sourceId}{google:contextualSearchVersion}ie={inputEncoding}",
 -      "suggest_url": "{google:baseSuggestURL}search?{google:searchFieldtrialParameter}client={google:suggestClient}&gs_ri={google:suggestRid}&xssi=t&q={searchTerms}&{google:inputType}{google:cursorPosition}{google:currentPageUrl}{google:pageClassification}{google:searchVersion}{google:sessionToken}{google:prefetchQuery}sugkey={google:suggestAPIKeyParameter}",
 -      "image_url": "{google:baseURL}searchbyimage/upload",
--      "new_tab_url": "{google:baseURL}_/chrome/newtab?{google:RLZ}ie={inputEncoding}",
 -      "contextual_search_url": "{google:baseURL}_/contextualsearch?{google:contextualSearchVersion}{google:contextualSearchContextData}",
 -      "image_url_post_params": "encoded_image={google:imageThumbnail},image_url={google:imageURL},sbisrc={google:imageSearchSource},original_width={google:imageOriginalWidth},original_height={google:imageOriginalHeight}",
 -      "alternate_urls": [
@@ -235,7 +236,7 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "type": "SEARCH_ENGINE_GOOGLE",
        "id": 1
      },
-
+ 
 -    "googleen": {
 -      "name": "Google in English",
 -      "keyword": "googleen",
@@ -281,21 +282,12 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "id": 67
 -    },
 -
--    "parsijoo": {
--      "name": "پارسی جو",
--      "keyword": "parsijoo.ir",
--      "favicon_url": "https://cdn.parsijoo.ir/content3/images/1.0/favicon.ico",
--      "search_url": "https://parsijoo.ir/web?q={searchTerms}",
--      "type": "SEARCH_ENGINE_PARSIJOO",
--      "id": 93
--    },
--
      "qwant": {
        "name": "Qwant",
        "keyword": "qwant.com",
-@@ -198,871 +63,17 @@
+@@ -188,872 +63,17 @@
+       "search_url": "https://www.qwant.com/?q={searchTerms}&client=opensearch",
        "suggest_url": "https://api.qwant.com/api/suggest/?q={searchTerms}&client=opensearch",
-       "image_url": "https://www.qwant.com/?t=images&q={searchTerms}",
        "type": "SEARCH_ENGINE_QWANT",
 -      "id": 94
 -    },
@@ -306,6 +298,7 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "favicon_url": "https://search.seznam.cz/r/img/favicon.ico",
 -      "search_url": "https://search.seznam.cz/?q={searchTerms}",
 -      "suggest_url": "https://suggest.fulltext.seznam.cz/fulltext_ff?phrase={searchTerms}",
+-      "image_url": "https://www.qwant.com/?t=images&q={searchTerms}",
 -      "type": "SEARCH_ENGINE_SEZNAM",
 -      "id": 25
 -    },
@@ -600,8 +593,9 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -
 -      // Can't be 2 as this has to appear in the Canada list alongside yahoo_ca.
 -      "id": 5
--    },
--
++      "id": 3
+     },
+ 
 -    "yahoo_se": {
 -      "name": "Yahoo! Sverige",
 -      "keyword": "se.yahoo.com",
@@ -1149,9 +1143,8 @@ index 8673abf624fa..00c7ea8e08fa 100644
 -      "search_url": "http://szukaj.wp.pl/szukaj.html?q={searchTerms}",
 -      "type": "SEARCH_ENGINE_WP",
 -      "id": 76
-+      "id": 3
-     },
-
+-    },
+-
 -    "zoznam": {
 -      "name": "Zoznam",
 -      "keyword": "zoznam.sk",
@@ -1181,19 +1174,19 @@ index 9edca4acab68..c6ec89872bab 100644
 @@ -71,7 +71,8 @@ enum SearchEngineType {
    SEARCH_ENGINE_STARTPAGE,
    SEARCH_ENGINE_GOOGLE_EN,
-
+ 
 -  SEARCH_ENGINE_MAX  // Bounding value needed for UMA histogram macro.
 +  SEARCH_ENGINE_MAX,  // Bounding value needed for UMA histogram macro.
 +  SEARCH_ENGINE_ESPOT
  };
-
+ 
  #endif  // COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index fd9c0e83a5fa..6db1f032939b 100644
+index 8e9cd1795a09..6db1f032939b 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -32,954 +32,553 @@ namespace {
-
+@@ -32,952 +32,553 @@ namespace {
+ 
  // Default (for countries with no better engine set)
  const PrepopulatedEngine* const engines_default[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1202,7 +1195,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Note, the below entries are sorted by country code, not the name in comment.
  // Engine selection by country ------------------------------------------------
  // United Arab Emirates
@@ -1213,7 +1206,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Albania
  const PrepopulatedEngine* const engines_AL[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1222,7 +1215,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Argentina
  const PrepopulatedEngine* const engines_AR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1231,7 +1224,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Austria
  const PrepopulatedEngine* const engines_AT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1240,7 +1233,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Australia
  const PrepopulatedEngine* const engines_AU[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1249,7 +1242,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Bosnia and Herzegovina
  const PrepopulatedEngine* const engines_BA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1258,7 +1251,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Belgium
  const PrepopulatedEngine* const engines_BE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1267,7 +1260,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Bulgaria
  const PrepopulatedEngine* const engines_BG[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1276,7 +1269,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Bahrain
  const PrepopulatedEngine* const engines_BH[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1285,7 +1278,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Burundi
  const PrepopulatedEngine* const engines_BI[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1294,7 +1287,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Brunei
  const PrepopulatedEngine* const engines_BN[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1303,7 +1296,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Bolivia
  const PrepopulatedEngine* const engines_BO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1312,7 +1305,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Brazil
  const PrepopulatedEngine* const engines_BR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1321,7 +1314,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Belarus
  const PrepopulatedEngine* const engines_BY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1330,7 +1323,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Belize
  const PrepopulatedEngine* const engines_BZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1339,13 +1332,13 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Canada
  const PrepopulatedEngine* const engines_CA[] = {
 -    &googleen, &google, &startpage, &qwant, &bing, &yahoo_ca, &yahoo_qc, &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Switzerland
  const PrepopulatedEngine* const engines_CH[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1354,7 +1347,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo_ch,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Chile
  const PrepopulatedEngine* const engines_CL[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1363,13 +1356,13 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // China
  const PrepopulatedEngine* const engines_CN[] = {
 -    &baidu, &so_360, &googleen, &google, &startpage, &qwant, &sogou, &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Colombia
  const PrepopulatedEngine* const engines_CO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1378,7 +1371,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Costa Rica
  const PrepopulatedEngine* const engines_CR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1387,7 +1380,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Czech Republic
  const PrepopulatedEngine* const engines_CZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1396,7 +1389,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Germany
  const PrepopulatedEngine* const engines_DE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1405,7 +1398,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Denmark
  const PrepopulatedEngine* const engines_DK[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1414,7 +1407,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Dominican Republic
  const PrepopulatedEngine* const engines_DO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1423,7 +1416,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Algeria
  const PrepopulatedEngine* const engines_DZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1432,7 +1425,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Ecuador
  const PrepopulatedEngine* const engines_EC[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1441,7 +1434,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Estonia
  const PrepopulatedEngine* const engines_EE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1450,7 +1443,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &neti,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Egypt
  const PrepopulatedEngine* const engines_EG[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1459,7 +1452,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Spain
  const PrepopulatedEngine* const engines_ES[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1468,7 +1461,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Finland
  const PrepopulatedEngine* const engines_FI[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1477,7 +1470,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Faroe Islands
  const PrepopulatedEngine* const engines_FO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1486,7 +1479,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // France
  const PrepopulatedEngine* const engines_FR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1495,7 +1488,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &qwant,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // United Kingdom
  const PrepopulatedEngine* const engines_GB[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1504,7 +1497,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Greece
  const PrepopulatedEngine* const engines_GR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1513,7 +1506,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Guatemala
  const PrepopulatedEngine* const engines_GT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1522,7 +1515,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Hong Kong
  const PrepopulatedEngine* const engines_HK[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1531,7 +1524,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Honduras
  const PrepopulatedEngine* const engines_HN[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1540,7 +1533,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Croatia
  const PrepopulatedEngine* const engines_HR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1549,7 +1542,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Hungary
  const PrepopulatedEngine* const engines_HU[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1558,7 +1551,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Indonesia
  const PrepopulatedEngine* const engines_ID[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1567,7 +1560,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Ireland
  const PrepopulatedEngine* const engines_IE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1576,7 +1569,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Israel
  const PrepopulatedEngine* const engines_IL[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1585,7 +1578,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // India
  const PrepopulatedEngine* const engines_IN[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1594,7 +1587,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Iraq
  const PrepopulatedEngine* const engines_IQ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1603,16 +1596,15 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Iran
  const PrepopulatedEngine* const engines_IR[] = {
 -    &googleen, &google, &startpage, &qwant,
 -    &bing,
 -    &yahoo,
--    &parsijoo,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Iceland
  const PrepopulatedEngine* const engines_IS[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1621,7 +1613,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Italy
  const PrepopulatedEngine* const engines_IT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1630,7 +1622,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Jamaica
  const PrepopulatedEngine* const engines_JM[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1639,7 +1631,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Jordan
  const PrepopulatedEngine* const engines_JO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1648,7 +1640,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Japan
  const PrepopulatedEngine* const engines_JP[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1657,7 +1649,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Kenya
  const PrepopulatedEngine* const engines_KE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1666,7 +1658,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // South Korea
  const PrepopulatedEngine* const engines_KR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1675,7 +1667,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Kuwait
  const PrepopulatedEngine* const engines_KW[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1684,7 +1676,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Kazakhstan
  const PrepopulatedEngine* const engines_KZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1693,7 +1685,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Lebanon
  const PrepopulatedEngine* const engines_LB[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1702,7 +1694,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Liechtenstein
  const PrepopulatedEngine* const engines_LI[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1711,7 +1703,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Lithuania
  const PrepopulatedEngine* const engines_LT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1720,7 +1712,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Luxembourg
  const PrepopulatedEngine* const engines_LU[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1729,7 +1721,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Latvia
  const PrepopulatedEngine* const engines_LV[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1738,7 +1730,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Libya
  const PrepopulatedEngine* const engines_LY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1747,7 +1739,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_com,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Morocco
  const PrepopulatedEngine* const engines_MA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1756,7 +1748,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Monaco
  const PrepopulatedEngine* const engines_MC[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1765,7 +1757,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Moldova
  const PrepopulatedEngine* const engines_MD[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1774,7 +1766,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Montenegro
  const PrepopulatedEngine* const engines_ME[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1783,7 +1775,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Macedonia
  const PrepopulatedEngine* const engines_MK[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1792,7 +1784,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Mexico
  const PrepopulatedEngine* const engines_MX[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1801,7 +1793,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Malaysia
  const PrepopulatedEngine* const engines_MY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1810,7 +1802,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Nicaragua
  const PrepopulatedEngine* const engines_NI[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1819,7 +1811,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Netherlands
  const PrepopulatedEngine* const engines_NL[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1828,7 +1820,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Norway
  const PrepopulatedEngine* const engines_NO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1837,7 +1829,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // New Zealand
  const PrepopulatedEngine* const engines_NZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1846,7 +1838,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo_nz,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Oman
  const PrepopulatedEngine* const engines_OM[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1855,7 +1847,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Panama
  const PrepopulatedEngine* const engines_PA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1864,7 +1856,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Peru
  const PrepopulatedEngine* const engines_PE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1873,7 +1865,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Philippines
  const PrepopulatedEngine* const engines_PH[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1882,7 +1874,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Pakistan
  const PrepopulatedEngine* const engines_PK[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1891,7 +1883,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Poland
  const PrepopulatedEngine* const engines_PL[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1900,7 +1892,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Puerto Rico
  const PrepopulatedEngine* const engines_PR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1909,7 +1901,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Portugal
  const PrepopulatedEngine* const engines_PT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1918,7 +1910,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Paraguay
  const PrepopulatedEngine* const engines_PY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1927,7 +1919,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Qatar
  const PrepopulatedEngine* const engines_QA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1936,7 +1928,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Romania
  const PrepopulatedEngine* const engines_RO[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1945,7 +1937,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Serbia
  const PrepopulatedEngine* const engines_RS[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1954,7 +1946,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Russia
  const PrepopulatedEngine* const engines_RU[] = {
 -    &yandex_ru,
@@ -1963,7 +1955,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Rwanda
  const PrepopulatedEngine* const engines_RW[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1972,7 +1964,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Saudi Arabia
  const PrepopulatedEngine* const engines_SA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1981,7 +1973,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_com,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Sweden
  const PrepopulatedEngine* const engines_SE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1990,7 +1982,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Singapore
  const PrepopulatedEngine* const engines_SG[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -1999,7 +1991,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_com,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Slovenia
  const PrepopulatedEngine* const engines_SI[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2008,7 +2000,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Slovakia
  const PrepopulatedEngine* const engines_SK[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2017,7 +2009,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // El Salvador
  const PrepopulatedEngine* const engines_SV[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2026,7 +2018,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Syria
  const PrepopulatedEngine* const engines_SY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2035,7 +2027,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Thailand
  const PrepopulatedEngine* const engines_TH[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2044,7 +2036,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &ask,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Tunisia
  const PrepopulatedEngine* const engines_TN[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2053,7 +2045,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Turkey
  const PrepopulatedEngine* const engines_TR[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2062,7 +2054,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Trinidad and Tobago
  const PrepopulatedEngine* const engines_TT[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2071,7 +2063,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Taiwan
  const PrepopulatedEngine* const engines_TW[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2080,7 +2072,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Tanzania
  const PrepopulatedEngine* const engines_TZ[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2089,7 +2081,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yandex_ru,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Ukraine
  const PrepopulatedEngine* const engines_UA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2098,7 +2090,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &bing,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // United States
  const PrepopulatedEngine* const engines_US[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2107,7 +2099,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Uruguay
  const PrepopulatedEngine* const engines_UY[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2116,7 +2108,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Venezuela
  const PrepopulatedEngine* const engines_VE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2125,7 +2117,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Vietnam
  const PrepopulatedEngine* const engines_VN[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2134,7 +2126,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &yahoo_vn,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Yemen
  const PrepopulatedEngine* const engines_YE[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2143,7 +2135,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &baidu,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // South Africa
  const PrepopulatedEngine* const engines_ZA[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2152,7 +2144,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &duckduckgo, &duckduckgo_light,
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
-
+ 
  // Zimbabwe
  const PrepopulatedEngine* const engines_ZW[] = {
 -    &googleen, &google, &startpage, &qwant,
@@ -2162,7 +2154,7 @@ index fd9c0e83a5fa..6db1f032939b 100644
 +    &espot, &qwant, &duckduckgo, &duckduckgo_light,
  };
  // ----------------------------------------------------------------------------
-
+ 
  // A list of all the engines that we know about.
  const PrepopulatedEngine* const kAllEngines[] = {
 -    // Prepopulated engines:
@@ -2175,7 +2167,6 @@ index fd9c0e83a5fa..6db1f032939b 100644
 -    &googleen, &google, &startpage, &qwant,
 -    &mail_ru,
 -    &naver,
--    &parsijoo,
 +    &espot,
      &qwant,
 -    &seznam,
@@ -2256,9 +2247,9 @@ index fd9c0e83a5fa..6db1f032939b 100644
 +    &duckduckgo,
 +    &duckduckgo_light,
  };
-
+ 
  std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulationSetFromCountryID(
-@@ -1373,7 +972,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+@@ -1371,7 +972,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
    if (default_search_provider_index) {
      const auto itr = std::find_if(
          t_urls.begin(), t_urls.end(),
@@ -2267,10 +2258,10 @@ index fd9c0e83a5fa..6db1f032939b 100644
      *default_search_provider_index =
          itr == t_urls.end() ? 0 : std::distance(t_urls.begin(), itr);
    }
-@@ -1434,16 +1033,6 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedDefaultSearch(
+@@ -1432,16 +1033,6 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedDefaultSearch(
  SearchEngineType GetEngineType(const GURL& url) {
    DCHECK(url.is_valid());
-
+ 
 -  // Check using TLD+1s, in order to more aggressively match search engine types
 -  // for data imported from other browsers.
 -  //

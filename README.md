@@ -6,7 +6,7 @@
 
 Bromite is [Chromium](https://www.chromium.org/Home) plus some patches for ad blocking and enhanced privacy.
 
-Bromite is only available for Android v4.1 and above.
+Bromite is only available for Android v4.4 and above.
 
 <img src="https://www.bromite.org/bromite_bromite_gh_downloads.svg" alt="downloads on Github" title="downloads on Github" />
 
@@ -86,6 +86,7 @@ Yes, since version 69. While the desktop version of Chromium has an option to di
 * anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs
 * use fixed User-Agent to conceal real model and browser version
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
+* security enhancement patches from [GrapheneOS](https://github.com/GrapheneOS) project
 
 ## Features not related to privacy
 * import/export bookmarks
@@ -96,13 +97,17 @@ Yes, since version 69. While the desktop version of Chromium has an option to di
 
 You can inspect all functionality/privacy changes by reading the patches: https://github.com/bromite/bromite/tree/master/build/patches
 
+# Privacy limitations
+
+Bromite's privacy features, including anti-fingerprinting mitigations (which can be easily circumvented), **are not to be considered useful for journalists and people living in countries with freedom limitations**, please look at [Tor Browser](https://2019.www.torproject.org/projects/torbrowser.html.en) in such cases.
+
 # Releases
 
 All built versions are available as [releases](https://github.com/bromite/bromite/releases); the [official website](https://www.bromite.org/) points to those releases and - when browsing via Android - it will automatically select the one apt for your device (or none otherwise).
 
 Each tag corresponds to a Chromium Stable release tag.
 
-Bromite is currently built for ARM, ARM64 and x86 and for the Android SDK versions 16 and 21; [Bromite SystemWebView](https://www.bromite.org/system_web_view) is provided as well (SDK21+).
+Bromite is currently built for ARM, ARM64 and x86 and for the Android SDK versions 19 and 21; [Bromite SystemWebView](https://www.bromite.org/system_web_view) is provided as well (SDK21+).
 For every Bromite build you can always find a matching [vanilla Chromium](https://www.bromite.org/chromium) build which is used for example to verify which issues are specific to Bromite or not.
 
 All official releases are also available through the [official third-party F-Droid repository](https://www.bromite.org/fdroid).
@@ -145,6 +150,7 @@ The patches are to be applied second the order specified in the `patches_list.tx
 * [Chromium project](https://www.chromium.org/Home) and developers
 * [Iridium project](https://github.com/iridium-browser) for some patches
 * [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) for some patches
+* [GrapheneOS](https://github.com/GrapheneOS) for some security patches
 * [Inox patchset](https://github.com/gcarq/inox-patchset) for some patches (via ungoogled-chromium)
 * [Brave Browser](https://github.com/brave/browser-android-tabs) for some patches
 * nochromo for the original adblock patch
@@ -153,9 +159,7 @@ The patches are to be applied second the order specified in the `patches_list.tx
 # Filters credits
 * [EasyList](https://easylist.to/#easylist)
 * [EasyPrivacy](https://easylist.to/#easyprivacy)
-* [Fanboy's Annoyance List](https://easylist.to/#fanboy-s-annoyance-list)
 * [uBlock Origin](https://github.com/uBlockOrigin)
-* [Peter Lowe's adservers list](https://pgl.yoyo.org/adservers/)
 
 # License
 
