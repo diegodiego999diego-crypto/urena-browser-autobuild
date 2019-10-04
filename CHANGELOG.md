@@ -1,3 +1,33 @@
+# 77.0.3865.104
+* revert upstream commit for search privacy options and related translations removal (fixes https://github.com/bromite/bromite/issues/375)
+* remove unused patch for enabling subresource filter on all sites
+
+# 77.0.3865.95
+
+# 77.0.3865.81
+* use native subresource filtering instead of Bromite engine
+* introduce Bromite AdBlockUpdate service
+* keep using Bromite engine for SystemWebView
+* enable subresource filter for all sites
+* disable subresource filter popup
+* enable IPv6 probing by default
+* drop DnsTransaction default security level patch
+* drop patch to visualize all type of extensions
+* drop patches for Network Service
+* enable CFI for all architectures except x86
+
+# 76.0.3809.129
+* disable CFI to fix x86 crashes (fixes https://github.com/bromite/bromite/issues/357)
+
+# 76.0.3809.115
+* disable search-ready omnibox by default
+* disable unified consent
+
+# 76.0.3809.100
+* use default feature flags for autofill (fixes https://github.com/bromite/bromite/issues/348)
+
+# 76.0.3809.91
+
 # 76.0.3809.85
 * add flag to toggle Network Service
 * disable Network Service by default
@@ -7,7 +37,7 @@
 
 # 75.0.3770.139
 * disable media router and remoting by default (fixes https://github.com/bromite/bromite/issues/281)
-* enable CFI in builds
+* enable CFI in GN build flags
 
 # 75.0.3770.132
 

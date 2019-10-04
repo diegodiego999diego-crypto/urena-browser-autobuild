@@ -1,19 +1,20 @@
+From 95382d9855b0f710916bdc77934c04918c58379a Mon Sep 17 00:00:00 2001
 From: Romain HUNAULT <romain.hunault@e.email>
 Date: Wed, 17 Apr 2019 10:18:04 +0200
 Subject: [PATCH] Set search engine
 
 ---
- .../chrome/browser/locale/LocaleManager.java  |    1 -
- .../locale/LocaleTemplateUrlLoader.java       |    9 -
- .../locale/locale_template_url_loader.cc      |   39 +-
- .../locale/locale_template_url_loader.h       |    1 -
- .../search_engines/prepopulated_engines.json  | 1000 +----------------
- .../search_engines/search_engine_type.h       |    3 +-
- .../template_url_prepopulate_data.cc          |  633 ++---------
- 7 files changed, 127 insertions(+), 1559 deletions(-)
+ .../chrome/browser/locale/LocaleManager.java  |   1 -
+ .../locale/LocaleTemplateUrlLoader.java       |   8 -
+ .../locale/locale_template_url_loader.cc      |  37 +-
+ .../locale/locale_template_url_loader.h       |   1 -
+ .../search_engines/prepopulated_engines.json  | 999 +-----------------
+ .../search_engines/search_engine_type.h       |   3 +-
+ .../template_url_prepopulate_data.cc          | 633 ++---------
+ 7 files changed, 127 insertions(+), 1555 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
-index 562ee597e47d..91821cd93a4a 100644
+index 1eaf251c51e9..e41225322435 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
 @@ -191,7 +191,6 @@ public class LocaleManager {
@@ -25,10 +26,10 @@ index 562ee597e47d..91821cd93a4a 100644
      }
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-index f076993dc1e8..0ccdbf9dc535 100644
+index f076993dc1e8..8fa606832ea2 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-@@ -62,19 +62,10 @@ public class LocaleTemplateUrlLoader {
+@@ -62,13 +62,6 @@ public class LocaleTemplateUrlLoader {
          nativeOverrideDefaultSearchProvider(mNativeLocaleTemplateUrlLoader);
      }
  
@@ -39,20 +40,20 @@ index f076993dc1e8..0ccdbf9dc535 100644
 -        assert mNativeLocaleTemplateUrlLoader != 0;
 -        nativeSetGoogleAsDefaultSearch(mNativeLocaleTemplateUrlLoader);
 -    }
--
+ 
      private static native long nativeInit(String localeId);
      private static native void nativeDestroy(long nativeLocaleTemplateUrlLoader);
-     private static native boolean nativeLoadTemplateUrls(long nativeLocaleTemplateUrlLoader);
+@@ -76,5 +69,4 @@ public class LocaleTemplateUrlLoader {
      private static native void nativeRemoveTemplateUrls(long nativeLocaleTemplateUrlLoader);
      private static native void nativeOverrideDefaultSearchProvider(
              long nativeLocaleTemplateUrlLoader);
 -    private static native void nativeSetGoogleAsDefaultSearch(long nativeLocaleTemplateUrlLoader);
  }
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index cc0accf78f2e..0b33038995f6 100644
+index 30926be92dae..f22df6fef551 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
-@@ -67,20 +67,7 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(
+@@ -67,19 +67,6 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(
      const TemplateURL* matching_url =
          template_url_service_->GetTemplateURLForKeyword(data_url->keyword());
      bool exists = matching_url != nullptr;
@@ -69,11 +70,9 @@ index cc0accf78f2e..0b33038995f6 100644
 -        }
 -      }
 -    }
--
-+
+ 
      if (exists)
        continue;
- 
 @@ -114,8 +101,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(
    // If the user has changed their default search provider, no-op.
    const TemplateURL* current_dsp =
@@ -131,7 +130,7 @@ index 3e043e0a156e..ad860a993e13 100644
    virtual ~LocaleTemplateUrlLoader();
  
 diff --git a/components/search_engines/prepopulated_engines.json b/components/search_engines/prepopulated_engines.json
-index 87dd68a8b2c6..fa7d001d3d80 100644
+index 4aea7ffdc287..7f97cd8f4b53 100644
 --- a/components/search_engines/prepopulated_engines.json
 +++ b/components/search_engines/prepopulated_engines.json
 @@ -34,66 +34,6 @@
@@ -222,7 +221,7 @@ index 87dd68a8b2c6..fa7d001d3d80 100644
 -      "keyword": "google.com",
 -      "favicon_url": "https://www.google.com/images/branding/product/ico/googleg_lodp.ico",
 -      "search_url": "{google:baseURL}search?q={searchTerms}&{google:RLZ}{google:originalQueryForSuggestion}{google:assistedQueryStats}{google:searchFieldtrialParameter}{google:iOSSearchLanguage}{google:searchClient}{google:sourceId}{google:contextualSearchVersion}ie={inputEncoding}",
--      "suggest_url": "{google:baseSuggestURL}search?{google:searchFieldtrialParameter}client={google:suggestClient}&gs_ri={google:suggestRid}&xssi=t&q={searchTerms}&{google:inputType}{google:cursorPosition}{google:currentPageUrl}{google:pageClassification}{google:searchVersion}{google:sessionToken}{google:prefetchQuery}sugkey={google:suggestAPIKeyParameter}",
+-      "suggest_url": "{google:baseSuggestURL}search?{google:searchFieldtrialParameter}client={google:suggestClient}&gs_ri={google:suggestRid}&xssi=t&q={searchTerms}&{google:inputType}{google:omniboxFocusType}{google:cursorPosition}{google:currentPageUrl}{google:pageClassification}{google:searchVersion}{google:sessionToken}{google:prefetchQuery}sugkey={google:suggestAPIKeyParameter}",
 -      "image_url": "{google:baseURL}searchbyimage/upload",
 -      "contextual_search_url": "{google:baseURL}_/contextualsearch?{google:contextualSearchVersion}{google:contextualSearchContextData}",
 -      "image_url_post_params": "encoded_image={google:imageThumbnail},image_url={google:imageURL},sbisrc={google:imageSearchSource},original_width={google:imageOriginalWidth},original_height={google:imageOriginalHeight}",
@@ -285,9 +284,9 @@ index 87dd68a8b2c6..fa7d001d3d80 100644
      "qwant": {
        "name": "Qwant",
        "keyword": "qwant.com",
-@@ -188,872 +63,17 @@
-       "search_url": "https://www.qwant.com/?q={searchTerms}&client=opensearch",
+@@ -189,871 +64,17 @@
        "suggest_url": "https://api.qwant.com/api/suggest/?q={searchTerms}&client=opensearch",
+       "image_url": "https://www.qwant.com/?t=images&q={searchTerms}",
        "type": "SEARCH_ENGINE_QWANT",
 -      "id": 94
 -    },
@@ -298,7 +297,6 @@ index 87dd68a8b2c6..fa7d001d3d80 100644
 -      "favicon_url": "https://search.seznam.cz/r/img/favicon.ico",
 -      "search_url": "https://search.seznam.cz/?q={searchTerms}",
 -      "suggest_url": "https://suggest.fulltext.seznam.cz/fulltext_ff?phrase={searchTerms}",
--      "image_url": "https://www.qwant.com/?t=images&q={searchTerms}",
 -      "type": "SEARCH_ENGINE_SEZNAM",
 -      "id": 25
 -    },
@@ -1182,10 +1180,10 @@ index 9edca4acab68..c6ec89872bab 100644
  
  #endif  // COMPONENTS_SEARCH_ENGINES_SEARCH_ENGINE_TYPE_H_
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index 8e9cd1795a09..6db1f032939b 100644
+index 8e9cd1795a09..d9f03dee9dc0 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -32,952 +32,553 @@ namespace {
+@@ -32,952 +32,555 @@ namespace {
  
  // Default (for countries with no better engine set)
  const PrepopulatedEngine* const engines_default[] = {
@@ -2157,7 +2155,7 @@ index 8e9cd1795a09..6db1f032939b 100644
  
  // A list of all the engines that we know about.
  const PrepopulatedEngine* const kAllEngines[] = {
--    // Prepopulated engines:
+     // Prepopulated engines:
 -    &ask,
 -    &baidu,
 -    &bing,
@@ -2246,10 +2244,11 @@ index 8e9cd1795a09..6db1f032939b 100644
 -    &zoznam,
 +    &duckduckgo,
 +    &duckduckgo_light,
++
  };
  
  std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulationSetFromCountryID(
-@@ -1371,7 +972,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+@@ -1371,7 +974,7 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
    if (default_search_provider_index) {
      const auto itr = std::find_if(
          t_urls.begin(), t_urls.end(),
@@ -2258,7 +2257,7 @@ index 8e9cd1795a09..6db1f032939b 100644
      *default_search_provider_index =
          itr == t_urls.end() ? 0 : std::distance(t_urls.begin(), itr);
    }
-@@ -1432,16 +1033,6 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedDefaultSearch(
+@@ -1432,16 +1035,6 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedDefaultSearch(
  SearchEngineType GetEngineType(const GURL& url) {
    DCHECK(url.is_valid());
  
@@ -2275,5 +2274,6 @@ index 8e9cd1795a09..6db1f032939b 100644
    // Now check the rest of the prepopulate data.
    for (size_t i = 0; i < base::size(kAllEngines); ++i) {
      // First check the main search URL.
---
+-- 
 2.17.1
+
