@@ -1,4 +1,6 @@
-# Bromite - Take back your browser
+# /e/ Browser - fork of Bromite/Chromium 
+
+# About Bromite
 
 <img src="https://www.bromite.org/release.svg" alt="current Bromite release" title="current Bromite release" /> <img src="https://www.bromite.org/license.svg" alt="GNU GPL v3" title="GNU VPL v3" />
 
@@ -10,12 +12,12 @@ Bromite is only available for Android v4.4 and above.
 
 <img src="https://www.bromite.org/bromite_bromite_gh_downloads.svg" alt="downloads on Github" title="downloads on Github" />
 
-# Goals
+# Goals of Bromite
 
 Bromite aims at providing a no-clutter browsing experience without privacy-invasive features and with the addition of a fast ad-blocking engine.
 Minimal UI changes are applied to help curbing the idea of "browser as an advertisement platform".
 
-# Donate
+# Donate to Bromite project
 
 Please donate to support development of Bromite and the costs for the build system.
 
