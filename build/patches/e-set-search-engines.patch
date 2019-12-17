@@ -1,20 +1,20 @@
-From 95382d9855b0f710916bdc77934c04918c58379a Mon Sep 17 00:00:00 2001
+From d184e2de369a2a9f2420b3766fee4de960eecebf Mon Sep 17 00:00:00 2001
 From: Romain HUNAULT <romain.hunault@e.email>
 Date: Wed, 17 Apr 2019 10:18:04 +0200
-Subject: [PATCH] Set search engine
+Subject: [PATCH 1/7] Set search engine
 
 ---
  .../chrome/browser/locale/LocaleManager.java  |   1 -
- .../locale/LocaleTemplateUrlLoader.java       |   8 -
- .../locale/locale_template_url_loader.cc      |  37 +-
+ .../locale/LocaleTemplateUrlLoader.java       |   9 -
+ .../locale/locale_template_url_loader.cc      |  35 +-
  .../locale/locale_template_url_loader.h       |   1 -
  .../search_engines/prepopulated_engines.json  | 999 +-----------------
  .../search_engines/search_engine_type.h       |   3 +-
  .../template_url_prepopulate_data.cc          | 633 ++---------
- 7 files changed, 127 insertions(+), 1555 deletions(-)
+ 7 files changed, 128 insertions(+), 1553 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
-index 1eaf251c51e9..e41225322435 100644
+index 5dcb841960e9..cab19195e07d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleManager.java
 @@ -191,7 +191,6 @@ public class LocaleManager {
@@ -26,10 +26,10 @@ index 1eaf251c51e9..e41225322435 100644
      }
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-index f076993dc1e8..8fa606832ea2 100644
+index f076993dc1e8..0ccdbf9dc535 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-@@ -62,13 +62,6 @@ public class LocaleTemplateUrlLoader {
+@@ -62,19 +62,10 @@ public class LocaleTemplateUrlLoader {
          nativeOverrideDefaultSearchProvider(mNativeLocaleTemplateUrlLoader);
      }
  
@@ -40,20 +40,20 @@ index f076993dc1e8..8fa606832ea2 100644
 -        assert mNativeLocaleTemplateUrlLoader != 0;
 -        nativeSetGoogleAsDefaultSearch(mNativeLocaleTemplateUrlLoader);
 -    }
- 
+-
      private static native long nativeInit(String localeId);
      private static native void nativeDestroy(long nativeLocaleTemplateUrlLoader);
-@@ -76,5 +69,4 @@ public class LocaleTemplateUrlLoader {
+     private static native boolean nativeLoadTemplateUrls(long nativeLocaleTemplateUrlLoader);
      private static native void nativeRemoveTemplateUrls(long nativeLocaleTemplateUrlLoader);
      private static native void nativeOverrideDefaultSearchProvider(
              long nativeLocaleTemplateUrlLoader);
 -    private static native void nativeSetGoogleAsDefaultSearch(long nativeLocaleTemplateUrlLoader);
  }
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index 30926be92dae..f22df6fef551 100644
+index de77cdfb2f64..28eaf781a98a 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
-@@ -67,19 +67,6 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(
+@@ -64,19 +64,6 @@ jboolean LocaleTemplateUrlLoader::LoadTemplateUrls(JNIEnv* env) {
      const TemplateURL* matching_url =
          template_url_service_->GetTemplateURLForKeyword(data_url->keyword());
      bool exists = matching_url != nullptr;
@@ -73,7 +73,7 @@ index 30926be92dae..f22df6fef551 100644
  
      if (exists)
        continue;
-@@ -114,8 +101,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(
+@@ -107,8 +94,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(JNIEnv* env) {
    // If the user has changed their default search provider, no-op.
    const TemplateURL* current_dsp =
        template_url_service_->GetDefaultSearchProvider();
@@ -83,13 +83,11 @@ index 30926be92dae..f22df6fef551 100644
      return;
    }
  
-@@ -127,32 +113,13 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(
+@@ -120,30 +106,13 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(JNIEnv* env) {
    }
  }
  
--void LocaleTemplateUrlLoader::SetGoogleAsDefaultSearch(
--    JNIEnv* env,
--    const JavaParamRef<jobject>& obj) {
+-void LocaleTemplateUrlLoader::SetGoogleAsDefaultSearch(JNIEnv* env) {
 -  // If the user has changed their default search provider, no-op.
 -  const TemplateURL* current_dsp =
 -      template_url_service_->GetDefaultSearchProvider();
@@ -118,39 +116,35 @@ index 30926be92dae..f22df6fef551 100644
  
  LocaleTemplateUrlLoader::~LocaleTemplateUrlLoader() {}
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.h b/chrome/browser/android/locale/locale_template_url_loader.h
-index 3e043e0a156e..ad860a993e13 100644
+index 5e5591cbf4a6..b662955807a2 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.h
 +++ b/chrome/browser/android/locale/locale_template_url_loader.h
-@@ -22,7 +22,6 @@ class LocaleTemplateUrlLoader {
-   void RemoveTemplateUrls(JNIEnv* env, const JavaParamRef<jobject>& obj);
-   void OverrideDefaultSearchProvider(JNIEnv* env,
-                                      const JavaParamRef<jobject>& obj);
--  void SetGoogleAsDefaultSearch(JNIEnv* env, const JavaParamRef<jobject>& obj);
+@@ -21,7 +21,6 @@ class LocaleTemplateUrlLoader {
+   jboolean LoadTemplateUrls(JNIEnv* env);
+   void RemoveTemplateUrls(JNIEnv* env);
+   void OverrideDefaultSearchProvider(JNIEnv* env);
+-  void SetGoogleAsDefaultSearch(JNIEnv* env);
  
    virtual ~LocaleTemplateUrlLoader();
  
 diff --git a/components/search_engines/prepopulated_engines.json b/components/search_engines/prepopulated_engines.json
-index 4aea7ffdc287..7f97cd8f4b53 100644
+index 7315f5c2cc5a..49c2a80a1026 100644
 --- a/components/search_engines/prepopulated_engines.json
 +++ b/components/search_engines/prepopulated_engines.json
-@@ -34,66 +34,6 @@
+@@ -34,63 +34,6 @@
    // The following engines are included in country lists and are added to the
    // list of search engines on the first run depending on user's country.
    "elements": {
--    // Ask and Ask UK have suggestion URLs reachable over HTTPS, but they
--    // throw a certificate error, so those will remain as HTTP for now.
 -    "ask": {
 -      "name": "Ask",
 -      "keyword": "ask.com",
 -      "favicon_url": "https://sp.ask.com/sh/i/a16/favicon/favicon.ico",
 -      "search_url": "https://www.ask.com/web?q={searchTerms}",
--      "suggest_url": "http://ss.ask.com/query?q={searchTerms}&li=ff",
+-      "suggest_url": "https://lss.sse-iacapps.com/query?q={searchTerms}&li=ff",
 -      "type": "SEARCH_ENGINE_ASK",
 -      "id": 4
 -    },
 -
--    // Baidu's suggestion URL is not reachable over HTTPS, so it remains as
--    // HTTP for now.
 -    "baidu": {
 -      "name": "\u767e\u5ea6",
 -      "keyword": "baidu.com",
@@ -161,7 +155,7 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 -        "https://www.baidu.com/s?ie={inputEncoding}&word={searchTerms}",
 -        "https://www.baidu.com/{google:pathWildcard}/s?ie={inputEncoding}&word={searchTerms}"
 -      ],
--      "suggest_url": "http://suggestion.baidu.com/su?wd={searchTerms}&action=opensearch&ie={inputEncoding}",
+-      "suggest_url": "https://suggestion.baidu.com/su?wd={searchTerms}&action=opensearch&ie={inputEncoding}",
 -      "type": "SEARCH_ENGINE_BAIDU",
 -      "id": 21
 -    },
@@ -197,10 +191,11 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 -      "type": "SEARCH_ENGINE_DAUM",
 -      "id": 68
 -    },
- 
+-
      "duckduckgo_light": {
        "name": "DuckDuckGo Light",
-@@ -102,7 +42,7 @@
+       "keyword": "duckduckgo.com/lite",
+@@ -98,7 +41,7 @@
        "search_url": "https://duckduckgo.com/lite/?q={searchTerms}",
        "suggest_url": "https://duckduckgo.com/ac/?q={searchTerms}&type=list",
        "type": "SEARCH_ENGINE_DUCKDUCKGOLIGHT",
@@ -209,7 +204,7 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
      },
  
      "duckduckgo": {
-@@ -113,74 +53,9 @@
+@@ -109,74 +52,9 @@
        "suggest_url": "https://duckduckgo.com/ac/?q={searchTerms}&type=list",
        "new_tab_url": "https://duckduckgo.com/chrome_newtab",
        "type": "SEARCH_ENGINE_DUCKDUCKGO",
@@ -284,7 +279,7 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
      "qwant": {
        "name": "Qwant",
        "keyword": "qwant.com",
-@@ -189,871 +64,17 @@
+@@ -185,871 +63,16 @@
        "suggest_url": "https://api.qwant.com/api/suggest/?q={searchTerms}&client=opensearch",
        "image_url": "https://www.qwant.com/?t=images&q={searchTerms}",
        "type": "SEARCH_ENGINE_QWANT",
@@ -591,9 +586,8 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 -
 -      // Can't be 2 as this has to appear in the Canada list alongside yahoo_ca.
 -      "id": 5
-+      "id": 3
-     },
- 
+-    },
+-
 -    "yahoo_se": {
 -      "name": "Yahoo! Sverige",
 -      "keyword": "se.yahoo.com",
@@ -1141,7 +1135,8 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 -      "search_url": "http://szukaj.wp.pl/szukaj.html?q={searchTerms}",
 -      "type": "SEARCH_ENGINE_WP",
 -      "id": 76
--    },
++      "id": 3
+     },
 -
 -    "zoznam": {
 -      "name": "Zoznam",
@@ -1154,6 +1149,7 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 -      "encoding": "windows-1250",
 -      "type": "SEARCH_ENGINE_ZOZNAM",
 -      "id": 85
+-    }
 +    "espot": {
 +      "name": "/e/ spot",
 +      "keyword": "spot.ecloud.global",
@@ -1162,7 +1158,7 @@ index 4aea7ffdc287..7f97cd8f4b53 100644
 +      "suggest_url": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list",
 +      "type": "SEARCH_ENGINE_ESPOT",
 +      "id": 4
-     }
++     }
    }
  }
 diff --git a/components/search_engines/search_engine_type.h b/components/search_engines/search_engine_type.h
@@ -2275,5 +2271,5 @@ index 8e9cd1795a09..d9f03dee9dc0 100644
    for (size_t i = 0; i < base::size(kAllEngines); ++i) {
      // First check the main search URL.
 -- 
-2.17.1
+2.23.0
 
