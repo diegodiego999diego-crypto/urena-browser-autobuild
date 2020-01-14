@@ -21,9 +21,7 @@ Minimal UI changes are applied to help curbing the idea of "browser as an advert
 
 Please donate to support development of Bromite and the costs for the build system.
 
-Support development with a donation of 3 EUR: [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JP3XTQPVRNET2)
-
-Support development with a free amount donation: [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=LC7Q6A3UAQPY8)
+[&rarr; Support development with a donation](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JP3XTQPVRNET2): [![paypal](https://www.bromite.org/assets/img/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JP3XTQPVRNET2)
 
 <a href="bitcoin:3MkC3idL61npQSCxL1gceksmRTkNkiCPcG">BTC donations address</a>: `3MkC3idL61npQSCxL1gceksmRTkNkiCPcG`
 
@@ -141,7 +139,7 @@ The [Bromite main repository](https://github.com/bromite/bromite) contains tags 
 Please refer to [official Chromium build documentation](https://www.chromium.org/developers/how-tos/get-the-code) to get started on how to build Chromium; if you can build Chromium for Android, you can build Bromite.
 
 The GN args used to build Bromite are available here: [GN_ARGS](./build/GN_ARGS).
-The patches are to be applied second the order specified in the `patches_list.txt` file (you can use `git am`); the big file `adblock_entries.h` (containing all the AdBlock filters) needs to be copied under `src/net/url_request/`. This file is only used for the SystemWebView.
+The patches are to be applied second the order specified in the `bromite_patches_list.txt` file (you can use `git am`).
 
 ## How to build the filters
 
@@ -154,17 +152,17 @@ Bromite uses an unindexed filter file, which is periodically published at https:
 * [Chromium project](https://www.chromium.org/Home) and developers
 * [Iridium project](https://github.com/iridium-browser) for some patches
 * [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) for some patches
+* [ungoogled-chromium-android](https://github.com/ungoogled-software/ungoogled-chromium-android) for some patches
 * [GrapheneOS](https://github.com/GrapheneOS) for some security patches
 * [Inox patchset](https://github.com/gcarq/inox-patchset) for some patches (via ungoogled-chromium)
 * [Brave Browser](https://github.com/brave/browser-android-tabs) for some patches
-* nochromo for the original adblock patch, currently used only in the SystemWebView
 * [Vadim Pleshkov](http://vadimpleshkov.me/) for Bromite's logo
 
 # Filters credits
 * [EasyList](https://easylist.to/#easylist)
 * [EasyPrivacy](https://easylist.to/#easyprivacy)
 * [uBlock Origin](https://github.com/uBlockOrigin)
-
+* [Peter Lowe's Ad and tracking server list](https://pgl.yoyo.org/adservers/)
 # License
 
 The patches published as part of the Bromite project are released under [GNU GPL v3](./LICENSE).
