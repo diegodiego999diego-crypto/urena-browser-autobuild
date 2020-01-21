@@ -1,3 +1,46 @@
+# 78.0.3904.130
+* support user-specified subresources filter URL (fixes https://github.com/bromite/bromite/issues/2)
+* revert removal of flag for disabling pull-to-refresh effect
+* fix crash when entering no DoH URL (fixes https://github.com/bromite/bromite/issues/430)
+* added Peter Lowe's Ad and tracking server list (fixes https://github.com/bromite/bromite/issues/423)
+* removed Startpage
+* enabled dav1d_decoder
+
+# 78.0.3904.119
+* replace fixed DNS-over-HTTPS feature flag with user-customizable option
+* fix background playback issue (fixes https://github.com/bromite/bromite/issues/424)
+
+# 78.0.3904.105
+* add flag to disable WebGL (fixes https://github.com/bromite/bromite/issues/411)
+* more selective AMP sanitization (fixes https://github.com/bromite/bromite/issues/410)
+* build optimizations to disable debug information
+
+# 78.0.3904.93
+* introduce flags to disable browser fingerprinting capabilities (fixes https://github.com/bromite/bromite/issues/402)
+* major enhancements to AMP sanitization for news/images
+* remove duplicate network predictions privacy setting
+* disable some signed exchanges features
+* ungoogled-chromium-android: patches to block all GCM/GMS/PlayServices integrations
+* ungoogled-chromium: block all connection requests to substituted domains
+* disable GVR services build flag
+* disable HEAD requests for single words typed and clicked in Omnibar
+* increase number of autocomplete matches from 5 to 10
+* replace DoH probe domain with RIPE domain
+* merged fixes for adblock/javascript menu text (https://github.com/bromite/bromite/pull/398)
+* updated User-agent phone model and version
+
+# 78.0.3904.72
+* updated User-agent phone model and version
+* fix network predictions bug (fixes https://github.com/bromite/bromite/issues/387)
+* fix crash in settings (fixes https://github.com/bromite/bromite/issues/388)
+
+# 78.0.3904.63
+* replace Beta DoH service URL for Google (https://developers.google.com/speed/public-dns/docs/doh/migration)
+* disable AImageReaderMediaPlayer until upstream bug is fixed (https://bugs.chromium.org/p/chromium/issues/detail?id=977583)
+* disabled face detection provider
+* removed non-working SystemWebView adblock patch (not working since v77)
+* bring back some privacy options which upstream moved to Sync settings (fixes https://github.com/bromite/bromite/issues/383)
+
 # 77.0.3865.104
 * revert upstream commit for search privacy options and related translations removal (fixes https://github.com/bromite/bromite/issues/375)
 * remove unused patch for enabling subresource filter on all sites
