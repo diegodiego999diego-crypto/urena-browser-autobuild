@@ -1,9 +1,37 @@
+# 79.0.3945.123
+* updated User-agent version
+* increase minimum DoH timeout to 400ms (fixes https://github.com/bromite/bromite/issues/437)
+
+# 79.0.3945.111
+* automatically disable video decoding acceleration on Android 10+ and arm64
+* restore enable-horizontal-tab-switcher flag
+* remove non-working contextual search settings
+* disable QUIC by default
+* remove logging for DoH timeouts
+
+# 79.0.3945.107
+* always show cookies, javascript and ads site settings (fixes https://github.com/bromite/bromite/issues/133)
+* remove global ads and javascript menu options
+
+# 79.0.3945.100
+* log timeout values for DoH
+* enable DFM (fixes https://github.com/bromite/bromite/issues/441)
+* updated User-agent version
+
+# 79.0.3945.94
+* removed patches which do not apply anymore (Widevine version punting, always show homepage settings, network errors UMA recording)
+* removed split APKs support (Play integration)
+* disabled password reuse functionality (Play integration)
+* re-introduced minimal headers for DoH
+* removed Startpage
+* disable feed support
+* updated User-agent version
+
 # 78.0.3904.130
 * support user-specified subresources filter URL (fixes https://github.com/bromite/bromite/issues/2)
 * revert removal of flag for disabling pull-to-refresh effect
 * fix crash when entering no DoH URL (fixes https://github.com/bromite/bromite/issues/430)
 * added Peter Lowe's Ad and tracking server list (fixes https://github.com/bromite/bromite/issues/423)
-* removed Startpage
 * enabled dav1d_decoder
 
 # 78.0.3904.119
