@@ -45,6 +45,12 @@ Bromite uses [ungoogled-chromium's python script](https://github.com/Eloston/ung
 
 Projects which follow a strict approach on this are [Iridium](https://iridiumbrowser.de/) and [Inox patchset](https://github.com/gcarq/inox-patchset).
 
+## Does Bromite support DRM media?
+
+Yes, in order to play protected/encrypted media content the browser will use Android's DRM media framework to automatically negotiate access (same as Chromium).
+This means for example that requests to Android license servers will be performed (`www.googleapis.com`), see https://w3c.github.io/encrypted-media/#direct-individualization
+To disable this functionality you should disable protected content playback from Site settings -> Multimedia.
+
 ## What is the SystemWebView?
 It is the core component of Android for all web page visualizations. For example when you access a new wifi network and need to activate it, that is using the SystemWebView. If you do not know what it is then you do not need to install it.
 
@@ -73,10 +79,15 @@ You can use F-Droid client to install and receive updates via [the official Brom
 ## Does Bromite support WebRTC?
 Yes, since version 69. While the desktop version of Chromium has an option to disable it (video/audio site settings), the Android version cannot.
 
+The WebRTC functionality has always been using safe defaults to prevent leaks (disabled multiple routes and non-proxied UDP).
+
 ## Using Bromite will favour the monopoly of the Chromium/Blink engine, why do you develop and maintain Bromite?
 In short, to show what a Chromium-based engine could do **for the user** if the user experience and needs were the main focus of modern browser design.
 
-For a browser using an alternative engine see [Fennec F-Droid](https://f-droid.org/en/packages/org.mozilla.fennec_fdroid/).
+For an Android browser using an alternative engine see [Fennec F-Droid](https://f-droid.org/en/packages/org.mozilla.fennec_fdroid/).
+
+## Does Bromite support extensions?
+No; Bromite will support extensions only if upstream (Chromium) does, or similarly another project maintains the patch and functionality.
 
 # Features
 
@@ -84,18 +95,19 @@ For a browser using an alternative engine see [Fennec F-Droid](https://f-droid.o
 * remove click-tracking and AMP from search results
 * DNS-over-HTTPS support with any valid IETF DoH endpoint
 * always-incognito mode
-* all field triels permanently disabled
-* [QUIC](https://en.wikipedia.org/wiki/QUIC) disabled by default
+* disable all field trials permanently
+* disable [QUIC](https://en.wikipedia.org/wiki/QUIC) by default
+* disable smart search by default, allow web search from incognito mode
 * always-visible cookies, javascript and ads site settings
-* removed Play integration binary blobs
-* uses CFI on all architectures except x86
+* remove Play integration binary blobs
+* use [CFI](https://en.wikipedia.org/wiki/Control-flow_integrity) on all architectures except x86
 * disable media router and remoting by default
 * disable dynamic module loading
 * enable site-per-process isolation for all devices with memory > 1GB
-* completely removed safe browsing and other privacy-unfriendly features
+* completely remove safe browsing and other privacy-unfriendly features
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
 * [StartPage](https://startpage.com/), [DuckDuckGo](https://duckduckgo.com/) and [Qwant](https://www.qwant.com/) search engines available by default
-* chrome flags to disable custom intents and clear session on exit
+* flags to disable custom intents and clear session on exit
 * flags to toggle anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs
 * use fixed User-Agent to conceal real model and browser version
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
@@ -108,7 +120,7 @@ For a browser using an alternative engine see [Fennec F-Droid](https://f-droid.o
 * [AV1 codec support](https://github.com/bromite/bromite/wiki/AV1-support)
 * [dav1d](https://code.videolan.org/videolan/dav1d) decoder enabled by default
 * built with official speed optimizations
-* increased number of autocomplete matches
+* increase number of autocomplete matches
 * allow changing default download storage location
 * do not ignore save prompt for users without SD cards
 * disable articles and increase number of icons on new tab page
@@ -121,6 +133,7 @@ Flags which have been retired from upstream Chromium but are still available in 
 
 * `#enable-horizontal-tab-switcher`
 * `#pull-to-refresh`
+* `#enable-search-ready-omnibox`
 
 # Privacy limitations
 
@@ -128,7 +141,7 @@ Bromite's privacy features, including anti-fingerprinting mitigations (which are
 
 # Releases
 
-All built versions are available as [releases](https://github.com/bromite/bromite/releases); the [official website](https://www.bromite.org/) points to those releases and - when browsing via Android - it will automatically select the one apt for your device (or none otherwise).
+All built versions are available as [releases](https://github.com/bromite/bromite/releases); the [official website](https://www.bromite.org/) points to those releases and - when browsing via Android - it will automatically highlight the one apt for your device (or none otherwise).
 
 Each tag corresponds to a Chromium Stable release tag.
 
