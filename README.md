@@ -6,13 +6,17 @@
 
 <img title="Bromite - take back your browser!" src="https://www.bromite.org/android-icon-192x192.png" width="96" alt="Bromite" />
 
-Bromite is [Chromium](https://www.chromium.org/Home) plus some patches for ad blocking and enhanced privacy.
+Bromite is a [Chromium](https://www.chromium.org/Home) fork with support for ad blocking and enhanced privacy.
 
 Bromite is only available for Android v4.4 and above.
 
 <img src="https://www.bromite.org/bromite_bromite_gh_downloads.svg" alt="downloads on Github" title="downloads on Github" />
 
-# Goals of Bromite
+For the Frequently Asked Questions see [F.A.Q.](./FAQ.md).
+
+For documentation see the [wiki](https://github.com/bromite/bromite/wiki).
+
+# Goals
 
 Bromite aims at providing a no-clutter browsing experience without privacy-invasive features and with the addition of a fast ad-blocking engine.
 Minimal UI changes are applied to help curbing the idea of "browser as an advertisement platform".
@@ -23,7 +27,7 @@ Please donate to support development of Bromite and the costs for the build syst
 
 [&rarr; Support development with a donation](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JP3XTQPVRNET2): [![paypal](https://www.bromite.org/assets/img/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JP3XTQPVRNET2)
 
-<a href="bitcoin:3MkC3idL61npQSCxL1gceksmRTkNkiCPcG">BTC donations address</a>: `3MkC3idL61npQSCxL1gceksmRTkNkiCPcG`
+<a href="bitcoin:bc1qmpyuqsvs3tz3uaysplmwjr33gg4rzu6cqweaq834ehc25vduxppqkrszel">BTC donations address</a>: `bc1qmpyuqsvs3tz3uaysplmwjr33gg4rzu6cqweaq834ehc25vduxppqkrszel`
 
 ETH donations address: `0xf47ff39223d828f99fec5ab53bd068c5c0522042`
 
@@ -96,7 +100,6 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * DNS-over-HTTPS support with any valid IETF DoH endpoint
 * always-incognito mode
 * disable all field trials permanently
-* disable [QUIC](https://en.wikipedia.org/wiki/QUIC) by default
 * disable smart search by default, allow web search from incognito mode
 * always-visible cookies, javascript and ads site settings
 * remove Play integration binary blobs
@@ -106,21 +109,22 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * enable site-per-process isolation for all devices with memory > 1GB
 * completely remove safe browsing and other privacy-unfriendly features
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
-* [StartPage](https://startpage.com/), [DuckDuckGo](https://duckduckgo.com/) and [Qwant](https://www.qwant.com/) search engines available by default
-* flags to disable custom intents and clear session on exit
-* flags to toggle anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs
-* use fixed User-Agent to conceal real model and browser version
+* [DuckDuckGo](https://duckduckgo.com/) and [Qwant](https://www.qwant.com/) search engines available by default
+* settings to disable custom intents and clear session on exit
+* flags to toggle anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs (see full list below for all the new flags)
+* use frozen User-Agent to conceal real model and browser version
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
 * security enhancement patches from [GrapheneOS](https://github.com/GrapheneOS) project
 
 ## Features not related to privacy
 * import/export bookmarks
+* flag to allow screenshots of incognito tabs
 * allow playing videos in background tabs and disable pause on switching tabs
 * all codecs included (proprietary, open H.264 etc.)
 * [AV1 codec support](https://github.com/bromite/bromite/wiki/AV1-support)
 * [dav1d](https://code.videolan.org/videolan/dav1d) decoder enabled by default
 * built with official speed optimizations
-* increase number of autocomplete matches
+* increase number of autocomplete matches from 5 to 10
 * allow changing default download storage location
 * do not ignore save prompt for users without SD cards
 * disable articles and increase number of icons on new tab page
@@ -134,6 +138,15 @@ Flags which have been retired from upstream Chromium but are still available in 
 * `#enable-horizontal-tab-switcher`
 * `#pull-to-refresh`
 * `#enable-search-ready-omnibox`
+
+New flags:
+
+* `#enable-incognito-snapshots-in-android-recents`
+* `#max-connections-per-host`
+* `#resume-background-video`
+* `#ipv6-probing`
+* `#disable-webgl`
+* `#enable-device-motion` and `#enable-device-orientation`
 
 # Privacy limitations
 
@@ -176,6 +189,7 @@ The [Bromite main repository](https://github.com/bromite/bromite) contains tags 
 
 Please refer to [official Chromium build documentation](https://www.chromium.org/developers/how-tos/get-the-code) to get started on how to build Chromium; if you can build Chromium for Android, you can build Bromite.
 
+The Chromium version tag used as base for the patches is available here: [RELEASE](./build/RELEASE); this is always corresponding to the git tag for every release.
 The GN args used to build Bromite are available here: [GN_ARGS](./build/GN_ARGS).
 The patches are to be applied second the order specified in the `bromite_patches_list.txt` file (you can use `git am`).
 

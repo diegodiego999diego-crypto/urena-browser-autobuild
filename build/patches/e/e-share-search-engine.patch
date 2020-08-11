@@ -1,0 +1,125 @@
+From: Romain HUNAULT <romain.hunault@e.email>
+Date: Thu, 9 May 2019 14:20:04 +0200
+Subject: [PATCH] Share search engine
+
+---
+ chrome/android/java/AndroidManifest.xml       |  6 ++
+ .../provider/SearchEngineProvider.java        | 79 +++++++++++++++++++
+ chrome/android/java_sources.gni               |  2 +
+ 3 files changed, 88 insertions(+)
+ create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/provider/SearchEngineProvider.java
+
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index d3e84c129240..a57eef708cb2 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -966,6 +966,12 @@ by a child template that "extends" this file.
+                 android:resource="@xml/file_paths" />
+         </provider>
+
++	<!-- Provider for search engine. -->
++        <provider
++            android:name="org.chromium.chrome.browser.provider.SearchEngineProvider"
++            android:authorities="foundation.e.browser.provider"
++            android:exported="true"/>
++
+         <!-- Broadcast receiver that will be notified of account changes -->
+         <receiver android:name="org.chromium.chrome.browser.services.AccountsChangedReceiver">
+             <intent-filter>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/provider/SearchEngineProvider.java b/chrome/android/java/src/org/chromium/chrome/browser/provider/SearchEngineProvider.java
+new file mode 100644
+index 000000000000..2d42562daeaf
+--- /dev/null
++++ b/chrome/android/java/src/org/chromium/chrome/browser/provider/SearchEngineProvider.java
+@@ -0,0 +1,79 @@
++package org.chromium.chrome.browser.provider;
++
++
++import android.content.ContentProvider;
++import android.content.ContentResolver;
++import android.content.ContentValues;
++import android.content.Context;
++import android.content.SharedPreferences;
++import android.content.UriMatcher;
++import android.database.Cursor;
++import android.database.MatrixCursor;
++import android.net.Uri;
++import android.support.annotation.NonNull;
++
++public class SearchEngineProvider extends ContentProvider {
++
++    public static final String CONFIGURATION_PREFERENCE_FILE_NAME = "foundation.e.browser_preferences";
++
++    public static final String AUTHORITY = "foundation.e.browser.provider";
++
++    private static final int MATCH_DATA = 0x010000;
++
++    private static UriMatcher matcher;
++
++    private static final String PREFERENCE_KEY = "org.chromium.chrome.browser.searchwidget.SEARCH_ENGINE_SHORTNAME";
++
++    private static void init(){
++        matcher = new UriMatcher(UriMatcher.NO_MATCH);
++        matcher.addURI(AUTHORITY, "search_engine", MATCH_DATA);
++    }
++
++    @Override
++    public boolean onCreate() {
++        if(matcher == null){
++            init();
++        }
++        return true;
++    }
++
++    @Override
++    public String getType(@NonNull Uri uri) {
++        return ContentResolver.CURSOR_ITEM_BASE_TYPE + "/vnd." + AUTHORITY + ".item";
++    }
++
++    @Override
++    public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
++        throw new UnsupportedOperationException();
++    }
++
++    @Override
++    public Uri insert(@NonNull Uri uri, ContentValues values) {
++        throw new UnsupportedOperationException();
++    }
++
++    @Override
++    public Cursor query(@NonNull Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
++        //Provide a read only access to the content provider
++        MatrixCursor cursor;
++        if (matcher.match(uri) == MATCH_DATA) {
++            cursor = new MatrixCursor(new String[]{PREFERENCE_KEY});
++            MatrixCursor.RowBuilder rowBuilder = cursor.newRow();
++            SharedPreferences sharedPreferences = getContext().getSharedPreferences(
++                    CONFIGURATION_PREFERENCE_FILE_NAME, Context.MODE_PRIVATE);
++            if (sharedPreferences != null) {
++                rowBuilder.add(sharedPreferences.getString(PREFERENCE_KEY, ""));
++            } else {
++                rowBuilder.add("");
++            }
++        } else {
++            throw new IllegalArgumentException("Unsupported uri " + uri);
++        }
++        return cursor;
++    }
++
++    @Override
++    public int update(@NonNull Uri uri, ContentValues values, String selection, String[] selectionArgs) {
++        throw new UnsupportedOperationException();
++    }
++}
+diff --git a/chrome/android/java_sources.gni b/chrome/android/java_sources.gni
+index b2f24064da7e..30a574abc4b8 100644
+--- a/chrome/android/java_sources.gni
++++ b/chrome/android/java_sources.gni
+@@ -63,3 +63,5 @@ if (enable_password_change_in_leaked_dialog) {
+     "java/src/org/chromium/chrome/browser/password_manager/PasswordManagerDialogPasswordChangeViewBinder.java",
+   ]
+ }
++
++chrome_java_sources += [ "java/src/org/chromium/chrome/browser/provider/SearchEngineProvider.java" ]
+--
+2.17.1

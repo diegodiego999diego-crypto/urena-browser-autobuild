@@ -19,8 +19,8 @@ Subject: Use dummy DFM installer
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeApplication.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeApplication.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeApplication.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeApplication.java
-@@ -121,10 +121,6 @@ public class ChromeApplication extends Application {
-             ChromeBackgroundTaskFactory.setAsDefault();
+@@ -132,10 +132,6 @@ public class ChromeApplication extends Application {
+             }
          }
  
 -        // Write installed modules to crash keys. This needs to be done as early as possible so that
@@ -33,7 +33,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeApplicati
 diff --git a/components/module_installer/android/BUILD.gn b/components/module_installer/android/BUILD.gn
 --- a/components/module_installer/android/BUILD.gn
 +++ b/components/module_installer/android/BUILD.gn
-@@ -19,12 +19,10 @@ android_library("module_installer_java") {
+@@ -20,12 +20,10 @@ android_library("module_installer_java") {
      "java/src/org/chromium/components/module_installer/logger/Logger.java",
      "java/src/org/chromium/components/module_installer/logger/PlayCoreLogger.java",
      "java/src/org/chromium/components/module_installer/logger/SplitAvailabilityLogger.java",
@@ -82,9 +82,9 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
 diff --git a/components/module_installer/android/java/src/org/chromium/components/module_installer/engine/SplitCompatEngine.java b/components/module_installer/android/java/src/org/chromium/components/module_installer/engine/SplitCompatEngine.java
 --- a/components/module_installer/android/java/src/org/chromium/components/module_installer/engine/SplitCompatEngine.java
 +++ b/components/module_installer/android/java/src/org/chromium/components/module_installer/engine/SplitCompatEngine.java
-@@ -6,10 +6,10 @@ package org.chromium.components.module_installer.engine;
+@@ -8,10 +8,10 @@ import android.app.Activity;
  
- import android.app.Activity;
+ import androidx.annotation.VisibleForTesting;
  
 -import com.google.android.play.core.splitinstall.SplitInstallException;
 +/*import com.google.android.play.core.splitinstall.SplitInstallException;
@@ -94,8 +94,8 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
 +import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus;*/
  
  import org.chromium.base.ThreadUtils;
- import org.chromium.base.VisibleForTesting;
-@@ -26,41 +26,42 @@ import java.util.Set;
+ 
+@@ -27,41 +27,42 @@ import java.util.Set;
   * Install engine that uses Play Core and SplitCompat to install modules.
   */
  class SplitCompatEngine implements InstallEngine {
@@ -149,7 +149,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
              sSessions.get(moduleName).add(listener);
              return;
          }
-@@ -85,10 +86,10 @@ class SplitCompatEngine implements InstallEngine {
+@@ -86,10 +87,10 @@ class SplitCompatEngine implements InstallEngine {
              notifyListeners(moduleName, false);
          });
  
@@ -162,7 +162,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
          return state -> {
              if (state.moduleNames().size() != 1) {
                  throw new UnsupportedOperationException("Only one module supported.");
-@@ -109,35 +110,35 @@ class SplitCompatEngine implements InstallEngine {
+@@ -110,35 +111,35 @@ class SplitCompatEngine implements InstallEngine {
  
              mFacade.getLogger().logStatus(moduleName, status);
          };
@@ -409,9 +409,9 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
 -import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus;
 -
  import org.chromium.base.ContextUtils;
- import org.chromium.base.metrics.CachedMetrics.EnumeratedHistogramSample;
  import org.chromium.base.metrics.RecordHistogram;
-@@ -53,21 +49,6 @@ public class SplitAvailabilityLogger {
+ 
+@@ -52,21 +48,6 @@ public class SplitAvailabilityLogger {
          Set<String> requestedModules = new HashSet<>();
          requestedModules.addAll(prefs.getStringSet(ONDEMAND_REQ_PREV, new HashSet<>()));
          requestedModules.addAll(prefs.getStringSet(DEFERRED_REQ_PREV, new HashSet<>()));
@@ -433,7 +433,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
      }
  
      private static void recordAvailabilityStatus(String moduleName, int status) {
-@@ -82,14 +63,6 @@ public class SplitAvailabilityLogger {
+@@ -80,14 +61,6 @@ public class SplitAvailabilityLogger {
       * @param moduleName The module name.
       */
      public void logInstallTimes(String moduleName) {
@@ -448,7 +448,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
      }
  
      /**
-@@ -169,7 +142,6 @@ public class SplitAvailabilityLogger {
+@@ -167,7 +140,6 @@ public class SplitAvailabilityLogger {
  
          public InstallTimes(boolean isCached) {
              mIsCached = isCached;
@@ -465,7 +465,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
  
 -import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus;
 -
- import org.chromium.base.metrics.CachedMetrics.EnumeratedHistogramSample;
+ import org.chromium.base.metrics.RecordHistogram;
  
  class SplitInstallStatusLogger {
 @@ -28,33 +26,7 @@ class SplitInstallStatusLogger {
@@ -510,7 +510,7 @@ diff --git a/components/module_installer/android/java/src/org/chromium/component
       * Updates the CrashKey report containing modules currently present.
       */
      public static void updateCrashKeys() {
--        if (!BuildConfig.IS_BUNDLE) return;
+-        if (!BundleUtils.isBundle()) return;
 -
 -        try (Timer timer = new Timer()) {
 -            CrashKeyRecorder.updateCrashKeys();
