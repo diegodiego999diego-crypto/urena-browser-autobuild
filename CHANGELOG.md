@@ -1,3 +1,69 @@
+# 83.0.4103.93
+* fix undesired replacement for search engines (fixes https://github.com/bromite/bromite/issues/595)
+* fix resume flag not visible
+
+# 83.0.4103.76
+* fixed inverted Omnibox flag
+* fixed LocationBarPhone/LocationBarTablet crash (fixes https://github.com/bromite/bromite/issues/565)
+
+# 83.0.4103.53
+* updated zh_CN translations
+* mitigation for LocationBarPhone crash (https://github.com/bromite/bromite/issues/565)
+
+# 83.0.4103.46
+* add zh_CN missing translations (fixes https://github.com/bromite/bromite/issues/546)
+* change default mode for WebRTC (fixes https://github.com/bromite/bromite/issues/553)
+* add flag to allow screenshots of incognito tabs (fixes https://github.com/bromite/bromite/issues/551)
+* reintroduced patches for disabling AImageReader
+* fixed DevTools issue with domain substitution (fixes https://github.com/bromite/bromite/issues/526)
+* drop patch to disable QUIC by default
+* drop patch for DoH minimum timeout (upstream also implemented it)
+* dropped patch for removal of support of CCT dynamic modules (upstream also removed it)
+* removed upstream patch for SD card not found issue (upstream merged it)
+
+# 81.0.4044.127
+* fix always-incognito crashes (https://github.com/bromite/bromite/issues/135 and https://github.com/bromite/bromite/pull/529)
+* improved crash uploader mock by calling done callback
+
+# 81.0.4044.106
+* remove option to add NTP as homepage (fixes https://github.com/bromite/bromite/issues/517)
+
+# 81.0.4044.97
+* disable browser auto-login by default
+* show download prompt again
+
+# 81.0.4044.83
+
+# 81.0.4044.76
+
+# 81.0.4044.70
+* backport surface control fix (fixes https://github.com/bromite/bromite/issues/445)
+
+# 81.0.4044.63
+* use upstream fix for SD card not found issue (fixes https://github.com/bromite/bromite/issues/485)
+* do not compile QR code sharing
+* remove obsolete patch for GCM experiment status
+* drop 2 patches for AImageReader crash fix (upstream has the same revert patches)
+
+# 80.0.3987.118
+* disable AImageReader for all ARM64 devices (fixes https://github.com/bromite/bromite/issues/497)
+* use upstream possible workaround for SD card not found issue (fixes https://github.com/bromite/bromite/issues/485)
+
+# 80.0.3987.109
+* restored GPU workaround for the ARM/ARM64 AImageReader crash (https://github.com/bromite/bromite/issues/445)
+
+# 80.0.3987.95
+* enable user-agent freeze (fixes https://github.com/bromite/bromite/issues/483)
+* fix issue with AMP (fixes https://github.com/bromite/bromite/issues/488)
+* fix crash on home page (fixes https://github.com/bromite/bromite/issues/484)
+
+# 80.0.3987.78
+* removed ungoogled-chromium patch for non-remote developer tools resources
+* removed patch for 64-bit webview (it is now a default from upstream)
+* removed patch for enabling dark mode menu entry by default (it is now a default from upstream)
+* removed patch for enabling download rename by default (it is now a default from upstream)
+* removed some redundant Iridium safe browsing patches
+
 # 79.0.3945.139
 * remove patch to automatically disable video decoding acceleration on Android 10+ and arm64
 * fix referral headers bug in non-DoH requests (fixes https://github.com/bromite/bromite/issues/470)
@@ -207,6 +273,7 @@
 * use adblock engine also in SystemWebView
 * add back uBlock Origin and EasyList filters
 * added Fanboy's Annoyance List
+* remove AdGuard filters
 
 # 72.0.3626.119
 * use AdGuard filters
