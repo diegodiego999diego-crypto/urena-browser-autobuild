@@ -3,9 +3,9 @@ Date: Thu, 18 Feb 2021 21:22:52 +0100
 Subject: Add menu item to bookmark all tabs
 
 ---
- chrome/android/java/res/menu/main_menu.xml    |  6 ++
- .../java/res/menu/main_menu_regroup.xml       |  3 +
- .../chrome/browser/ChromeTabbedActivity.java  | 23 +++++++
+ chrome/android/java/res/menu/main_menu.xml    |  7 +++
+ .../java/res/menu/main_menu_regroup.xml       |  4 ++
+ .../chrome/browser/ChromeTabbedActivity.java  | 26 ++++++++
  .../browser/bookmarks/BookmarkBridge.java     | 62 +++++++++++++++++++
  .../browser/bookmarks/BookmarkUtils.java      |  4 ++
  .../android/bookmarks/bookmark_bridge.cc      | 17 +++++
@@ -19,40 +19,42 @@ Subject: Add menu item to bookmark all tabs
  components/bookmarks/browser/bookmark_model.h |  7 +++
  components/bookmarks/browser/bookmark_node.cc | 13 ++++
  components/bookmarks/browser/bookmark_node.h  |  5 ++
- 16 files changed, 163 insertions(+), 1 deletion(-)
+ 16 files changed, 168 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/android/java/res/menu/main_menu.xml b/chrome/android/java/res/menu/main_menu.xml
 --- a/chrome/android/java/res/menu/main_menu.xml
 +++ b/chrome/android/java/res/menu/main_menu.xml
-@@ -57,6 +57,9 @@
+@@ -57,6 +57,10 @@
          <item android:id="@+id/all_bookmarks_menu_id"
              android:title="@string/menu_bookmarks"
              android:icon="@drawable/btn_star_filled" />
 +        <item android:id="@+id/bookmark_all_tabs_menu_id"
-+            android:title="@string/menu_bookmark_all_tabs"
++            android:title="@string/accessibility_menu_bookmark"
++            android:titleCondensed="@string/menu_bookmark_all_tabs"
 +            android:icon="@drawable/ic_folder_blue_24dp" />
          <item android:id="@+id/recent_tabs_menu_id"
              android:title="@string/menu_recent_tabs"
              android:icon="@drawable/devices_black_24dp" />
-@@ -146,6 +149,9 @@
-         <item android:id="@+id/track_prices_row_menu_id"
-             android:title="@string/menu_track_prices"
-             android:icon="@drawable/ic_trending_down_black" />
+@@ -134,6 +138,9 @@
+         <item android:id="@id/new_incognito_tab_menu_id"
+             android:title="@string/menu_new_incognito_tab"
+             android:icon="@drawable/incognito_simple" />
 +        <item android:id="@+id/bookmark_all_tabs_menu_id"
 +            android:title="@string/menu_bookmark_all_tabs"
 +            android:icon="@drawable/ic_folder_blue_24dp" />
-         <item android:id="@id/preferences_id"
-             android:title="@string/menu_settings"
-             android:icon="@drawable/settings_cog" />
+         <item android:id="@+id/close_all_tabs_menu_id"
+             android:title="@string/menu_close_all_tabs"
+             android:icon="@drawable/btn_close_white" />
 diff --git a/chrome/android/java/res/menu/main_menu_regroup.xml b/chrome/android/java/res/menu/main_menu_regroup.xml
 --- a/chrome/android/java/res/menu/main_menu_regroup.xml
 +++ b/chrome/android/java/res/menu/main_menu_regroup.xml
-@@ -32,6 +32,9 @@
+@@ -32,6 +32,10 @@
                  android:title="@string/accessibility_menu_bookmark"
                  android:titleCondensed="@string/menu_bookmark"
                  android:icon="@drawable/btn_star"/>
 +              <item android:id="@+id/bookmark_all_tabs_menu_id"
-+                android:title="@string/menu_bookmark_all_tabs"
++                android:title="@string/accessibility_menu_bookmark"
++                android:titleCondensed="@string/menu_bookmark_all_tabs"
 +                android:icon="@drawable/ic_folder_blue_24dp" />
                <item android:id="@+id/offline_page_id"
                  android:title="@string/download_page"
@@ -78,7 +80,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedAct
          } else if (id == R.id.close_all_incognito_tabs_menu_id) {
              // Close only incognito tabs
              getTabModelSelector().getModel(true).closeAllTabs();
-@@ -1868,6 +1872,25 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+@@ -1868,6 +1872,28 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
          mTabModalHandler.onOmniboxFocusChanged(hasFocus);
      }
  
@@ -91,14 +93,17 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedAct
 +        }
 +
 +        final BookmarkBridge bridge = mBookmarkBridgeSupplier.get();
-+        for (int i = 0; i < tabModel.getCount(); i++) {
-+            Tab tab = tabModel.getTabAt(i);
-+            if (tab.isNativePage()) {
-+                continue;
++        final BookmarkModel bookmarkModel = new BookmarkModel();
++                bookmarkModel.finishLoadingBookmarkModel(() -> {
++            for (int i = 0; i < tabModel.getCount(); i++) {
++                Tab tab = tabModel.getTabAt(i);
++                if (tab.isNativePage()) {
++                    continue;
++                }
++                bridge.addToTabsCollection(this, tab);
 +            }
-+            bridge.addToTabsCollection(this, tab);
-+        }
-+        bridge.finishedAddingToTabsCollection(this, getSnackbarManager());
++            bridge.finishedAddingToTabsCollection(this, getSnackbarManager());
++        });
 +    }
 +
      private void recordLauncherShortcutAction(boolean isIncognito) {
@@ -165,7 +170,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/Bookm
  
 +    // Used to bookmark all tabs in a specific folder, created if not existing
 +    public BookmarkId addToTabsCollection(Context context, Tab tab) {
-+        BookmarkId parent = getMobileFolderId();
++        BookmarkId parent = getTabsCollectionFolderId();
 +        long existingId = getUserBookmarkIdForTab(tab);
 +        if (existingId != BookmarkId.INVALID_ID) {
 +            BookmarkId existingBookmarkId = new BookmarkId(existingId, BookmarkType.NORMAL);
@@ -186,7 +191,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/Bookm
 +     }
 +
 +     public void finishedAddingToTabsCollection(Activity activity, SnackbarManager snackbarManager) {
-+        BookmarkId parent = getMobileFolderId();
++        BookmarkId parent = getTabsCollectionFolderId();
 +
 +        BookmarkItem bookmarkItem = getBookmarkById(parent);
 +        String folderName;
