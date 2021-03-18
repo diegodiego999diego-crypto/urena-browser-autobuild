@@ -103,7 +103,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * disable smart search by default, allow web search from incognito mode
 * always-visible cookies, javascript and ads site settings
 * remove Play integration binary blobs
-* use [CFI](https://en.wikipedia.org/wiki/Control-flow_integrity) on all architectures
+* use [CFI](https://en.wikipedia.org/wiki/Control-flow_integrity) on all architectures except x86
 * disable media router and remoting by default
 * disable dynamic module loading
 * enable site-per-process isolation for all devices with memory > 1GB
