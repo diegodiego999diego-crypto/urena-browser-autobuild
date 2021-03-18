@@ -1,8 +1,15 @@
+# 88.0.4324.185
+* fix favicons fallback search (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/788)
+* fix potential DIAL crash when network state changes (thanks to @Ahrotahn)
+* fix crash when opening links in incognito-only mode (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/899)
+* disallow empty custom user agent (thanks to @uazo)
+
 # 88.0.4324.149
 * fix proxy PAC URL option not working (fixes https://github.com/bromite/bromite/issues/908)
 * store proxy configuration in LocalState instead of Profile (thanks to @uazo)
 * fix toggle for reversing the meaning of bypass rules (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/884)
 * ignore managed state and policies for secure DNS (fixes https://github.com/bromite/bromite/issues/832)
+* do not permit user-installed certificates
 
 # 88.0.4324.141
 * fix bookmarks not opening (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/891)

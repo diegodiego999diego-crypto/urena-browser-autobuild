@@ -38,7 +38,8 @@ to use the flag in the hamburger menu to navigate with a custom useragent leavin
  .../renderer_host/render_process_host_impl.cc |   1 +
  .../browser/web_contents/web_contents_impl.cc |   4 +-
  .../framehost/NavigationControllerImpl.java   |   6 +-
- 31 files changed, 751 insertions(+), 13 deletions(-)
+ content/renderer/render_thread_impl.cc        |   1 -
+ 32 files changed, 751 insertions(+), 14 deletions(-)
  create mode 100644 chrome/android/java/res/layout/custom_useragent_preferences.xml
  create mode 100644 chrome/android/java/res/xml/useragent_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/settings/UserAgentPreferences.java
@@ -68,7 +69,7 @@ diff --git a/base/base_switches.h b/base/base_switches.h
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -1072,4 +1072,6 @@ chrome_java_resources = [
+@@ -1071,4 +1071,6 @@ chrome_java_resources = [
    "java/res/xml/sync_and_services_preferences.xml",
    "java/res/xml/theme_preferences.xml",
    "java/res/xml/tracing_preferences.xml",
@@ -78,7 +79,7 @@ diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_ja
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -1289,6 +1289,7 @@ chrome_java_sources = [
+@@ -1290,6 +1290,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/payments/ui/DimmingDialog.java",
    "java/src/org/chromium/chrome/browser/payments/ui/LineItem.java",
    "java/src/org/chromium/chrome/browser/payments/ui/PaymentAppComparator.java",
@@ -796,22 +797,22 @@ diff --git a/chrome/browser/android/preferences/privacy_preferences_manager.cc b
 +  bool overrideUserAgentEnabled =
 +    g_browser_process->local_state()->GetBoolean(prefs::kOverrideUserAgentEnabled);
 +  std::string ua = g_browser_process->local_state()->GetString(prefs::kOverrideUserAgent);
++  if (ua.empty()) {
++    ua = ChromeContentBrowserClient().GetUserAgent();
++  }
 +
 +  base::CommandLine* parsed_command_line =
 +      base::CommandLine::ForCurrentProcess();
 +  parsed_command_line->RemoveSwitch(switches::kUserAgent);
-+  if (overrideUserAgentEnabled) {
-+    parsed_command_line->AppendSwitchASCII(switches::kUserAgent, ua);
-+  }
++  if (!ua.empty()) {
++    if (overrideUserAgentEnabled) {
++      parsed_command_line->AppendSwitchASCII(switches::kUserAgent, ua);
++    }
 +
-+  for (auto iter = content::RenderProcessHost::AllHostsIterator(); !iter.IsAtEnd();
-+      iter.Advance()) {
-+    if (iter.GetCurrentValue()->IsInitializedAndNotDead()) {
-+      if (overrideUserAgentEnabled) {
++    for (auto iter = content::RenderProcessHost::AllHostsIterator(); !iter.IsAtEnd();
++         iter.Advance()) {
++      if (iter.GetCurrentValue()->IsInitializedAndNotDead()) {
 +        iter.GetCurrentValue()->GetRendererInterface()->SetUserAgent(ua);
-+      } else {
-+        iter.GetCurrentValue()->GetRendererInterface()->SetUserAgent(
-+           ChromeContentBrowserClient().GetUserAgent());
 +      }
 +    }
 +  }
@@ -1228,6 +1229,17 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/frameh
          void clearHistory(long nativeNavigationControllerAndroid, NavigationControllerImpl caller);
          int getNavigationHistory(long nativeNavigationControllerAndroid,
                  NavigationControllerImpl caller, Object history);
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -1697,7 +1697,6 @@ void RenderThreadImpl::SetWebKitSharedTimersSuspended(bool suspend) {
+ }
+ 
+ void RenderThreadImpl::SetUserAgent(const std::string& user_agent) {
+-  DCHECK(user_agent_.IsNull());
+   user_agent_ = WebString::FromUTF8(user_agent);
+   GetContentClient()->renderer()->DidSetUserAgent(user_agent);
+ }
 -- 
 2.17.1
 
