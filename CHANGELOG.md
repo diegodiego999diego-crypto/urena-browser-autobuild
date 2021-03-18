@@ -1,4 +1,10 @@
+# 85.0.4183.84
+* fix crash in About page (fixes https://github.com/bromite/bromite/issues/710)
+* fix adding more than one proxy (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/679)
+* fix system proxy configuration (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/377)
+
 # 85.0.4183.82
+* fixes bookmark button not working with always-incognito (fixes https://github.com/bromite/bromite/issues/654)
 * disable scroll-to-text-fragment
 * remove NTP blocklisted URLs when adding an URL as bookmark
 * removed duet flags
