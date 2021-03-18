@@ -106,6 +106,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * use [CFI](https://en.wikipedia.org/wiki/Control-flow_integrity) on all architectures except x86
 * disable media router and remoting by default
 * disable dynamic module loading
+* show warnings for TLSv1.0/TLSv1.1 pages
 * enable site-per-process isolation for all devices with memory > 1GB
 * completely remove safe browsing and other privacy-unfriendly features
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
@@ -146,6 +147,7 @@ New flags:
 * `#ipv6-probing`
 * `#disable-webgl`
 * `#enable-device-motion` and `#enable-device-orientation`
+* `#show-legacy-tls-warnings`
 
 # Privacy limitations
 
