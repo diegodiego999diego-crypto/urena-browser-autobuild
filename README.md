@@ -109,7 +109,6 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * enable site-per-process isolation for all devices with memory > 1GB
 * completely remove safe browsing and other privacy-unfriendly features
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
-* [DuckDuckGo](https://duckduckgo.com/) and [Qwant](https://www.qwant.com/) search engines available by default
 * settings to disable custom intents and clear session on exit
 * flags to toggle anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs (see full list below for all the new flags)
 * use frozen User-Agent to conceal real model and browser version
