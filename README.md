@@ -121,6 +121,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 
 ## Features not related to privacy
 * import/export bookmarks
+* bookmark all tabs from tabs regroup menu
 * flag to allow screenshots of incognito tabs
 * allow playing videos in background tabs and disable pause on switching tabs
 * all codecs included (proprietary, open H.264 etc.)
