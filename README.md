@@ -137,6 +137,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * timezone customization
 * sticky desktop mode setting
 * disable video autoplay by default
+* mobile/desktop user agent customization
 
 You can inspect all functionality/privacy changes by reading the [patches](https://github.com/bromite/bromite/tree/master/build/patches) and/or the [CHANGELOG](./CHANGELOG.md).
 
