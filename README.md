@@ -95,7 +95,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 
 # Features
 
-* customizable adblock filters via user-provided URL
+* customizable adblock filters via user-provided URL (see https://www.bromite.org/custom-filters)
 * remove click-tracking and AMP from search results
 * DNS-over-HTTPS support with any valid IETF DoH endpoint
 * always-incognito mode
