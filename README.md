@@ -151,6 +151,7 @@ Flags which have been retired from upstream Chromium but are still available in 
 * `#darken-websites-checkbox-in-themes-setting`
 * `#simplified-ntp`
 * `#enable-text-fragment-anchor`
+* `#num-raster-threads`
 
 New flags:
 
@@ -212,6 +213,12 @@ The patches are to be applied second the order specified in the `bromite_patches
 See upstream documentation: https://github.com/chromium/chromium/blob/master/components/subresource_filter/FILTER_LIST_GENERATION.md
 
 Bromite uses an unindexed filter file, which is periodically published at https://github.com/bromite/filters
+
+# Contributing
+
+Please submit issues following the issue template; beware that GitHub does not display the templates from mobile.
+
+Patches are welcome and accepted if they match the project goals; if you are willing to contribute you can open an issue to discuss patches submission.
 
 # Credits
 
