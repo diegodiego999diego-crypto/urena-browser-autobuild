@@ -10,7 +10,7 @@ Bromite is a [Chromium](https://www.chromium.org/Home) fork with support for ad 
 
 Bromite is only available for Android Lollipop (v5.0, API level 21) and above.
 
-<img src="https://www.bromite.org/bromite_bromite_gh_downloads.svg" alt="downloads on Github" title="downloads on Github" />
+<img src="https://fdroid.bromite.org/fdroid/bromite_bromite_gh_downloads.svg" alt="Downloads on Github" title="Downloads on Github" />
 
 For the Frequently Asked Questions see [F.A.Q.](./FAQ.md).
 
@@ -156,6 +156,7 @@ Flags which have been retired from upstream Chromium but are still available in 
 
 New flags:
 
+* `#fingerprinting-canvas-image-data-noise`, `#fingerprinting-client-rects-noise` and `#fingerprinting-canvas-measuretext-noise`
 * `#enable-incognito-snapshots-in-android-recents`
 * `#max-connections-per-host`
 * `#resume-background-video`
