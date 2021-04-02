@@ -8,9 +8,9 @@
 
 Bromite is a [Chromium](https://www.chromium.org/Home) fork with support for ad blocking and enhanced privacy.
 
-Bromite is only available for Android v4.4 and above.
+Bromite is only available for Android Lollipop (v5.0, API level 21) and above.
 
-<img src="https://www.bromite.org/bromite_bromite_gh_downloads.svg" alt="downloads on Github" title="downloads on Github" />
+<img src="https://fdroid.bromite.org/fdroid/bromite_bromite_gh_downloads.svg" alt="Downloads on Github" title="Downloads on Github" />
 
 For the Frequently Asked Questions see [F.A.Q.](./FAQ.md).
 
@@ -95,7 +95,7 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 
 # Features
 
-* customizable adblock filters via user-provided URL
+* customizable adblock filters via user-provided URL (see https://www.bromite.org/custom-filters)
 * remove click-tracking and AMP from search results
 * DNS-over-HTTPS support with any valid IETF DoH endpoint
 * always-incognito mode
@@ -106,18 +106,22 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * use [CFI](https://en.wikipedia.org/wiki/Control-flow_integrity) on all architectures except x86
 * disable media router and remoting by default
 * disable dynamic module loading
+* show warnings for TLSv1.0/TLSv1.1 pages
 * enable site-per-process isolation for all devices with memory > 1GB
 * completely remove safe browsing and other privacy-unfriendly features
 * [proxy configuration page](https://github.com/bromite/bromite/wiki/ProxyConfiguration) with PAC and custom proxy lists support
-* [DuckDuckGo](https://duckduckgo.com/) and [Qwant](https://www.qwant.com/) search engines available by default
 * settings to disable custom intents and clear session on exit
 * flags to toggle anti-fingerprinting mitigations for canvas, audio, client rects, webGL and sensor APIs (see full list below for all the new flags)
 * use frozen User-Agent to conceal real model and browser version
 * privacy enhancement patches from [Iridium](https://iridiumbrowser.de/), [Inox patchset](https://github.com/gcarq/inox-patchset), [Brave](https://brave.com/) and [ungoogled-chromium](https://github.com/Eloston/ungoogled-chromium) projects
 * security enhancement patches from [GrapheneOS](https://github.com/GrapheneOS) project
+* disable scroll-to-text-fragment
+* reduced referer granularity
+* block gateway attacks via websockets
 
 ## Features not related to privacy
 * import/export bookmarks
+* bookmark all tabs from tabs regroup menu
 * flag to allow screenshots of incognito tabs
 * allow playing videos in background tabs and disable pause on switching tabs
 * all codecs included (proprietary, open H.264 etc.)
@@ -128,6 +132,13 @@ No; Bromite will support extensions only if upstream (Chromium) does, or similar
 * allow changing default download storage location
 * do not ignore save prompt for users without SD cards
 * disable articles and increase number of icons on new tab page
+* adding an URL as bookmark will clear its blocked status for the NTP tiles
+* history support in incognito mode
+* view source of pages
+* timezone customization
+* sticky desktop mode setting
+* disable video autoplay by default
+* mobile/desktop user agent customization
 
 You can inspect all functionality/privacy changes by reading the [patches](https://github.com/bromite/bromite/tree/master/build/patches) and/or the [CHANGELOG](./CHANGELOG.md).
 
@@ -138,15 +149,21 @@ Flags which have been retired from upstream Chromium but are still available in 
 * `#enable-horizontal-tab-switcher`
 * `#pull-to-refresh`
 * `#enable-search-ready-omnibox`
+* `#darken-websites-checkbox-in-themes-setting`
+* `#simplified-ntp`
+* `#enable-text-fragment-anchor`
+* `#num-raster-threads`
 
 New flags:
 
+* `#fingerprinting-canvas-image-data-noise`, `#fingerprinting-client-rects-noise` and `#fingerprinting-canvas-measuretext-noise`
 * `#enable-incognito-snapshots-in-android-recents`
 * `#max-connections-per-host`
 * `#resume-background-video`
 * `#ipv6-probing`
 * `#disable-webgl`
 * `#enable-device-motion` and `#enable-device-orientation`
+* `#show-legacy-tls-warnings`
 
 # Privacy limitations
 
@@ -199,6 +216,14 @@ See upstream documentation: https://github.com/chromium/chromium/blob/master/com
 
 Bromite uses an unindexed filter file, which is periodically published at https://github.com/bromite/filters
 
+# Contributing
+
+Please submit issues following the issue template; beware that GitHub does not display the templates from mobile.
+
+Patches are welcome and accepted if they match the project goals.
+
+For any usage or development discussion please use GitHub Discussions: https://github.com/bromite/bromite/discussions
+
 # Credits
 
 * [Chromium project](https://www.chromium.org/Home) and developers
@@ -207,7 +232,7 @@ Bromite uses an unindexed filter file, which is periodically published at https:
 * [ungoogled-chromium-android](https://github.com/ungoogled-software/ungoogled-chromium-android) for some patches
 * [GrapheneOS](https://github.com/GrapheneOS) for some security patches
 * [Inox patchset](https://github.com/gcarq/inox-patchset) for some patches (via ungoogled-chromium)
-* [Brave Browser](https://github.com/brave/browser-android-tabs) for some patches
+* [Brave Browser](https://github.com/brave/brave-core) for some patches
 * [Vadim Pleshkov](http://vadimpleshkov.me/) for Bromite's logo
 
 # Filters credits
@@ -215,6 +240,8 @@ Bromite uses an unindexed filter file, which is periodically published at https:
 * [EasyPrivacy](https://easylist.to/#easyprivacy)
 * [uBlock Origin](https://github.com/uBlockOrigin)
 * [Peter Lowe's Ad and tracking server list](https://pgl.yoyo.org/adservers/)
+
+The URLs of the lists used are available at: https://github.com/bromite/filters/blob/master/lists.txt
 
 # License
 

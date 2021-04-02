@@ -4,36 +4,93 @@ Subject: Add exit menu item
 
 Corrected Exit functionality
 ---
- chrome/android/java/res/menu/main_menu.xml                  | 2 ++
- .../src/org/chromium/chrome/browser/ChromeActivity.java     | 2 ++
+ chrome/android/java/res/menu/main_menu.xml                  | 6 ++++++
+ chrome/android/java/res/menu/main_menu_regroup.xml          | 3 +++
+ .../org/chromium/chrome/browser/ChromeTabbedActivity.java   | 3 +++
+ .../src/org/chromium/chrome/browser/app/ChromeActivity.java | 6 ++++++
  .../chrome/browser/init/ChromeLifetimeController.java       | 6 +++++-
  .../browser/ui/android/strings/android_chrome_strings.grd   | 3 +++
- 4 files changed, 12 insertions(+), 1 deletion(-)
+ 6 files changed, 26 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/android/java/res/menu/main_menu.xml b/chrome/android/java/res/menu/main_menu.xml
 --- a/chrome/android/java/res/menu/main_menu.xml
 +++ b/chrome/android/java/res/menu/main_menu.xml
-@@ -87,6 +87,8 @@
-             android:title="@string/menu_help" />
-         <item android:id="@+id/enter_vr_id"
-             android:title="@string/enter_vr" />
+@@ -119,6 +119,9 @@
+             android:icon="@drawable/vr_headset" />
+         <item android:id="@+id/managed_by_menu_id"
+             android:title="@string/managed" />
 +        <item android:id="@+id/exit_id"
-+            android:title="@string/menu_exit" />
++            android:title="@string/menu_exit"
++            android:icon="@drawable/ic_exit_to_app_white_24dp" />
      </group>
  
      <!-- Items shown only in the tab switcher -->
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
---- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeActivity.java
-@@ -1961,6 +1961,8 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
-             AddToHomescreenCoordinator.showForAppMenu(
-                     this, getWindowAndroid(), getModalDialogManager(), currentTab.getWebContents());
-             RecordUserAction.record("MobileMenuAddToHomescreen");
+@@ -145,6 +148,9 @@
+         <item android:id="@id/preferences_id"
+             android:title="@string/menu_settings"
+             android:icon="@drawable/settings_cog" />
++        <item android:id="@+id/exit_id"
++            android:title="@string/menu_exit"
++            android:icon="@drawable/ic_exit_to_app_white_24dp" />
+     </group>
+ 
+     <!-- Items shown only in the tab switcher when start surface is enabled -->
+diff --git a/chrome/android/java/res/menu/main_menu_regroup.xml b/chrome/android/java/res/menu/main_menu_regroup.xml
+--- a/chrome/android/java/res/menu/main_menu_regroup.xml
++++ b/chrome/android/java/res/menu/main_menu_regroup.xml
+@@ -181,6 +181,9 @@
+             android:icon="@drawable/vr_headset" />
+         <item android:id="@+id/managed_by_menu_id"
+             android:title="@string/managed" />
++        <item android:id="@+id/exit_id"
++            android:title="@string/menu_exit"
++            android:icon="@drawable/ic_exit_to_app_white_24dp" />
+     </group>
+ 
+     <!-- Items shown only in the tab switcher -->
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -58,6 +58,7 @@ import org.chromium.chrome.browser.IntentHandler.IntentHandlerDelegate;
+ import org.chromium.chrome.browser.IntentHandler.TabOpenType;
+ import org.chromium.chrome.browser.accessibility_tab_switcher.OverviewListLayout;
+ import org.chromium.chrome.browser.app.ChromeActivity;
++import org.chromium.chrome.browser.ApplicationLifetime;
+ import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
+ import org.chromium.chrome.browser.app.tabmodel.ChromeNextTabPolicySupplier;
+ import org.chromium.chrome.browser.app.tabmodel.TabWindowManagerSingleton;
+@@ -1821,6 +1822,8 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+         } else if (id == R.id.close_tab) {
+             getCurrentTabModel().closeTab(currentTab, true, false, true);
+             RecordUserAction.record("MobileTabClosed");
 +        } else if (id == R.id.exit_id) {
 +            ApplicationLifetime.terminate(false);
-         } else if (id == R.id.open_webapk_id) {
-             Context context = ContextUtils.getApplicationContext();
-             String packageName =
+         } else if (id == R.id.close_all_tabs_menu_id) {
+             // Close both incognito and normal tabs
+             getTabModelSelector().closeAllTabs();
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -56,6 +56,7 @@ import org.chromium.base.supplier.OneshotSupplierImpl;
+ import org.chromium.chrome.R;
+ import org.chromium.chrome.browser.ActivityTabProvider;
+ import org.chromium.chrome.browser.AppHooks;
++import org.chromium.chrome.browser.ApplicationLifetime;
+ import org.chromium.chrome.browser.ChromeActivitySessionTracker;
+ import org.chromium.chrome.browser.ChromeApplication;
+ import org.chromium.chrome.browser.ChromeWindow;
+@@ -1978,6 +1979,11 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+             RecordUserAction.record("MobileMenuSettings");
+         }
+ 
++        if (id == R.id.exit_id) {
++            ApplicationLifetime.terminate(false);
++            return true;
++        }
++
+         if (id == R.id.update_menu_id) {
+             UpdateMenuItemHelper.getInstance().onMenuItemClicked(this);
+             return true;
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
@@ -53,7 +110,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLife
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -2843,6 +2843,9 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -2916,6 +2916,9 @@ Data from your Incognito session will only be cleared from Chrome when you <ph n
        <message name="IDS_MENU_SETTINGS" desc="Menu item for opening browser settings. [CHAR-LIMIT=27]">
          Settings
        </message>

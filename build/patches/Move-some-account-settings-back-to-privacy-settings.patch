@@ -1,0 +1,161 @@
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Sun, 4 Oct 2020 12:58:17 +0200
+Subject: Move some account settings back to privacy settings
+
+Search suggestions, autofill assistant and contextual search
+---
+ .../java/res/xml/privacy_preferences.xml      | 20 ++++++
+ .../privacy/settings/PrivacySettings.java     | 64 ++++++++++++++++++-
+ 2 files changed, 82 insertions(+), 2 deletions(-)
+
+diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+--- a/chrome/android/java/res/xml/privacy_preferences.xml
++++ b/chrome/android/java/res/xml/privacy_preferences.xml
+@@ -63,4 +63,24 @@
+         android:title="@string/prefs_privacy_sandbox"
+         android:fragment="org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxSettingsFragment"
+         android:order="7"/>
++
++    <PreferenceCategory
++        android:key="services_category"
++        android:title="@string/services_category_title">
++      <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++          android:key="search_suggestions"
++          android:title="@string/autocomplete_searches_and_urls_title"
++          android:summary="@string/autocomplete_searches_and_urls_summary"
++          android:persistent="false"/>
++      <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++          android:key="autofill_assistant"
++          android:title="@string/prefs_autofill_assistant_title"
++          android:summary="@string/prefs_autofill_assistant_summary"
++          android:persistent="false"/>
++      <org.chromium.components.browser_ui.settings.ChromeBasePreference
++          android:key="contextual_search"
++          android:title="@string/contextual_search_title"
++          android:fragment="org.chromium.chrome.browser.contextualsearch.ContextualSearchPreferenceFragment"/>
++     </PreferenceCategory>
++
+ </PreferenceScreen>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+@@ -39,6 +39,13 @@ import org.chromium.ui.text.SpanApplier;
+ 
+ import org.chromium.base.Log;
+ 
++import androidx.annotation.Nullable;
++import androidx.preference.PreferenceCategory;
++import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
++import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
++import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
++import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
++
+ /**
+  * Fragment to keep track of the all the privacy related preferences.
+  */
+@@ -55,6 +62,13 @@ public class PrivacySettings
+     public static final String PREF_ALLOW_CUSTOM_TAB_INTENTS = "allow_custom_tab_intents";
+     private static final String PREF_CLOSE_TABS_ON_EXIT = "close_tabs_on_exit";
+     private static final String PREF_PROXY_OPTIONS = "proxy";
++
++    // moved from SyncAndServicesSettings.java
++    private static final String PREF_SERVICES_CATEGORY = "services_category";
++    private static final String PREF_SEARCH_SUGGESTIONS = "search_suggestions";
++    private static final String PREF_CONTEXTUAL_SEARCH = "contextual_search";
++    public static final String PREF_AUTOFILL_ASSISTANT = "autofill_assistant";
++
+     private static final String[] NEW_PRIVACY_PREFERENCE_ORDER = {PREF_CLEAR_BROWSING_DATA,
+             PREF_ALWAYS_INCOGNITO,
+             PREF_INCOGNITO_TAB_HISTORY_ENABLED,
+@@ -62,11 +76,19 @@ public class PrivacySettings
+             PREF_CLOSE_TABS_ON_EXIT,
+             PREF_SECURE_DNS, PREF_DO_NOT_TRACK, PREF_PRIVACY_SANDBOX,
+             PREF_ALLOW_CUSTOM_TAB_INTENTS,
+-            PREF_PROXY_OPTIONS
++            PREF_PROXY_OPTIONS,
++            PREF_SERVICES_CATEGORY
+             };
+ 
+     private ManagedPreferenceDelegate mManagedPreferenceDelegate;
+ 
++    private ChromeSwitchPreference mSearchSuggestions;
++    private @Nullable ChromeSwitchPreference mAutofillAssistant;
++    private @Nullable Preference mContextualSearch;
++    private final SharedPreferencesManager mSharedPreferencesManager =
++            SharedPreferencesManager.getInstance();
++    private final PrefService prefService = UserPrefs.get(Profile.getLastUsedRegularProfile());
++
+     @Override
+     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+         PrivacyPreferencesManagerImpl privacyPrefManager =
+@@ -93,6 +115,29 @@ public class PrivacySettings
+ 
+         mManagedPreferenceDelegate = createManagedPreferenceDelegate();
+ 
++        mSearchSuggestions = (ChromeSwitchPreference) findPreference(PREF_SEARCH_SUGGESTIONS);
++        mSearchSuggestions.setOnPreferenceChangeListener(this);
++        mSearchSuggestions.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
++
++        mAutofillAssistant = (ChromeSwitchPreference) findPreference(PREF_AUTOFILL_ASSISTANT);
++        if (shouldShowAutofillAssistantPreference()) {
++            mAutofillAssistant.setOnPreferenceChangeListener(this);
++            mAutofillAssistant.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
++            mAutofillAssistant.setChecked(mSharedPreferencesManager.readBoolean(
++                ChromePreferenceKeys.AUTOFILL_ASSISTANT_ENABLED, false));
++        } else {
++            PreferenceCategory servicesCategory =
++                     (PreferenceCategory) findPreference(PREF_SERVICES_CATEGORY);
++            servicesCategory.removePreference(mAutofillAssistant);
++            mAutofillAssistant = null;
++        }
++
++        mContextualSearch = findPreference(PREF_CONTEXTUAL_SEARCH);
++        boolean isContextualSearchEnabled =
++                !ContextualSearchManager.isContextualSearchDisabled();
++        mContextualSearch.setSummary(
++                isContextualSearchEnabled ? R.string.text_on : R.string.text_off);
++
+         ChromeSwitchPreference canMakePaymentPref =
+                 (ChromeSwitchPreference) findPreference(PREF_CAN_MAKE_PAYMENT);
+         canMakePaymentPref.setOnPreferenceChangeListener(this);
+@@ -125,6 +170,11 @@ public class PrivacySettings
+         } else if (PREF_CAN_MAKE_PAYMENT.equals(key)) {
+             UserPrefs.get(Profile.getLastUsedRegularProfile())
+                     .setBoolean(Pref.CAN_MAKE_PAYMENT_ENABLED, (boolean) newValue);
++        } else if (PREF_SEARCH_SUGGESTIONS.equals(key)) {
++            prefService.setBoolean(Pref.SEARCH_SUGGEST_ENABLED, (boolean) newValue);
++        } else if (PREF_AUTOFILL_ASSISTANT.equals(key)) {
++            mSharedPreferencesManager.writeBoolean(
++                ChromePreferenceKeys.AUTOFILL_ASSISTANT_ENABLED, (boolean) newValue);
+         } else if (PREF_NETWORK_PREDICTIONS.equals(key)) {
+             PrivacyPreferencesManagerImpl.getInstance().setNetworkPredictionEnabled(
+                     (boolean) newValue);
+@@ -140,6 +190,16 @@ public class PrivacySettings
+         return true;
+     }
+ 
++    /**
++     *  This checks whether Autofill Assistant is enabled and was shown at least once (only then
++     *  will the AA switch be assigned a value).
++     */
++    private boolean shouldShowAutofillAssistantPreference() {
++        return ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_ASSISTANT)
++                && mSharedPreferencesManager.contains(
++                        ChromePreferenceKeys.AUTOFILL_ASSISTANT_ENABLED);
++    }
++
+     @Override
+     public void onResume() {
+         super.onResume();
+@@ -150,7 +210,7 @@ public class PrivacySettings
+      * Updates the summaries for several preferences.
+      */
+     public void updateSummaries() {
+-        PrefService prefService = UserPrefs.get(Profile.getLastUsedRegularProfile());
++        mSearchSuggestions.setChecked(prefService.getBoolean(Pref.SEARCH_SUGGEST_ENABLED));
+ 
+         ChromeSwitchPreference canMakePaymentPref =
+                 (ChromeSwitchPreference) findPreference(PREF_CAN_MAKE_PAYMENT);
+-- 
+2.17.1
+

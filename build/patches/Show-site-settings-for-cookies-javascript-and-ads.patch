@@ -4,128 +4,130 @@ Subject: Show site settings for cookies, javascript and ads
 
 Avoid displaying info about intrusive ads
 ---
- .../site_settings/SingleWebsiteSettings.java  | 46 +++++++++----------
- .../chrome/browser/site_settings/Website.java | 20 ++++++++
- 2 files changed, 42 insertions(+), 24 deletions(-)
+ .../site_settings/SingleWebsiteSettings.java  | 52 +++++++++----------
+ .../browser_ui/site_settings/Website.java     | 14 +++--
+ 2 files changed, 35 insertions(+), 31 deletions(-)
 
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/SingleWebsiteSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/site_settings/SingleWebsiteSettings.java
---- a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/SingleWebsiteSettings.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/site_settings/SingleWebsiteSettings.java
-@@ -70,6 +70,7 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
-     // Buttons:
-     public static final String PREF_RESET_SITE = "reset_site_button";
- 
-+    public static final String TAG = "SingleWebsitePreferences";
-     // Website permissions (if adding new, see hasPermissionsPreferences and resetSite below)
-     // All permissions from the permissions preference category must be listed here.
-     private static final String[] PERMISSION_PREFERENCE_KEYS = {
-@@ -347,7 +348,24 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
-                 } else if (i == ContentSettingException.Type.SOUND) {
-                     setUpSoundPreference(preference);
-                 } else {
--                    setUpListPreference(preference, mSite.getContentSettingPermission(i));
-+                    // some Bromite-specific overrides for the defaults
-+                    @ContentSettingValues
-+                    @Nullable
-+                    Integer permission = mSite.getContentSettingPermission(i);
-+                    // initialize cookie and javascript with the category global defaults
-+                    if (permission == null) {
-+                       if (i == ContentSettingException.Type.COOKIE)
-+                          permission = WebsitePreferenceBridge.isCategoryEnabled(
-+                                 ContentSettingsType.COOKIES)
-+                                 ? ContentSettingValues.ALLOW
-+                                 : ContentSettingValues.BLOCK;
-+                       else if (i == ContentSettingException.Type.JAVASCRIPT)
-+                          permission = WebsitePreferenceBridge.isCategoryEnabled(
-+                                 ContentSettingsType.JAVASCRIPT)
-+                                 ? ContentSettingValues.ALLOW
-+                                 : ContentSettingValues.BLOCK;
-+                    }
-+                    setUpListPreference(preference, permission);
-                 }
-                 return;
-             }
-@@ -635,17 +653,8 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
-     }
- 
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
+--- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
++++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
+@@ -472,6 +472,8 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
+                 setUpSoundPreference(preference);
+             } else if (type == ContentSettingsType.JAVASCRIPT) {
+                 setUpJavascriptPreference(preference);
++            } else if (type == ContentSettingsType.COOKIES) {
++                setUpCookiesPreference(preference);
+             } else if (type == ContentSettingsType.GEOLOCATION) {
+                 setUpLocationPreference(preference);
+             } else if (type == ContentSettingsType.NOTIFICATIONS) {
+@@ -787,16 +789,8 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
      private void setUpAdsInformationalBanner() {
--        // Add the informational banner which shows at the top of the UI if ad blocking is
--        // activated on this site.
+         // Add the informational banner which shows at the top of the UI if ad blocking is
+         // activated on this site.
 -        boolean adBlockingActivated = SiteSettingsCategory.adsCategoryEnabled()
--                && WebsitePreferenceBridge.getAdBlockingActivated(mSite.getAddress().getOrigin())
--                && findPreference(PERMISSION_PREFERENCE_KEYS[ContentSettingException.Type.ADS])
--                        != null;
+-                && WebsitePreferenceBridge.getAdBlockingActivated(
+-                        getSiteSettingsDelegate().getBrowserContextHandle(),
+-                        mSite.getAddress().getOrigin())
+-                && findPreference(getPreferenceKey(ContentSettingsType.ADS)) != null;
 -
 -        if (!adBlockingActivated) {
--            removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO);
--            removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO_DIVIDER);
+             removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO);
+             removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO_DIVIDER);
 -        }
-+        removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO);
-+        removePreferenceSafely(PREF_INTRUSIVE_ADS_INFO_DIVIDER);
      }
  
      private SiteSettingsCategory getWarningCategory() {
-@@ -724,6 +733,7 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
-         // TODO(crbug.com/735110): Figure out if this is the correct thing to do - here we are
-         // effectively treating non-ALLOW values as BLOCK.
-         int index = (value == ContentSettingValues.ALLOW ? 0 : 1);
+@@ -987,17 +981,35 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
+         @Nullable
+         Integer currentValue =
+                 mSite.getContentSetting(browserContextHandle, ContentSettingsType.JAVASCRIPT);
+-        // If Javascript is blocked by default, then always show a Javascript permission.
+-        // To do this, set it to the default value (blocked).
+-        if ((currentValue == null)
+-                && !WebsitePreferenceBridge.isCategoryEnabled(
+-                        browserContextHandle, ContentSettingsType.JAVASCRIPT)) {
+-            currentValue = ContentSettingValues.BLOCK;
++        // Always show the Javascript permission
++        if (currentValue == null) {
++            currentValue = WebsitePreferenceBridge.isCategoryEnabled(
++                                   browserContextHandle, ContentSettingsType.JAVASCRIPT)
++                    ? ContentSettingValues.ALLOW
++                    : ContentSettingValues.BLOCK;
+         }
+         // Not possible to embargo JAVASCRIPT.
+         setupContentSettingsPreference(preference, currentValue, false /* isEmbargoed */);
+     }
+ 
++    private void setUpCookiesPreference(Preference preference) {
++        BrowserContextHandle browserContextHandle =
++                getSiteSettingsDelegate().getBrowserContextHandle();
++        @ContentSettingValues
++        @Nullable
++        Integer currentValue =
++                mSite.getContentSetting(browserContextHandle, ContentSettingsType.COOKIES);
++        // Always show the cookies permission
++        if (currentValue == null) {
++            currentValue = WebsitePreferenceBridge.isCategoryEnabled(
++                                   browserContextHandle, ContentSettingsType.COOKIES)
++                    ? ContentSettingValues.ALLOW
++                    : ContentSettingValues.BLOCK;
++        }
++        // Not possible to embargo COOKIES.
++        setupContentSettingsPreference(preference, currentValue, false /* isEmbargoed */);
++     }
 +
-         listPreference.setValueIndex(index);
-         listPreference.setOnPreferenceChangeListener(this);
-         listPreference.setSummary("%s");
-@@ -793,22 +803,10 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
-             setUpListPreference(preference, null);
+     /**
+      * Updates the ads list preference based on whether the site is a candidate for blocking. This
+      * has some custom behavior.
+@@ -1013,22 +1025,10 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
+             setupContentSettingsPreference(preference, null, false);
              return;
          }
 -        // If the ad blocker is activated, then this site will have ads blocked unless there is an
 -        // explicit permission disallowing the blocking.
--        boolean activated =
--                WebsitePreferenceBridge.getAdBlockingActivated(mSite.getAddress().getOrigin());
+-        boolean activated = WebsitePreferenceBridge.getAdBlockingActivated(
+-                browserContextHandle, mSite.getAddress().getOrigin());
          @ContentSettingValues
          @Nullable
-         Integer permission = mSite.getContentSettingPermission(ContentSettingException.Type.ADS);
+         Integer permission = mSite.getContentSetting(browserContextHandle, ContentSettingsType.ADS);
  
 -        // If |permission| is null, there is no explicit (non-default) permission set for this site.
 -        // If the site is not considered a candidate for blocking, do the standard thing and remove
 -        // the preference.
 -        if (permission == null && !activated) {
--            setUpListPreference(preference, null);
+-            setupContentSettingsPreference(preference, null, false);
 -            return;
 -        }
 -
          // However, if the blocking is activated, we still want to show the permission, even if it
          // is in the default state.
          if (permission == null) {
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/Website.java b/chrome/android/java/src/org/chromium/chrome/browser/site_settings/Website.java
---- a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/Website.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/site_settings/Website.java
-@@ -197,6 +197,26 @@ public class Website implements Serializable {
-                         new ContentSettingException(ContentSettingsType.ADS,
-                                 getAddress().getOrigin(), ContentSettingValues.BLOCK, "");
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
+--- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
++++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
+@@ -187,13 +187,17 @@ public final class Website implements Serializable {
+ 
+         ContentSettingException exception = getContentSettingException(type);
+         if (type == ContentSettingsType.ADS) {
+-            // It is possible to set the permission without having an existing exception,
+-            // because we can show the BLOCK state even when this permission is set to the
+-            // default. In that case, just set an exception now to BLOCK to enable changing the
+-            // permission.
++            // It is possible to set the permission without having an existing exception
+             if (exception == null) {
+                 exception = new ContentSettingException(ContentSettingsType.ADS,
+-                        getAddress().getOrigin(), ContentSettingValues.BLOCK, "");
++                        getAddress().getOrigin(), value, "");
++                setContentSettingException(type, exception);
++            }
++        } else if (type == ContentSettingsType.COOKIES) {
++            // It is possible to set the permission without having an existing exception
++            if (exception == null) {
++                exception = new ContentSettingException(ContentSettingsType.COOKIES,
++                        getAddress().getOrigin(), value, "");
+                 setContentSettingException(type, exception);
              }
-+        } else if (type == ContentSettingException.Type.COOKIE) {
-+            // It is possible to set the permission without having an existing exception,
-+            // because we can show the ALLOW state even when this permission is set to the
-+            // default. In that case, just set an exception now to ALLOW to enable changing the
-+            // permission.
-+            if (mContentSettingException[type] == null) {
-+                mContentSettingException[type] =
-+                        new ContentSettingException(ContentSettingsType.COOKIES,
-+                                getAddress().getOrigin(), ContentSettingValues.ALLOW, "");
-+            }
-+        } else if (type == ContentSettingException.Type.JAVASCRIPT) {
-+            // It is possible to set the permission without having an existing exception,
-+            // because we can show the ALLOW state even when this permission is set to the
-+            // default. In that case, just set an exception now to ALLOW to enable changing the
-+            // permission.
-+            if (mContentSettingException[type] == null) {
-+                mContentSettingException[type] =
-+                        new ContentSettingException(ContentSettingsType.JAVASCRIPT,
-+                                getAddress().getOrigin(), ContentSettingValues.ALLOW, "");
-+            }
-         } else if (type == ContentSettingException.Type.SOUND) {
-             // It is possible to set the permission without having an existing exception,
-             // because we always show the sound permission in Site Settings.
+         } else if (type == ContentSettingsType.JAVASCRIPT) {
 -- 
 2.17.1
 

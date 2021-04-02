@@ -1,3 +1,197 @@
+# 89.0.4389.100
+* enable AImageReader by default (fixes https://github.com/bromite/bromite/issues/1005)
+* fix missing flag for AImageReader
+* move incognito snapshots flag to proper section (fixes https://github.com/bromite/bromite/issues/1006)
+* add missing icon for exit menu
+* implement SAF for bookmarks export functionality (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/831)
+
+# 89.0.4389.92
+* updated zh_CN translations (thanks to @zhmars, https://github.com/bromite/bromite/pull/1000)
+* introduce Alt+D hotkey to focus address bar (fixes https://github.com/bromite/bromite/issues/979)
+* use 64-bit ABI for webview processes (fixes https://github.com/bromite/bromite/issues/997)
+* use dedicated folder for bookmark all tabs
+* fix Javascript and cookies permissions missing (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/990)
+* fix missing enable save data header flag (fixes https://github.com/bromite/bromite/issues/989)
+* fix menu items not properly displayed with tab overflow menu regroup (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/963)
+
+# 89.0.4389.78
+* make all favicon requests on-demand
+* restored older icon for view source menu item
+* prevent adblock filters update check on app start (fixes https://github.com/bromite/bromite/issues/967)
+* removed UI for adblock filters (fixes https://github.com/bromite/bromite/issues/941)
+* dropped patch for swapped favicons bug
+* dropped patch to enable reduced-referrer-granularity by default (already present upstream)
+* dropped password reuse detection patch
+* dropped UA customization patch
+* enabled PartitionExpectCTStateByNetworkIsolationKey and PartitionDomainReliabilityByNetworkIsolationKey (fixes https://github.com/bromite/bromite/issues/985)
+
+# 88.0.4324.207
+* add flag for save-data-header
+* add option to force tablet UI
+* fix bug with adblock filters not being downloaded correctly (fixes https://github.com/bromite/bromite/issues/960)
+* move up bookmark all tabs menu item (fixes https://github.com/bromite/bromite/issues/943)
+* fix icons for exit and view source menu items
+
+# 88.0.4324.187
+* fix exit menu item not working in tablet mode
+* add menu item to bookmark all tabs (fixes https://github.com/bromite/bromite/issues/570)
+* enable app overflow menu icons by default
+* UI for adblock filters (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/811)
+* dropped patch to not permit user-installed certificates
+* ignore enterprise policies for secure DNS (fixes https://github.com/bromite/bromite/issues/832)
+
+# 88.0.4324.185
+* fix favicons fallback search (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/788)
+* fix potential DIAL crash when network state changes (thanks to @Ahrotahn)
+* fix crash when opening links in incognito-only mode (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/899)
+* disallow empty custom user agent (thanks to @uazo)
+
+# 88.0.4324.149
+* fix proxy PAC URL option not working (fixes https://github.com/bromite/bromite/issues/908)
+* store proxy configuration in LocalState instead of Profile (thanks to @uazo)
+* fix toggle for reversing the meaning of bypass rules (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/884)
+* do not permit user-installed certificates
+
+# 88.0.4324.141
+* fix bookmarks not opening (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/891)
+* fix proxy page not loading (fixes https://github.com/bromite/bromite/issues/890)
+
+# 88.0.4324.95
+* fix broken recent tabs behaviour (fixes https://github.com/bromite/bromite/issues/886)
+* re-introduce flags for number of raster threads (fixes https://github.com/bromite/bromite/issues/875)
+* avoid initializing histogram data for the WebView (https://github.com/bromite/bromite/issues/873)
+* dropped patch for manifest changes for Q/R (already present upstream)
+* fix check for HTML extension in bookmark import dialog
+
+# 87.0.4280.131
+* enable all network isolation features (fixes https://github.com/bromite/bromite/issues/836)
+* disable unified autoplay feature (fixes https://github.com/bromite/bromite/issues/804)
+
+# 87.0.4280.106
+* enable SplitCacheByNetworkIsolationKey (fixes https://github.com/bromite/bromite/issues/836)
+* fix random timezone option (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/828)
+* disable autofill server communication by default
+* ask permission to play protected media by default
+* disable SystemWebView variations support
+
+# 87.0.4280.81
+* fix text fragment not disabled by default, unexpire flag (fixes https://github.com/bromite/bromite/issues/803)
+* turn AImageReader off by default on ARM64 (fixes https://github.com/bromite/bromite/issues/814)
+* fix issue with global autoplay settings (thanks to @uazo, https://github.com/bromite/bromite/pull/825)
+* fix issues with user agent customization (thanks to @uazo, https://github.com/bromite/bromite/pull/823)
+* updated zh_CN translations (thanks to @zhmars, https://github.com/bromite/bromite/pull/821)
+
+# 87.0.4280.68
+* user agent customization (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/798)
+* fix for intent handling for local apps on Android 11 (https://github.com/bromite/bromite/pull/816)
+
+# 87.0.4280.67
+
+# 86.0.4240.194
+* fix native pages displaying incorrectly with the sticky desktop mode (thanks to @uazo)
+* re-introduce simplified NTP (fixes https://github.com/bromite/bromite/issues/701)
+* re-introduce site settings to block autoplay (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/791)
+* fix Omnibox flag not working (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/789)
+
+# 86.0.4240.181
+* allow sticky desktop mode for all tabs (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/780)
+
+# 86.0.4240.112
+* fix crash in new overflow menu (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/771)
+
+# 86.0.4240.99
+
+# 86.0.4240.92
+* upstream fix for video playback audio issue (fixes https://github.com/bromite/bromite/issues/755)
+* fix order of entries in privacy settings (fixes https://github.com/bromite/bromite/issues/758)
+ 
+# 86.0.4240.73
+* re-introduce ARM64 AImageReader mitigations (fixes https://github.com/bromite/bromite/issues/766)
+* re-introduce menu items for autocomplete, autofill assistant and contextual search (fixes https://github.com/bromite/bromite/issues/763)
+
+# 86.0.4240.70
+* fixed crash on unused menu item tap (fixes https://github.com/bromite/bromite/issues/760)
+* fixed issue on new installations without DoH configuration (fixes https://github.com/bromite/bromite/issues/761)
+
+# 86.0.4240.66
+* switch to upstream UI for DoH URL customization
+* remove weblayer dependency on Play Services
+* build fixes for password service
+* removed obsolete patch to kill Translate
+* removed patch to revert unified consent code
+* removed patch for dav1d library
+* removed patch for improved cookie controls defaults
+* removed patches for ARM64 AImageReader issues
+
+# 85.0.4183.114
+
+# 85.0.4183.110
+* hardening against incognito mode detection
+* fix background playback issue (fixes https://github.com/bromite/bromite/issues/734)
+
+# 85.0.4183.94
+* disable the DIAL repeating discovery
+* removed patch for session-only cookies support
+* add timezone customization patch (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/331)
+* fixed bug happening when configuring proxies in incognito mode (thanks to @uazo)
+
+# 85.0.4183.86
+* fix LocationBarPhone app crash at startup (fixes https://github.com/bromite/bromite/issues/565)
+
+# 85.0.4183.84
+* fix crash in About page (fixes https://github.com/bromite/bromite/issues/710)
+* fix adding more than one proxy (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/679)
+* fix system proxy configuration (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/377)
+
+# 85.0.4183.82
+* fixes bookmark button not working with always-incognito (fixes https://github.com/bromite/bromite/issues/654)
+* disable scroll-to-text-fragment
+* remove NTP blocklisted URLs when adding an URL as bookmark
+* removed duet flags
+* unexpire `#darken-websites-checkbox-in-themes-setting` flag
+* rollback dav1d upgrade which breaks x86
+
+# 84.0.4147.132
+* fix exit menu item not always working (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/673)
+* session-only cookies site settings option (thanks to @uazo, fixes https://github.com/bromite/bromite/issues/142)
+* add setting to enable history on incognito mode (thanks to @uazo)
+* removed old non-working site settings patches
+
+# 84.0.4147.121
+* removed Qwant search engine
+* fixed zh_CN translations
+* added patch to not embed non-free unrar library (fixes https://github.com/bromite/bromite/issues/674)
+* enable improved cookie controls by default
+
+# 84.0.4147.119
+* update zh_CN translations
+* disable CORS RFC1918 (fixes https://github.com/bromite/bromite/issues/664)
+* restore duet flags (fixes https://github.com/bromite/bromite/issues/667)
+
+# 84.0.4147.113
+* block gateway attacks via websockets (fixes https://github.com/bromite/bromite/issues/590)
+* enable prefetch-privacy-changes by default (fixes https://github.com/bromite/bromite/issues/659)
+* enable reduced-referrer-granularity by default (fixes https://github.com/bromite/bromite/issues/659)
+
+# 84.0.4147.106
+* fixed bug with Javascript site settings not showing
+* add exit menu item to overview menu (fixes https://github.com/bromite/bromite/issues/619)
+
+# 84.0.4147.95
+* show warnings for TLSv1.0/TLSv1.1 connections (fixes https://github.com/bromite/bromite/issues/645)
+* fix bug with unconfigured DoH (fixes https://github.com/bromite/bromite/issues/646)
+
+# 84.0.4147.90
+* added menu item to view source of current page
+* fixed dialog for SSL/TLS errors (fixes https://github.com/bromite/bromite/issues/638)
+* build with feeds support due to upstream build flags combination bugs
+
+# 83.0.4103.119
+* restored non-CFI builds for x86
+
+# 83.0.4103.101
+* enable HEVC and Dolby Vision
+
 # 83.0.4103.93
 * fix undesired replacement for search engines (fixes https://github.com/bromite/bromite/issues/595)
 * fix resume flag not visible
@@ -20,6 +214,7 @@
 * drop patch for DoH minimum timeout (upstream also implemented it)
 * dropped patch for removal of support of CCT dynamic modules (upstream also removed it)
 * removed upstream patch for SD card not found issue (upstream merged it)
+* enable reporting because of COEP
 
 # 81.0.4044.127
 * fix always-incognito crashes (https://github.com/bromite/bromite/issues/135 and https://github.com/bromite/bromite/pull/529)

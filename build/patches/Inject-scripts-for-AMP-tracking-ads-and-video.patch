@@ -7,7 +7,7 @@ Break Page Visibility API and Fullscreen API for youtube.com and vimeo.com to al
 Set proper injection script nonce
 Send a random key press to circumvent idle status detection
 ---
- third_party/blink/renderer/core/dom/BUILD.gn  |  2 +
+ third_party/blink/renderer/core/dom/build.gni |  2 +
  .../blink/renderer/core/dom/document.cc       | 62 +++++++++++++++++++
  .../blink/renderer/core/dom/document.h        |  3 +
  .../core/dom/extensions/anti_amp_cure.h       |  6 ++
@@ -18,30 +18,30 @@ Send a random key press to circumvent idle status detection
  create mode 100644 third_party/blink/renderer/core/dom/extensions/anti_amp_cure.h
  create mode 100644 third_party/blink/renderer/core/dom/extensions/video_bg_play.h
 
-diff --git a/third_party/blink/renderer/core/dom/BUILD.gn b/third_party/blink/renderer/core/dom/BUILD.gn
---- a/third_party/blink/renderer/core/dom/BUILD.gn
-+++ b/third_party/blink/renderer/core/dom/BUILD.gn
-@@ -140,6 +140,8 @@ blink_core_sources("dom") {
-     "global_event_handlers.h",
-     "icon_url.cc",
-     "icon_url.h",
-+    "extensions/anti_amp_cure.h",
-+    "extensions/video_bg_play.h",
-     "id_target_observer.cc",
-     "id_target_observer.h",
-     "id_target_observer_registry.cc",
+diff --git a/third_party/blink/renderer/core/dom/build.gni b/third_party/blink/renderer/core/dom/build.gni
+--- a/third_party/blink/renderer/core/dom/build.gni
++++ b/third_party/blink/renderer/core/dom/build.gni
+@@ -165,6 +165,8 @@ blink_core_sources_dom = [
+   "global_event_handlers.h",
+   "icon_url.cc",
+   "icon_url.h",
++  "extensions/anti_amp_cure.h",
++  "extensions/video_bg_play.h",
+   "id_target_observer.cc",
+   "id_target_observer.h",
+   "id_target_observer_registry.cc",
 diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
 --- a/third_party/blink/renderer/core/dom/document.cc
 +++ b/third_party/blink/renderer/core/dom/document.cc
-@@ -266,6 +266,7 @@
+@@ -273,6 +273,7 @@
  #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
  #include "third_party/blink/renderer/core/page/scrolling/scroll_state_callback.h"
  #include "third_party/blink/renderer/core/page/scrolling/scrolling_coordinator.h"
 +#include "extensions/video_bg_play.h"
  #include "third_party/blink/renderer/core/page/scrolling/snap_coordinator.h"
  #include "third_party/blink/renderer/core/page/scrolling/text_fragment_anchor.h"
- #include "third_party/blink/renderer/core/page/scrolling/top_document_root_scroller_controller.h"
-@@ -330,6 +331,8 @@
+ #include "third_party/blink/renderer/core/page/scrolling/text_fragment_selector_generator.h"
+@@ -338,6 +339,8 @@
  #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
  #include "third_party/blink/renderer/platform/wtf/text/text_encoding_registry.h"
  
@@ -50,9 +50,9 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
  #ifndef NDEBUG
  using WeakDocumentSet = blink::HeapHashSet<blink::WeakMember<blink::Document>>;
  static WeakDocumentSet& liveDocumentSet();
-@@ -6703,6 +6706,61 @@ void SetOriginTrialFreezePolicy(
- 
- }  // namespace
+@@ -6896,6 +6899,61 @@ void Document::setAllowDeclarativeShadowRoots(bool val) {
+       val ? AllowState::kAllow : AllowState::kDeny;
+ }
  
 +void Document::injectScripts() {
 +  // determine whether this is a search results page
@@ -112,7 +112,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
  void Document::FinishedParsing() {
    DCHECK(!GetScriptableDocumentParser() || !parser_->IsParsing());
    DCHECK(!GetScriptableDocumentParser() || ready_state_ != kLoading);
-@@ -6755,6 +6813,10 @@ void Document::FinishedParsing() {
+@@ -6948,6 +7006,10 @@ void Document::FinishedParsing() {
  
      frame->Loader().FinishedParsing();
  
@@ -126,7 +126,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
 diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
 --- a/third_party/blink/renderer/core/dom/document.h
 +++ b/third_party/blink/renderer/core/dom/document.h
-@@ -1821,6 +1821,9 @@ class CORE_EXPORT Document : public ContainerNode,
+@@ -1695,6 +1695,9 @@ class CORE_EXPORT Document : public ContainerNode,
    void AddAXContext(AXContext*);
    void RemoveAXContext(AXContext*);
  
@@ -155,13 +155,13 @@ new file mode 100644
 +#ifndef video_bg_play_h
 +#define video_bg_play_h
 +
-+#define VIDEO_BG_PLAY_JS "'use strict';\n\nconst IS_YOUTUBE = window.location.hostname.search(/(?:^|.+\\.)youtube.com/) > -1 ||\n                   window.location.hostname.search(/(?:^|.+\\.)youtube-nocookie.com/) > -1;\nconst IS_MOBILE_YOUTUBE = window.location.hostname == 'm.youtube.com';\nconst IS_VIMEO = window.location.hostname.search(/(?:^|.+\\.)vimeo.com/) > -1;\n\n/* video background play fix - based on https://github.com/mozilla/video-bg-play */\ndocument.wrappedJSObject = {};\n\n// Page Visibility API\nObject.defineProperties(document.wrappedJSObject,\n  { 'hidden': {value: false}, 'visibilityState': {value: 'visible'} });\n\nwindow.addEventListener(\n  'visibilitychange', evt => evt.stopImmediatePropagation(), true);\n\n// Fullscreen API\nif (IS_VIMEO) {\n  window.addEventListener(\n    'fullscreenchange', evt => evt.stopImmediatePropagation(), true);\n}\n\n// User activity tracking\nif (IS_YOUTUBE) {\n  const refreshInterval = 2 + 3 * 60 * 1000; // every 3 minutes\n  waitForYoutubeLactInit(() => refreshLact(), refreshInterval);\n}\n\nfunction waitForYoutubeLactInit(aCallback, aCallbackInterval, aDelay) {\n  let pageWin = document.wrappedJSObject;\n  if (pageWin.hasOwnProperty('_lact')) {\n    window.setInterval(aCallback, aCallbackInterval);\n  } else {\n    window.setTimeout(() => waitForYoutubeLactInit(aCallback,\n                                                   aCallbackInterval,\n                                                   aDelay * 2),\n                      aDelay);\n  }\n}\n\nfunction refreshLact() {\n  document.wrappedJSObject._lact = Date.now();\n}\n"
++#define VIDEO_BG_PLAY_JS "'use strict';\n\nconst IS_YOUTUBE = window.location.hostname.search(/(?:^|.+\\.)youtube.com/) > -1 ||\n                   window.location.hostname.search(/(?:^|.+\\.)youtube-nocookie.com/) > -1;\nconst IS_MOBILE_YOUTUBE = window.location.hostname == 'm.youtube.com';\nconst IS_VIMEO = window.location.hostname.search(/(?:^|.+\\.)vimeo.com/) > -1;\n\n/* video background play fix - based on https://github.com/mozilla/video-bg-play */\ndocument.wrappedJSObject = {};\n\n// Page Visibility API\nObject.defineProperties(document.wrappedJSObject,\n  { 'hidden': {value: false}, 'visibilityState': {value: 'visible'} });\n\nwindow.addEventListener(\n  'visibilitychange', evt => evt.stopImmediatePropagation(), true);\n\n// Fullscreen API\nif (IS_VIMEO) {\n  window.addEventListener(\n    'fullscreenchange', evt => evt.stopImmediatePropagation(), true);\n}\n\nfunction activityRefresh() {\n  if (window.hasOwnProperty('_lact')) {\n    window._lact = Date.now();\n  }\n  window.setTimeout(activityRefresh, 3100 + Math.round(Math.random()*9000));\n}\n\n// User activity tracking\nif (IS_YOUTUBE) {\n  window.setTimeout(activityRefresh, 2000 + Math.round(Math.random()*2000));\n}\n"
 +
 +#endif  // video_bg_play_h
 diff --git a/third_party/blink/renderer/core/html/html_script_element.cc b/third_party/blink/renderer/core/html/html_script_element.cc
 --- a/third_party/blink/renderer/core/html/html_script_element.cc
 +++ b/third_party/blink/renderer/core/html/html_script_element.cc
-@@ -167,6 +167,11 @@ void HTMLScriptElement::setTextContent(
+@@ -168,6 +168,11 @@ void HTMLScriptElement::setTextContent(
    }
  }
  
@@ -176,7 +176,7 @@ diff --git a/third_party/blink/renderer/core/html/html_script_element.cc b/third
 diff --git a/third_party/blink/renderer/core/html/html_script_element.h b/third_party/blink/renderer/core/html/html_script_element.h
 --- a/third_party/blink/renderer/core/html/html_script_element.h
 +++ b/third_party/blink/renderer/core/html/html_script_element.h
-@@ -54,6 +54,7 @@ class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
+@@ -53,6 +53,7 @@ class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
    void setInnerText(const StringOrTrustedScript&, ExceptionState&) override;
    void setTextContent(const StringOrTrustedScript&, ExceptionState&) override;
    void setTextContent(const String&) override;

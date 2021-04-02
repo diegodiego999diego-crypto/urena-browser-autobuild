@@ -4,12 +4,27 @@ about: Create a Bromite bug report
 
 ---
 
+<!-- Welcome! Thanks for taking time to submit a bug report.
+Have you read the README? https://github.com/bromite/bromite/blob/master/README.md
+Have you searched the issue tracker? https://github.com/bromite/bromite/issues
+Are you sure this is not a Chromium bug? You have to test with Chromium before submitting a bug.
+Are you using the latest version of Bromite?
+
+If instead of a bug report you want to ask a question then please use the GitHub Discussions: https://github.com/bromite/bromite/discussions
+-->
+
 ### Bromite version
 
-Version: `76.0...`
+Version: `83.0...`
 Arch: `arm` or `arm64` or `x86`
 Android version: (example: `9.0`)
 Device model: (example: `SM-G960UZKABST`)
+
+### Flags
+
+These are the flags changed under `chrome://flags`:
+
+<!-- Report all the blue-highlighted flags here, those are the flags with non-default configuration -->
 
 ### Is this bug about the SystemWebView?
 Yes/No
@@ -26,6 +41,9 @@ Yes/No
 Please pick the same version of Chromium as Bromite from here: https://github.com/bromite/chromium/releases
 If the bug is reproducible then it might be a configuration issue or an upstream bug. Upstream bugs can be reported on the [Chromium issue tracker](https://bugs.chromium.org/p/chromium/issues/list) and do not forget to read [Chromium project bug reporting guidelines](https://www.chromium.org/for-testers/bug-reporting-guidelines) first.
 -->
+
+### Allow ads for the site; is the bug caused by the adblocker?
+Yes/No
 
 ### Is the bug a crash?
 
@@ -44,6 +62,8 @@ Steps to reproduce the bug:
 2. Click on '...'
 3. Scroll down to '...'
 4. See error
+
+Do not write "any website", specify which URLs can be used to reproduce the issue.
 
 ### Expected behavior
 
