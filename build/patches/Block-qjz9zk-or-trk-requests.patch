@@ -1,7 +1,6 @@
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 30 Oct 2019 11:50:13 +0100
-Subject: Block all connection requests with 'qjz9zk' in the domain name or
- with a 'trk:' scheme.
+Subject: Block 'qjz9zk' or 'trk:' requests
 
 An info bar is displayed unless the --disable-trkbar command-line flag or the chrome://flag option is used.
 This patch is based on Iridium's 'net: add "trk:" scheme and help identify URLs being retrieved'
@@ -9,7 +8,7 @@ This patch is based on Iridium's 'net: add "trk:" scheme and help identify URLs 
  .../chrome_autocomplete_scheme_classifier.cc  |  1 +
  chrome/browser/history/history_utils.cc       |  1 +
  chrome/browser/ui/singleton_tabs.cc           |  3 +-
- .../omnibox/browser/autocomplete_input.cc     |  7 +++--
+ .../omnibox/browser/autocomplete_input.cc     |  8 ++++-
  components/url_formatter/url_fixer.cc         |  4 +++
  .../child_process_security_policy_impl.cc     |  1 +
  net/BUILD.gn                                  |  2 ++
@@ -20,7 +19,7 @@ This patch is based on Iridium's 'net: add "trk:" scheme and help identify URLs 
  url/url_constants.cc                          |  1 +
  url/url_constants.h                           |  1 +
  url/url_util.cc                               |  2 ++
- 14 files changed, 87 insertions(+), 3 deletions(-)
+ 14 files changed, 89 insertions(+), 2 deletions(-)
  create mode 100644 net/url_request/trk_protocol_handler.cc
  create mode 100644 net/url_request/trk_protocol_handler.h
 
@@ -62,7 +61,23 @@ diff --git a/chrome/browser/ui/singleton_tabs.cc b/chrome/browser/ui/singleton_t
 diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
 --- a/components/omnibox/browser/autocomplete_input.cc
 +++ b/components/omnibox/browser/autocomplete_input.cc
-@@ -526,7 +526,8 @@ void AutocompleteInput::ParseForEmphasizeComponents(
+@@ -81,10 +81,15 @@ void OffsetComponentsExcludingScheme(url::Parsed* parts, int offset) {
+ bool HasScheme(const base::string16& input, const char* scheme) {
+   std::string utf8_input(base::UTF16ToUTF8(input));
+   url::Component view_source_scheme;
++
++  if (url::FindAndCompareScheme(utf8_input, url::kTraceScheme, &view_source_scheme)) {
++    return false;
++  }
+   if (url::FindAndCompareScheme(utf8_input, kViewSourceScheme,
+                                 &view_source_scheme)) {
+     utf8_input.erase(0, view_source_scheme.end() + 1);
+   }
++
+   return url::FindAndCompareScheme(utf8_input, scheme, nullptr);
+ }
+ 
+@@ -552,7 +557,8 @@ void AutocompleteInput::ParseForEmphasizeComponents(
    // For the view-source and blob schemes, we should emphasize the host of the
    // URL qualified by the view-source or blob prefix.
    if ((base::LowerCaseEqualsASCII(scheme_str, kViewSourceScheme) ||
@@ -72,21 +87,10 @@ diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnib
        (static_cast<int>(text.length()) > after_scheme_and_colon)) {
      // Obtain the URL prefixed by view-source or blob and parse it.
      base::string16 real_url(text.substr(after_scheme_and_colon));
-@@ -599,7 +600,9 @@ int AutocompleteInput::NumNonHostComponents(const url::Parsed& parts) {
- bool AutocompleteInput::HasHTTPScheme(const base::string16& input) {
-   std::string utf8_input(base::UTF16ToUTF8(input));
-   url::Component scheme;
--  if (url::FindAndCompareScheme(utf8_input, kViewSourceScheme, &scheme)) {
-+  if (url::FindAndCompareScheme(utf8_input, url::kTraceScheme, &scheme)) {
-+    return false;
-+  } else if (url::FindAndCompareScheme(utf8_input, kViewSourceScheme, &scheme)) {
-     utf8_input.erase(0, scheme.end() + 1);
-   }
-   return url::FindAndCompareScheme(utf8_input, url::kHttpScheme, nullptr);
 diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/url_fixer.cc
 --- a/components/url_formatter/url_fixer.cc
 +++ b/components/url_formatter/url_fixer.cc
-@@ -560,6 +560,10 @@ GURL FixupURL(const std::string& text, const std::string& desired_tld) {
+@@ -562,6 +562,10 @@ GURL FixupURL(const std::string& text, const std::string& desired_tld) {
      }
    }
  
@@ -100,7 +104,7 @@ diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/ur
 diff --git a/content/browser/child_process_security_policy_impl.cc b/content/browser/child_process_security_policy_impl.cc
 --- a/content/browser/child_process_security_policy_impl.cc
 +++ b/content/browser/child_process_security_policy_impl.cc
-@@ -772,6 +772,7 @@ ChildProcessSecurityPolicyImpl::ChildProcessSecurityPolicyImpl()
+@@ -793,6 +793,7 @@ ChildProcessSecurityPolicyImpl::ChildProcessSecurityPolicyImpl()
  #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
    RegisterWebSafeScheme(url::kFtpScheme);
    RegisterWebSafeScheme(url::kDataScheme);
@@ -111,7 +115,7 @@ diff --git a/content/browser/child_process_security_policy_impl.cc b/content/bro
 diff --git a/net/BUILD.gn b/net/BUILD.gn
 --- a/net/BUILD.gn
 +++ b/net/BUILD.gn
-@@ -1086,6 +1086,8 @@ component("net") {
+@@ -1075,6 +1075,8 @@ component("net") {
        "url_request/report_sender.h",
        "url_request/static_http_user_agent_settings.cc",
        "url_request/static_http_user_agent_settings.h",
@@ -241,10 +245,10 @@ diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/ur
 diff --git a/url/url_constants.cc b/url/url_constants.cc
 --- a/url/url_constants.cc
 +++ b/url/url_constants.cc
-@@ -28,6 +28,7 @@ const char kMailToScheme[] = "mailto";
- // See also: https://www.iana.org/assignments/uri-schemes/prov/quic-transport
+@@ -29,6 +29,7 @@ const char kMailToScheme[] = "mailto";
  const char kQuicTransportScheme[] = "quic-transport";
  const char kTelScheme[] = "tel";
+ const char kUrnScheme[] = "urn";
 +const char kTraceScheme[] = "trk";
  const char kWsScheme[] = "ws";
  const char kWssScheme[] = "wss";
@@ -252,10 +256,10 @@ diff --git a/url/url_constants.cc b/url/url_constants.cc
 diff --git a/url/url_constants.h b/url/url_constants.h
 --- a/url/url_constants.h
 +++ b/url/url_constants.h
-@@ -32,6 +32,7 @@ COMPONENT_EXPORT(URL) extern const char kJavaScriptScheme[];
- COMPONENT_EXPORT(URL) extern const char kMailToScheme[];
+@@ -33,6 +33,7 @@ COMPONENT_EXPORT(URL) extern const char kMailToScheme[];
  COMPONENT_EXPORT(URL) extern const char kQuicTransportScheme[];
  COMPONENT_EXPORT(URL) extern const char kTelScheme[];
+ COMPONENT_EXPORT(URL) extern const char kUrnScheme[];
 +COMPONENT_EXPORT(URL) extern const char kTraceScheme[];
  COMPONENT_EXPORT(URL) extern const char kWsScheme[];
  COMPONENT_EXPORT(URL) extern const char kWssScheme[];
