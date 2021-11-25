@@ -8,7 +8,7 @@ ARCH=arm
 function usage() {
     cat << EOT
   usage $0 [-hac]
-  
+
   OPTIONS
     -h show this usage
     -a target build archictecture (default: arm)
@@ -29,10 +29,10 @@ function init() {
 
 function checkout() {
     if [ -z "${CHROMIUM_VERSION}" ] ; then
-        CHROMIUM_VERSION=$(head -n 1 "${ROOT_DIR}/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
+        CHROMIUM_VERSION=$(head -n 1 "${ROOT_DIR}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
         export CHROMIUM_VERSION
     fi
-    
+
     echo ">> [$(date)] Use Chromium v${CHROMIUM_VERSION}"
 
     git fetch --tags
@@ -54,11 +54,11 @@ function setup() {
 
 function patch() {
     echo ">> [$(date)] Apply Bromite and /e/ patches"
-    mv "${ROOT_DIR}"/build/patches/e/* "${ROOT_DIR}"/build/patches/
-    PATCHES_LIST=$(cat "${ROOT_DIR}/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
+    mv "${ROOT_DIR}"/build/patches/* "${ROOT_DIR}"/bromite/build/patches/
+    PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
     for file in $PATCHES_LIST; do
         echo " -> Apply $file"
-        git apply "${ROOT_DIR}/build/patches/$file"
+        git apply "${ROOT_DIR}/bromite/build/patches/$file"
         echo " "
     done
     gclient runhooks
@@ -67,7 +67,7 @@ function patch() {
 function build() {
     local out="out/${BUILDID}_${ARCH}"
     echo ">> [$(date)] Build for ${ARCH}"
-    gn gen --args="$(cat "${ROOT_DIR}"/build/GN_ARGS) target_cpu=\"${ARCH}\" " "$out"
+    gn gen --args="$(cat "${ROOT_DIR}"/bromite/build/GN_ARGS) target_cpu=\"${ARCH}\" " "$out"
     autoninja -C "$out" chrome_public_apk system_webview_apk
     cp "$out/apks/ChromePublic.apk" "${ROOT_DIR}/apks/ChromePublic_$ARCH.apk"
     cp "$out/apks/SystemWebView.apk" "${ROOT_DIR}/apks/SystemWebView_$ARCH.apk"
