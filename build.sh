@@ -67,7 +67,7 @@ function patch() {
 function build() {
     local out="out/${BUILDID}_${ARCH}"
     echo ">> [$(date)] Build for ${ARCH}"
-    gn gen --args="$(cat "${ROOT_DIR}"/bromite/build/GN_ARGS) target_cpu=\"${ARCH}\" " "$out"
+    gn gen --args="$(cat "${ROOT_DIR}"/bromite/build/bromite.gn_args) target_cpu=\"${ARCH}\" " "$out"
     autoninja -C "$out" chrome_public_apk system_webview_apk
     cp "$out/apks/ChromePublic.apk" "${ROOT_DIR}/apks/ChromePublic_$ARCH.apk"
     cp "$out/apks/SystemWebView.apk" "${ROOT_DIR}/apks/SystemWebView_$ARCH.apk"
