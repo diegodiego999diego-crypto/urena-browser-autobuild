@@ -58,7 +58,9 @@ function patch() {
     PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
     for file in $PATCHES_LIST; do
         echo " -> Apply $file"
-        git apply "${ROOT_DIR}/bromite/build/patches/$file"
+        git config --global user.name "John Doe"
+        git config --global user.email "johndoe@example.com"
+        git am < "${ROOT_DIR}/bromite/build/patches/$file"
         echo " "
     done
     gclient runhooks
