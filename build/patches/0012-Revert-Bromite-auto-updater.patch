@@ -1,21 +1,21 @@
-From 6ef37147c4e7cc37b8bf8e64b169bebb7c618d4d Mon Sep 17 00:00:00 2001
+From 98ec13102d94e8c21b4a2f6db8366c3a523a8ebc Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
-Date: Tue, 8 Mar 2022 07:37:20 +0000
-Subject: [PATCH 13/15] Revert "Bromite auto updater"
+Date: Tue, 22 Mar 2022 08:33:34 +0000
+Subject: [PATCH 12/14] Revert "Bromite auto updater"
 
-This reverts commit 4c581e3fa18ce8b99c5ec9a7c748d19de937d38b.
+This reverts commit 58a8f31d01b833437080ecdfb48cffbd12602a59.
 ---
  .../java/templates/BuildConfig.template       |   2 -
  build/config/android/rules.gni                |   3 -
  chrome/android/chrome_java_sources.gni        |   3 -
  .../java/res/xml/about_chrome_preferences.xml |   5 -
  .../about_settings/AboutChromeSettings.java   |  27 +-
- .../chrome/browser/omaha/OmahaBase.java       |  57 +----
+ .../chrome/browser/omaha/OmahaBase.java       |  57 +---
  .../chrome/browser/omaha/UpdateConfigs.java   |  30 +--
- .../browser/omaha/UpdateMenuItemHelper.java   |  81 +-----
+ .../browser/omaha/UpdateMenuItemHelper.java   |  82 +-----
  .../browser/omaha/UpdateStatusProvider.java   | 161 +++---------
  .../browser/omaha/VersionNumberGetter.java    |   3 +-
- .../inline/BromiteInlineUpdateController.java | 241 ------------------
+ .../inline/BromiteInlineUpdateController.java | 243 ------------------
  .../omaha/inline/InlineUpdateController.java  |  51 ----
  .../inline/InlineUpdateControllerFactory.java |  21 --
  chrome/browser/endpoint_fetcher/BUILD.gn      |   2 -
@@ -27,7 +27,7 @@ This reverts commit 4c581e3fa18ce8b99c5ec9a7c748d19de937d38b.
  .../flags/android/chrome_feature_list.h       |   1 -
  .../browser/flags/ChromeFeatureList.java      |   1 -
  .../strings/android_chrome_strings.grd        |  23 +-
- 22 files changed, 55 insertions(+), 894 deletions(-)
+ 22 files changed, 55 insertions(+), 897 deletions(-)
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
@@ -59,10 +59,10 @@ index 210487e0f18c8..6c67ac93f8bfc 100644
    }
  
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 36ba02f38bb9e..758ebc7438909 100644
+index 02df4dd5b9121..f52e41f69039b 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -865,9 +865,6 @@ chrome_java_sources = [
+@@ -802,9 +802,6 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java",
@@ -310,7 +310,7 @@ index 700aa4c218c8c..e992298f27051 100644
 +}
 \ No newline at end of file
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
-index 6b1e9ec8db1ac..0a3da975789f2 100644
+index edefafd4faf15..0a3da975789f2 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
 @@ -11,7 +11,6 @@ import android.text.TextUtils;
@@ -352,7 +352,7 @@ index 6b1e9ec8db1ac..0a3da975789f2 100644
                  // The badge is hidden if the update menu item has been clicked until there is an
                  // even newer version of Chrome available.
                  showBadge |= !TextUtils.equals(
-@@ -284,71 +270,6 @@ public class UpdateMenuItemHelper {
+@@ -284,72 +270,6 @@ public class UpdateMenuItemHelper {
                  mMenuUiState.itemState.icon = R.drawable.ic_error_24dp_filled;
                  mMenuUiState.itemState.enabled = false;
                  break;
@@ -382,6 +382,7 @@ index 6b1e9ec8db1ac..0a3da975789f2 100644
 -                        mMenuUiState.buttonState.menuContentDescription = R.string.accessibility_toolbar_btn_menu_update;
 -                        mMenuUiState.buttonState.darkBadgeIcon = R.drawable.badge_update_dark;
 -                        mMenuUiState.buttonState.lightBadgeIcon = R.drawable.badge_update_light;
+-                        mMenuUiState.buttonState.adaptiveBadgeIcon = R.drawable.badge_update;
 -                    }
 -                }
 -
@@ -745,10 +746,10 @@ index 425b7fe17a863..6d21fb304fdd7 100644
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 deleted file mode 100644
-index 9a0665b2970d1..0000000000000
+index 155e533724a6c..0000000000000
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 +++ /dev/null
-@@ -1,241 +0,0 @@
+@@ -1,243 +0,0 @@
 -// Copyright 2021 The Ungoogled Chromium Authors. All rights reserved.
 -//
 -// This file is part of Ungoogled Chromium Android.
@@ -891,7 +892,9 @@ index 9a0665b2970d1..0000000000000
 -                    } else {
 -                        checkLatestUpstreamVersion((latestUpstreamVersion) -> {
 -                           if (latestUpstreamVersion == null) return;
--                              postStatus(UpdateStatusProvider.UpdateState.VULNERABLE_VERSION, VULNERABLE_VERSION_DOC_URL);
+-                           if (OmahaBase.isNewVersionAvailableByVersion(latestUpstreamVersion)) {
+-                               postStatus(UpdateStatusProvider.UpdateState.VULNERABLE_VERSION, VULNERABLE_VERSION_DOC_URL);
+-                           }
 -                        });
 -                    }
 -                });
@@ -1571,10 +1574,10 @@ index 1b25feb6e4760..92b6da65b5151 100644
      public static final String INSTANCE_SWITCHER = "InstanceSwitcher";
      public static final String INSTANT_START = "InstantStart";
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 5ec76764c0d30..98507713f24d7 100644
+index 2f9a418e092de..d78f319433e9b 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1838,12 +1838,6 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -1790,12 +1790,6 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_DEPRECATION_WARNING" desc="Warning about Chrome updates no longer being supported">
          Chrome updates are no longer supported for this version of Android
        </message>
@@ -1587,7 +1590,7 @@ index 5ec76764c0d30..98507713f24d7 100644
  
        <!-- Account management UI strings. -->
        <message name="IDS_ACCOUNT_MANAGEMENT_TITLE" desc="Header title for the account management screen. [CHAR_LIMIT=32]">
-@@ -3391,10 +3385,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3343,10 +3337,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
  
        <!-- Main menu items -->
        <message name="IDS_MENU_UPDATE" desc="Menu item for updating chrome. [CHAR_LIMIT=24]">
@@ -1599,7 +1602,7 @@ index 5ec76764c0d30..98507713f24d7 100644
        </message>
        <message name="IDS_MENU_UPDATE_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that a newer version of Chrome is available. [CHAR_LIMIT=30]">
          Newer version is available
-@@ -3405,18 +3396,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3357,18 +3348,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
        <message name="IDS_MENU_UPDATE_UNSUPPORTED_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that the Android version on the device is unsupported. [CHAR_LIMIT=30]">
          Android version is unsupported
        </message>
