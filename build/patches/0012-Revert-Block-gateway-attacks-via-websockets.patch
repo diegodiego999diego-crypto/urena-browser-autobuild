@@ -1,7 +1,7 @@
-From a1a347bd80d55b2fc928ba59312a07e1e17b50e3 Mon Sep 17 00:00:00 2001
+From 3f40beacfcc969ac31b72fc17486afab6987a779 Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
 Date: Tue, 22 Mar 2022 08:34:04 +0000
-Subject: [PATCH 12/14] Revert "Block gateway attacks via websockets"
+Subject: [PATCH 12/15] Revert "Block gateway attacks via websockets"
 
 This reverts commit eed9daba155d6440f85a55d4ebbf4da3914eedde.
 ---
@@ -17,10 +17,10 @@ This reverts commit eed9daba155d6440f85a55d4ebbf4da3914eedde.
  9 files changed, 2 insertions(+), 84 deletions(-)
 
 diff --git a/third_party/blink/renderer/core/loader/base_fetch_context.h b/third_party/blink/renderer/core/loader/base_fetch_context.h
-index 5a560cf29b2c6..36997bb271d63 100644
+index 894438da4805e..a21840dc5b0dc 100644
 --- a/third_party/blink/renderer/core/loader/base_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/base_fetch_context.h
-@@ -83,7 +83,6 @@ class CORE_EXPORT BaseFetchContext : public FetchContext {
+@@ -84,7 +84,6 @@ class CORE_EXPORT BaseFetchContext : public FetchContext {
  
    virtual SubresourceFilter* GetSubresourceFilter() const = 0;
    virtual bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const = 0;
@@ -29,10 +29,10 @@ index 5a560cf29b2c6..36997bb271d63 100644
    CreateWebSocketHandshakeThrottle() = 0;
  
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.cc b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-index dae7e3d0cea4b..c0b819535f1ef 100644
+index 9c941fe9f89f6..dd157192eb56f 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-@@ -558,26 +558,6 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
+@@ -548,26 +548,6 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
    return should_block_request;
  }
  
@@ -60,22 +60,22 @@ index dae7e3d0cea4b..c0b819535f1ef 100644
      const ResourceRequest& resource_request,
      const ResourceLoaderOptions& options,
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.h b/third_party/blink/renderer/core/loader/frame_fetch_context.h
-index 4c1e572df5ab2..06e0907b666d0 100644
+index 5f19b45314a81..15209ba67bd1e 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.h
-@@ -178,7 +178,6 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
+@@ -168,7 +168,6 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
    bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const override;
    std::unique_ptr<WebSocketHandshakeThrottle> CreateWebSocketHandshakeThrottle()
        override;
 -  bool ShouldBlockGateWayAttacks(network::mojom::IPAddressSpace requestor_space, const KURL&) const override;
    bool ShouldBlockFetchByMixedContentCheck(
        mojom::blink::RequestContextType request_context,
-       const absl::optional<ResourceRequest::RedirectInfo>& redirect_info,
+       network::mojom::blink::IPAddressSpace target_address_space,
 diff --git a/third_party/blink/renderer/core/loader/worker_fetch_context.cc b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
-index a7d787a9799a8..03d589ca92325 100644
+index b178c2062be2e..1d3138f410cc5 100644
 --- a/third_party/blink/renderer/core/loader/worker_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
-@@ -24,7 +24,6 @@
+@@ -25,7 +25,6 @@
  #include "third_party/blink/renderer/platform/loader/fetch/resource_timing_info.h"
  #include "third_party/blink/renderer/platform/loader/fetch/worker_resource_timing_notifier.h"
  #include "third_party/blink/renderer/platform/network/network_state_notifier.h"
@@ -83,7 +83,7 @@ index a7d787a9799a8..03d589ca92325 100644
  #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
  #include "third_party/blink/renderer/platform/supplementable.h"
  #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
-@@ -91,26 +90,6 @@ bool WorkerFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
+@@ -92,26 +91,6 @@ bool WorkerFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
    return should_block_request;
  }
  
@@ -111,22 +111,22 @@ index a7d787a9799a8..03d589ca92325 100644
      const ResourceRequest& resource_request,
      const ResourceLoaderOptions& options,
 diff --git a/third_party/blink/renderer/core/loader/worker_fetch_context.h b/third_party/blink/renderer/core/loader/worker_fetch_context.h
-index 04eaa276e28e9..52afb756db1db 100644
+index b35a85b130719..95b8b35f9261f 100644
 --- a/third_party/blink/renderer/core/loader/worker_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/worker_fetch_context.h
-@@ -62,7 +62,6 @@ class WorkerFetchContext final : public BaseFetchContext {
+@@ -61,7 +61,6 @@ class WorkerFetchContext final : public BaseFetchContext {
    bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const override;
    std::unique_ptr<WebSocketHandshakeThrottle> CreateWebSocketHandshakeThrottle()
        override;
 -  bool ShouldBlockGateWayAttacks(network::mojom::IPAddressSpace requestor_space, const KURL&) const override;
    bool ShouldBlockFetchByMixedContentCheck(
        mojom::blink::RequestContextType request_context,
-       const absl::optional<ResourceRequest::RedirectInfo>& redirect_info,
+       network::mojom::blink::IPAddressSpace target_address_space,
 diff --git a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
-index bd653a0ea510e..f4f354e335042 100644
+index 65e9ee1a01cd5..432b5d0c6a47f 100644
 --- a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
 +++ b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
-@@ -104,10 +104,9 @@ bool ShouldBlockDanglingMarkup(const KURL& request_url) {
+@@ -103,10 +103,9 @@ bool ShouldBlockDanglingMarkup(const KURL& request_url) {
  
  bool ShouldBlockGateWayAttacks(ExecutionContext* execution_context,
                                 const KURL& request_url) {
@@ -138,7 +138,7 @@ index bd653a0ea510e..f4f354e335042 100644
  
      // TODO(mkwst): This only checks explicit IP addresses. We'll have to move
      // all this up to //net and //content in order to have any real impact on
-@@ -122,6 +121,7 @@ bool ShouldBlockGateWayAttacks(ExecutionContext* execution_context,
+@@ -121,6 +120,7 @@ bool ShouldBlockGateWayAttacks(ExecutionContext* execution_context,
      bool is_external_request = requestor_space > target_space;
      if (is_external_request)
        return true;
@@ -147,10 +147,10 @@ index bd653a0ea510e..f4f354e335042 100644
    return false;
  }
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
-index f71e9501dfa36..8bb6ff33644d7 100644
+index e858ff158cbbc..30f3957a0ea76 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
 +++ b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
-@@ -274,11 +274,6 @@ bool WebSocketChannelImpl::Connect(const KURL& url, const String& protocol) {
+@@ -275,11 +275,6 @@ bool WebSocketChannelImpl::Connect(const KURL& url, const String& protocol) {
      return false;
    }
  
@@ -163,10 +163,10 @@ index f71e9501dfa36..8bb6ff33644d7 100644
      feature_handle_for_scheduler_ = scheduler->RegisterFeature(
          SchedulingPolicy::Feature::kWebSocket,
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_common.cc b/third_party/blink/renderer/modules/websockets/websocket_common.cc
-index 1f53747c74409..2ea9b38c93a72 100644
+index b17341efa5959..9b56f0e14c30d 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_common.cc
 +++ b/third_party/blink/renderer/modules/websockets/websocket_common.cc
-@@ -124,38 +124,9 @@ WebSocketCommon::ConnectResult WebSocketCommon::Connect(
+@@ -125,38 +125,9 @@ WebSocketCommon::ConnectResult WebSocketCommon::Connect(
      return ConnectResult::kException;
    }
  
