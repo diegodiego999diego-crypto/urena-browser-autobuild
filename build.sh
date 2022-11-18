@@ -16,6 +16,13 @@ function usage() {
 EOT
 }
 
+function clean() {
+    if [ -d "${CHROMIUM_DIR}/src" ]; then
+        cd "${CHROMIUM_DIR}/src"
+        git reset --hard && git clean -xfdf
+    fi
+}
+
 function init() {
     cd "${CHROMIUM_DIR}"
     if [ ! -f .gclient ]; then
@@ -39,31 +46,25 @@ function checkout() {
     git checkout "tags/${CHROMIUM_VERSION}"
 }
 
-function clean() {
-    if [ -d "${CHROMIUM_DIR}/src" ]; then
-        cd "${CHROMIUM_DIR}/src"
-        git reset --hard && git clean -xfdf
-    fi
-}
-
 function setup() {
     echo ">> [$(date)] Install dependencies"
     build/install-build-deps-android.sh
-    gclient sync --with_branch_heads --with_tags
+    gclient sync -D
+    gclient runhooks
 }
 
 function patch() {
     echo ">> [$(date)] Apply Bromite and /e/ patches"
     mv "${ROOT_DIR}"/build/patches/* "${ROOT_DIR}"/bromite/build/patches/
-    PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
     git config --global user.name "John Doe"
     git config --global user.email "johndoe@example.com"
+
+    PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
     for file in $PATCHES_LIST; do
         echo " -> Apply $file"
         git am < "${ROOT_DIR}/bromite/build/patches/$file"
         echo " "
     done
-    gclient runhooks
 }
 
 function build() {
