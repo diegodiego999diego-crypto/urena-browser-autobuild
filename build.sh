@@ -56,10 +56,10 @@ function patch() {
     echo ">> [$(date)] Apply Bromite and /e/ patches"
     mv "${ROOT_DIR}"/build/patches/* "${ROOT_DIR}"/bromite/build/patches/
     PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
+    git config --global user.name "John Doe"
+    git config --global user.email "johndoe@example.com"
     for file in $PATCHES_LIST; do
         echo " -> Apply $file"
-        git config --global user.name "John Doe"
-        git config --global user.email "johndoe@example.com"
         git am < "${ROOT_DIR}/bromite/build/patches/$file"
         echo " "
     done
@@ -83,7 +83,7 @@ while getopts "ha:c" option; do
         c)
           clean
           exit 0
-          ;; 
+          ;;
         \?)
           echo "wrong option."
           usage
@@ -101,4 +101,4 @@ init
 checkout
 setup
 patch
-build 
+build
