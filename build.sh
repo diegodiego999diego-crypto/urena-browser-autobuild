@@ -1,105 +1,121 @@
-#!/bin/bash -e
+#!/bin/bash
 
-CHROMIUM_DIR="${CHROMIUM_DIR:-/srv/chromium}"
-ROOT_DIR=$(dirname "$(readlink -f "$0")")
-BUILDID="${CI_JOB_ID:-$(date +%s)}"
-ARCH=arm
+set -e
 
-function usage() {
-    cat << EOT
-  usage $0 [-hac]
+chromium_dir="${chromium_dir:-/srv/chromium}"
+root_dir=$(dirname "$(readlink -f "$0")")
+if [ ! -d "$chromium_dir" ]; then
+    chromium_dir=$root_dir
+fi
+chromium_version=$(head -n 1 "${root_dir}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
+clean=0
+gsync=0
+arch=""
 
-  OPTIONS
-    -h show this usage
-    -a target build archictecture (default: arm)
-    -c clean chromium repository
-EOT
+usage() {
+    echo "Usage:"
+    echo "  $(basename $(readlink -nf $0)) [ options ]"
+    echo
+    echo "  Options:"
+    echo "    -a <arch> Build specified arch"
+    echo "    -c Clean"
+    echo "    -h Show this message"
+    echo "    -s Sync"
+    echo
+    exit 1
 }
 
-function clean() {
-    if [ -d "${CHROMIUM_DIR}/src" ]; then
-        cd "${CHROMIUM_DIR}/src"
-        git reset --hard && git clean -xfdf
+build() {
+    mkdir -p "${root_dir}/apks/${1}"
+    gn gen "out/$1" --args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
+    if [ "$1" = "arm" ] || [ "$1" = "x86" ]; then
+        ninja -C out/$1 chrome_public_apk system_webview_apk
+    elif [ "$1" = "arm64" ] || [ "$1" = "x64" ]; then
+        ninja -C out/$1 trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
     fi
-}
-
-function init() {
-    cd "${CHROMIUM_DIR}"
-    if [ ! -f .gclient ]; then
-        echo ">> [$(date)] Init project"
-        fetch --nohooks android
-    fi
-    mkdir -p "${ROOT_DIR}/apks"
-    clean
-    cd "${CHROMIUM_DIR}/src"
-}
-
-function checkout() {
-    if [ -z "${CHROMIUM_VERSION}" ] ; then
-        CHROMIUM_VERSION=$(head -n 1 "${ROOT_DIR}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
-        export CHROMIUM_VERSION
-    fi
-
-    echo ">> [$(date)] Use Chromium v${CHROMIUM_VERSION}"
-
-    git fetch --tags
-    git checkout "tags/${CHROMIUM_VERSION}"
-}
-
-function setup() {
-    echo ">> [$(date)] Install dependencies"
-    build/install-build-deps-android.sh
-    gclient sync -D
-    gclient runhooks
-}
-
-function patch() {
-    echo ">> [$(date)] Apply Bromite and /e/ patches"
-    mv "${ROOT_DIR}"/build/patches/* "${ROOT_DIR}"/bromite/build/patches/
-    git config --global user.name "John Doe"
-    git config --global user.email "johndoe@example.com"
-
-    PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
-    for file in $PATCHES_LIST; do
-        echo " -> Apply $file"
-        git am < "${ROOT_DIR}/bromite/build/patches/$file"
-        echo " "
+    apks="ChromePublic SystemWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    for apk in $apks; do
+        if [ -f "out/${1}/apks/$apk.apk" ]; then
+            cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/${1}/$apk.apk"
+        fi
     done
 }
 
-function build() {
-    local out="out/${BUILDID}_${ARCH}"
-    echo ">> [$(date)] Build for ${ARCH}"
-    gn gen --args="$(cat "${ROOT_DIR}"/build/browser.gn_args) target_cpu=\"${ARCH}\" " "$out"
-    autoninja -C "$out" chrome_public_apk system_webview_apk
-    cp "$out/apks/ChromePublic.apk" "${ROOT_DIR}/apks/ChromePublic_$ARCH.apk"
-    cp "$out/apks/SystemWebView.apk" "${ROOT_DIR}/apks/SystemWebView_$ARCH.apk"
+patch() {
+    cd $chromium_dir/src
+    echo ">> [$(date)] Apply Bromite and /e/ patches"
+
+    bromite_patches_list=$(cat "${root_dir}/bromite/build/bromite_patches_list.txt")
+    for file in $bromite_patches_list; do
+        git am -3 --ignore-whitespace "${root_dir}/bromite/build/patches/$file"
+    done
+
+    e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
+    for file in $e_patches_list; do
+        git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
+    done
 }
 
-while getopts "ha:c" option; do
-    case $option in
-        a)
-          ARCH="$OPTARG"
-          ;;
-        c)
-          clean
-          exit 0
-          ;;
-        \?)
-          echo "wrong option."
-          usage
-          exit 1
-          ;;
-        h)
-          usage
-          exit 0
-          ;;
+while getopts ":a:chr:s" opt; do
+    case $opt in
+    a) arch="$OPTARG" ;;
+    c) clean=1 ;;
+    h) usage ;;
+    s) gsync=1 ;;
+    :)
+        echo "Option -$OPTARG requires an argument"
+        echo
+        usage
+        ;;
+    \?)
+        echo "Invalid option:-$OPTARG"
+        echo
+        usage
+        ;;
     esac
 done
 shift $((OPTIND - 1))
 
-init
-checkout
-setup
-patch
-build
+# Add depot_tools to PATH
+if [ ! -d "$chromium_dir/depot_tools" ]; then
+    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$chromium_dir/depot_tools"
+fi
+export PATH="$chromium_dir/depot_tools:$PATH"
+
+if [ $clean -eq 1 ]; then
+    if [ -d "$chromium_dir/src" ]; then
+        cd $chromium_dir/src
+        git reset --hard && git clean -xfdf
+        if [ -d out ]; then
+            rm -rf out
+        fi
+    fi
+fi
+
+cd $chromium_dir
+
+if [ ! -d src ]; then
+    fetch android
+    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    yes | gclient sync -D -R -r $chromium_version
+    patch
+fi
+
+if [ $gsync -eq 1 ]; then
+    find src -name index.lock -delete
+    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    yes | gclient sync -D -R -r $chromium_version
+    patch
+fi
+
+cd $chromium_dir/src
+. build/android/envsetup.sh
+
+if [ ! -z "$arch" ]; then
+    build $arch
+else
+    build arm
+    build arm64
+    build x86
+    build x64
+fi
