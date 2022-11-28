@@ -57,15 +57,19 @@ function setup() {
 
 function patch() {
     echo ">> [$(date)] Apply Bromite and /e/ patches"
-    mv "${ROOT_DIR}"/build/patches/* "${ROOT_DIR}"/bromite/build/patches/
     git config --local user.name "John Doe"
     git config --local user.email "johndoe@example.com"
 
-    PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt" "${ROOT_DIR}/build/e_patches_list.txt")
-    for file in $PATCHES_LIST; do
-        echo " -> Apply $file"
-        git am < "${ROOT_DIR}/bromite/build/patches/$file"
-        echo " "
+    BROMITE_PATCHES_LIST=$(cat "${ROOT_DIR}/bromite/build/bromite_patches_list.txt")
+    for file in $BROMITE_PATCHES_LIST; do
+        echo " -> Applying $file"
+        git am -3 --ignore-whitespace "${ROOT_DIR}/bromite/build/patches/$file"
+    done
+
+    E_PATCHES_LIST=$(cat "${ROOT_DIR}/build/e_patches_list.txt")
+    for file in $E_PATCHES_LIST; do
+        echo " -> Applying $file"
+        git am -3 --ignore-whitespace "${ROOT_DIR}/build/patches/$file"
     done
 
     git config --local --unset user.name
