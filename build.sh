@@ -44,8 +44,8 @@ function checkout() {
 
     echo ">> [$(date)] Use Chromium v${CHROMIUM_VERSION}"
 
-    git fetch --tags
-    git checkout "tags/${CHROMIUM_VERSION}"
+    git fetch https://chromium.googlesource.com/chromium/src ${CHROMIUM_VERSION}
+    git checkout FETCH_HEAD
 }
 
 function setup() {
