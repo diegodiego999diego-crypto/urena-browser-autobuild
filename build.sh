@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-CHROMIUM_DIR="${CHROMIUM_DIR:-/srv/chromium}"
+CHROMIUM_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 ROOT_DIR=$(dirname "$(readlink -f "$0")")
 BUILDID="${CI_JOB_ID:-$(date +%s)}"
 ARCH=arm
