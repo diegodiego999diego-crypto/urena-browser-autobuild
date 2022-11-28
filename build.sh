@@ -28,6 +28,8 @@ function init() {
     if [ ! -f .gclient ]; then
         echo ">> [$(date)] Init project"
         fetch --nohooks android
+    else
+        gclient sync -D
     fi
     mkdir -p "${ROOT_DIR}/apks"
     clean
