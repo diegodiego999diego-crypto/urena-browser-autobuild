@@ -81,11 +81,11 @@ function build() {
     echo ">> [$(date)] Build for ${ARCH}"
     gn gen --args="$(cat "${ROOT_DIR}"/build/browser.gn_args) target_cpu=\"${ARCH}\" " "$out"
     if [ "$ARCH" = "arm" ] || [ "$ARCH" = "x86" ]; then
-        autoninja -C "$out" trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk
+        autoninja -C "$out" chrome_public_apk system_webview_apk
     elif [ "$ARCH" = "arm64" ] || [ "$ARCH" = "x64" ]; then
         autoninja -C "$out" trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
     fi
-    APKS="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    APKS="ChromePublic SystemWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     for APK in $APKS; do
         if [ -f "$out/apks/$APK.apk" ]; then
             cp "$out/apks/$APK.apk" "${ROOT_DIR}/apks/${ARCH}/$APK.apk"
