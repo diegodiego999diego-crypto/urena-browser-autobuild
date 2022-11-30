@@ -31,7 +31,7 @@ function init() {
     else
         gclient sync -D
     fi
-    mkdir -p "${ROOT_DIR}/apks/$ARCH"
+    mkdir -p "${ROOT_DIR}/apks/${ARCH}"
     clean
     cd "${CHROMIUM_DIR}/src"
 }
@@ -85,7 +85,12 @@ function build() {
     elif [ "$ARCH" = "arm64" ] || [ "$ARCH" = "x64" ]; then
         autoninja -C "$out" trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
     fi
-    cp -r "$out/apks/*.apk" "${ROOT_DIR}/apks/$ARCH/"
+    APKS="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    for APK in $APKS; do
+        if [ -f "$out/apks/$APK.apk" ]; then
+            cp "$out/apks/$APK.apk" "${ROOT_DIR}/apks/${ARCH}/$APK.apk"
+        fi
+    done
 }
 
 while getopts "ha:c" option; do
