@@ -45,9 +45,6 @@ patch() {
     cd $chromium_dir/src
     echo ">> [$(date)] Apply Bromite and /e/ patches"
 
-    git config --local user.name "John Doe"
-    git config --local user.email "johndoe@example.com"
-
     bromite_patches_list=$(cat "${root_dir}/bromite/build/bromite_patches_list.txt")
     for file in $bromite_patches_list; do
         git am -3 --ignore-whitespace "${root_dir}/bromite/build/patches/$file"
@@ -57,9 +54,6 @@ patch() {
     for file in $e_patches_list; do
         git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
     done
-
-    git config --local --unset user.name
-    git config --local --unset user.email
 }
 
 while getopts ":a:chr:s" opt; do

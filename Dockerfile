@@ -40,6 +40,9 @@ RUN curl -s https://chromium.googlesource.com/chromium/src/+/master/build/instal
 RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 ENV LANG en_US.UTF-8
 
+RUN git config --global user.name "John Doe"
+RUN git config --global user.email "johndoe@example.com"
+
 RUN mkdir ${CHROMIUM_DIR}
 
 WORKDIR ${CHROMIUM_DIR}
