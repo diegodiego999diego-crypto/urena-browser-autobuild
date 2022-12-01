@@ -1,7 +1,5 @@
 FROM ubuntu:18.04
 
-ENV DEPOT_TOOLS "/depot_tools"
-ENV PATH "$PATH:${DEPOT_TOOLS}"
 ENV CHROMIUM_DIR "/srv/chromium"
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -41,9 +39,6 @@ RUN curl -s https://chromium.googlesource.com/chromium/src/+/master/build/instal
 # Setup locale
 RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 ENV LANG en_US.UTF-8
-
-# Get latest depot tools
-RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git ${DEPOT_TOOLS}
 
 RUN mkdir ${CHROMIUM_DIR}
 
