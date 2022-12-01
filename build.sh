@@ -41,22 +41,6 @@ build() {
     done
 }
 
-build_apk() {
-    cd $chromium_dir/src
-    if [ $clean -eq 1 ] && [ -d out ]; then
-        rm -rf out
-    fi
-    . build/android/envsetup.sh
-    if [ ! -z "$arch" ]; then
-        build $arch
-    else
-        build arm
-        build arm64
-        build x86
-        build x64
-    fi
-}
-
 patch() {
     cd $chromium_dir/src
     echo ">> [$(date)] Apply Bromite and /e/ patches"
@@ -104,6 +88,14 @@ if [ ! -d "$chromium_dir/depot_tools" ]; then
 fi
 export PATH="$chromium_dir/depot_tools:$PATH"
 
+if [ $clean -eq 1 ]; then
+    cd $chromium_dir/src
+    git reset --hard && git clean -xfdf
+    if [ -d out ]; then
+        rm -rf out
+    fi
+fi
+
 cd $chromium_dir
 
 if [ ! -d src ]; then
@@ -118,4 +110,14 @@ if [ $gsync -eq 1 ]; then
     patch
 fi
 
-build_apk
+cd $chromium_dir/src
+. build/android/envsetup.sh
+
+if [ ! -z "$arch" ]; then
+    build $arch
+else
+    build arm
+    build arm64
+    build x86
+    build x64
+fi
