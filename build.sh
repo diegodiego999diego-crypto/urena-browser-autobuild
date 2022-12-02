@@ -106,7 +106,6 @@ fi
 
 cd $chromium_dir/src
 . build/android/envsetup.sh
-. build/install-build-deps-android.sh
 
 if [ ! -z "$arch" ]; then
     build $arch
