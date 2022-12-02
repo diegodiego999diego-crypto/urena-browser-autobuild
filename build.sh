@@ -26,14 +26,13 @@ usage() {
 }
 
 build() {
+    apks="TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+
     mkdir -p "${root_dir}/apks/${1}"
     gn gen "out/$1" --args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
-    if [ "$1" = "arm" ] || [ "$1" = "x86" ]; then
-        ninja -C out/$1 chrome_public_apk system_webview_apk
-    elif [ "$1" = "arm64" ] || [ "$1" = "x64" ]; then
-        ninja -C out/$1 trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
-    fi
-    apks="ChromePublic SystemWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
+            trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
+
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/${1}/$apk.apk"
@@ -110,8 +109,6 @@ cd $chromium_dir/src
 if [ ! -z "$arch" ]; then
     build $arch
 else
-    build arm
     build arm64
-    build x86
     build x64
 fi
