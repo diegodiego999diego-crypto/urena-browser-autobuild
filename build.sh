@@ -29,10 +29,7 @@ build() {
     apks="TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
 
     mkdir -p "${root_dir}/apks/${1}"
-    if [ "$1" != "x64" ]; then
-        extra_arg="is_cfi=true"
-    fi
-    gn gen "out/$1" --args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" $extra_arg"
+    gn gen "out/$1" --args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
     ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
             trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
 
