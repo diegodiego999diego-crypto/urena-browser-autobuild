@@ -95,12 +95,14 @@ cd $chromium_dir
 
 if [ ! -d src ]; then
     fetch android
+    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
     yes | gclient sync -D -R -r $chromium_version
     patch
 fi
 
 if [ $gsync -eq 1 ]; then
     find src -name index.lock -delete
+    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
     yes | gclient sync -D -R -r $chromium_version
     patch
 fi
