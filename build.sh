@@ -82,10 +82,12 @@ fi
 export PATH="$chromium_dir/depot_tools:$PATH"
 
 if [ $clean -eq 1 ]; then
-    cd $chromium_dir/src
-    git reset --hard && git clean -xfdf
-    if [ -d out ]; then
-        rm -rf out
+    if [ -d "$chromium_dir/src" ]; then
+        cd $chromium_dir/src
+        git reset --hard && git clean -xfdf
+        if [ -d out ]; then
+            rm -rf out
+        fi
     fi
 fi
 
