@@ -1,18 +1,15 @@
-From 96960654d05c7105889885a4644157cf705eebf5 Mon Sep 17 00:00:00 2001
-From: althafvly <althafvly@gmail.com>
-Date: Fri, 18 Nov 2022 08:41:40 +0000
-Subject: [PATCH] Revert "Bromite auto updater"
+From 6a89074ce04d8323ae8deb5a717aa30691b62a3c Mon Sep 17 00:00:00 2001
+From: TheScarastic <warabhishek@e.email>
+Date: Wed, 7 Dec 2022 08:11:21 +0000
+Subject: [PATCH 03/17] Revert "Bromite auto updater"
 
-This reverts commit 76ca7b081231d9ed18fe9488486392434ad83a32.
-
-Signed-off-by: althafvly <althafvly@gmail.com>
+This reverts commit 7556a9a9d310baa119f5744ba6e3ccc244618c3b.
 ---
  .../java/templates/BuildConfig.template       |   2 -
  build/config/android/rules.gni                |   3 -
  chrome/android/chrome_java_sources.gni        |   3 -
  .../java/res/xml/about_chrome_preferences.xml |   5 -
  .../about_settings/AboutChromeSettings.java   |  28 +-
- .../firstrun/ToSAndUMAFirstRunFragment.java   |   5 -
  .../chrome/browser/omaha/OmahaBase.java       |  57 +---
  .../chrome/browser/omaha/UpdateConfigs.java   |  30 +--
  .../browser/omaha/UpdateMenuItemHelper.java   |  82 +-----
@@ -25,13 +22,13 @@ Signed-off-by: althafvly <althafvly@gmail.com>
  .../endpoint_fetcher_android.cc               |  52 +---
  .../endpoint_fetcher/EndpointFetcher.java     |  22 +-
  .../EndpointHeaderResponse.java               |  31 ---
- .../flags/android/chrome_feature_list.cc      |   4 -
+ .../flags/android/chrome_feature_list.cc      |   5 -
  .../flags/android/chrome_feature_list.h       |   1 -
  .../browser/flags/ChromeFeatureList.java      |   1 -
  .../strings/android_chrome_strings.grd        |  23 +-
  .../endpoint_fetcher/endpoint_fetcher.cc      | 102 +-------
  .../endpoint_fetcher/endpoint_fetcher.h       |  22 +-
- 24 files changed, 53 insertions(+), 901 deletions(-)
+ 23 files changed, 53 insertions(+), 897 deletions(-)
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
@@ -49,10 +46,10 @@ index f6521f42246d4..cfecb6fefdcba 100644
 -    public static MAYBE_FINAL String BUILD_TARGET_CPU = _BUILD_TARGET_CPU;
  }
 diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
-index f4d6582f159ce..bab4fe97c799f 100644
+index 662d086624d69..d73d84522abb5 100644
 --- a/build/config/android/rules.gni
 +++ b/build/config/android/rules.gni
-@@ -2183,9 +2183,6 @@ if (enable_java_templates) {
+@@ -2242,9 +2242,6 @@ if (enable_java_templates) {
        if (defined(testonly) && testonly) {
          defines += [ "_IS_FOR_TEST" ]
        }
@@ -63,10 +60,10 @@ index f4d6582f159ce..bab4fe97c799f 100644
    }
  
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index aeebf574044f1..563b2884973ad 100644
+index 25263cb9510f0..e76d977623624 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -811,9 +811,6 @@ chrome_java_sources = [
+@@ -813,9 +813,6 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java",
@@ -77,10 +74,10 @@ index aeebf574044f1..563b2884973ad 100644
    "java/src/org/chromium/chrome/browser/omaha/metrics/HistogramUtils.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/TrackingProvider.java",
 diff --git a/chrome/android/java/res/xml/about_chrome_preferences.xml b/chrome/android/java/res/xml/about_chrome_preferences.xml
-index a2c4fe8e8db3f..daa4806b2baab 100644
+index 61d465d136527..54b604b2636e4 100644
 --- a/chrome/android/java/res/xml/about_chrome_preferences.xml
 +++ b/chrome/android/java/res/xml/about_chrome_preferences.xml
-@@ -12,11 +12,6 @@ found in the LICENSE file.
+@@ -9,11 +9,6 @@ found in the LICENSE file.
      <Preference
          android:key="application_version"
          android:title="@string/application_version_title" />
@@ -93,7 +90,7 @@ index a2c4fe8e8db3f..daa4806b2baab 100644
          android:key="os_version"
          android:title="@string/os_version_title" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
-index 82916ac2182c2..9cf0cb7918b9f 100644
+index 5da0608895710..f59f62fdf971b 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
 @@ -21,20 +21,14 @@ import org.chromium.ui.widget.Toast;
@@ -116,12 +113,12 @@ index 82916ac2182c2..9cf0cb7918b9f 100644
      private static final String PREF_APPLICATION_VERSION = "application_version";
 -    private static final String PREF_ALLOW_INLINE_UPDATE = "allow_inline_update"; // switch preference
      private static final String PREF_OS_VERSION = "os_version";
-     private static final String PREF_E_BROWSER_INFORMATION = "e_browser_information";
+     private static final String PREF_LEGAL_INFORMATION = "legal_information";
  
 @@ -65,13 +59,6 @@ public class AboutChromeSettings
- 
-         p = findPreference(PREF_E_BROWSER_INFORMATION);
-         p.setSummary(getString(R.string.e_browser_information));
+         p = findPreference(PREF_LEGAL_INFORMATION);
+         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+         p.setSummary(getString(R.string.legal_information_summary, currentYear));
 -
 -        ChromeSwitchPreference allowInlineUpdate =
 -                (ChromeSwitchPreference) findPreference(PREF_ALLOW_INLINE_UPDATE);
@@ -150,22 +147,6 @@ index 82916ac2182c2..9cf0cb7918b9f 100644
 -        return true;
 -    }
  }
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-index 9de332c99045a..9c280e020dbd6 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-@@ -240,11 +240,6 @@ public class ToSAndUMAFirstRunFragment
-         mTosButtonClicked = true;
-         mTosAcceptedTime = SystemClock.elapsedRealtime();
- 
--        // save updater configuration only on button click
--        SharedPreferences.Editor sharedPreferenceEditor = OmahaBase.getSharedPreferences().edit();
--        sharedPreferenceEditor.putBoolean(OmahaBase.PREF_ALLOW_INLINE_UPDATE, mAutoUpdaterChecked);
--        sharedPreferenceEditor.apply();
--
-         tryMarkTermsAccepted(true);
-     }
- 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
 index af264b69a1ff0..4f80654a7db5a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
@@ -1282,10 +1263,10 @@ index a7bd35381ccd1..0000000000000
 -    }
 -}
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index 3195aab33865c..772d7933511bd 100644
+index 9e77e3cf4e67c..37d886546c10d 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -259,7 +259,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -258,7 +258,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kNotificationPermissionVariant,
      &kOfflineIndicatorV2,
      &kPageAnnotationsService,
@@ -1293,33 +1274,34 @@ index 3195aab33865c..772d7933511bd 100644
      &kBookmarksImprovedSaveFlow,
      &kBookmarksRefresh,
      &kBackGestureRefactorAndroid,
-@@ -700,9 +699,6 @@ const base::Feature kIncognitoReauthenticationForAndroid{
- const base::Feature kIncognitoScreenshot{"IncognitoScreenshot",
-                                          base::FEATURE_DISABLED_BY_DEFAULT};
+@@ -710,10 +709,6 @@ BASE_FEATURE(kContextMenuTranslateWithGoogleLens,
+              "ContextMenuTranslateWithGoogleLens",
+              base::FEATURE_DISABLED_BY_DEFAULT);
  
--const base::Feature kInlineUpdateFlow{"InlineUpdateFlow",
--                                      base::FEATURE_ENABLED_BY_DEFAULT};
+-BASE_FEATURE(kInlineUpdateFlow,
+-             "InlineUpdateFlow",
+-             base::FEATURE_ENABLED_BY_DEFAULT);
 -
- const base::Feature kInfobarScrollOptimization{
-     "InfobarScrollOptimization", base::FEATURE_DISABLED_BY_DEFAULT};
- 
+ BASE_FEATURE(kLensCameraAssistedSearch,
+              "LensCameraAssistedSearch",
+              base::FEATURE_ENABLED_BY_DEFAULT);
 diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
-index c8fe7913fcf5b..9959905a274d0 100644
+index f0489a782c36e..6d1ec55144c7d 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.h
 +++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -94,7 +94,6 @@ extern const base::Feature kGridTabSwitcherForTablets;
- extern const base::Feature kHandleMediaIntents;
- extern const base::Feature kImmersiveUiMode;
- extern const base::Feature kIncognitoReauthenticationForAndroid;
+@@ -94,7 +94,6 @@ BASE_DECLARE_FEATURE(kGridTabSwitcherForTablets);
+ BASE_DECLARE_FEATURE(kHandleMediaIntents);
+ BASE_DECLARE_FEATURE(kImmersiveUiMode);
+ BASE_DECLARE_FEATURE(kIncognitoReauthenticationForAndroid);
 -extern const base::Feature kInlineUpdateFlow;
- extern const base::Feature kIncognitoScreenshot;
- extern const base::Feature kInfobarScrollOptimization;
- extern const base::Feature kImprovedA2HS;
+ BASE_DECLARE_FEATURE(kIncognitoScreenshot);
+ BASE_DECLARE_FEATURE(kInfobarScrollOptimization);
+ BASE_DECLARE_FEATURE(kImprovedA2HS);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index 0fd90c4ac005d..3615a90d3c25d 100644
+index 87ceec33c9b9b..3d3e7c6e47881 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -384,7 +384,6 @@ public abstract class ChromeFeatureList {
+@@ -388,7 +388,6 @@ public abstract class ChromeFeatureList {
              "IncognitoReauthenticationForAndroid";
      public static final String INCOGNITO_SCREENSHOT = "IncognitoScreenshot";
      public static final String INFOBAR_SCROLL_OPTIMIZATION = "InfobarScrollOptimization";
@@ -1328,10 +1310,10 @@ index 0fd90c4ac005d..3615a90d3c25d 100644
      public static final String INSTALLABLE_AMBIENT_BADGE_MESSAGE = "InstallableAmbientBadgeMessage";
      public static final String INSTANCE_SWITCHER = "InstanceSwitcher";
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index d54f2f73373a4..a6e42d2d314a5 100644
+index d819b14b67a5e..d73a204b18ee8 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1910,12 +1910,6 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -1900,12 +1900,6 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_DEPRECATION_WARNING" desc="Warning about Chrome updates no longer being supported">
          Chrome updates are no longer supported for this version of Android
        </message>
@@ -1344,7 +1326,7 @@ index d54f2f73373a4..a6e42d2d314a5 100644
  
        <!-- Account management UI strings. -->
        <message name="IDS_ACCOUNT_MANAGEMENT_TITLE" desc="Header title for the account management screen. [CHAR_LIMIT=32]">
-@@ -3570,10 +3564,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3541,10 +3535,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
  
        <!-- Main menu items -->
        <message name="IDS_MENU_UPDATE" desc="Menu item for updating chrome. [CHAR_LIMIT=24]">
@@ -1356,7 +1338,7 @@ index d54f2f73373a4..a6e42d2d314a5 100644
        </message>
        <message name="IDS_MENU_UPDATE_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that a newer version of Chrome is available. [CHAR_LIMIT=30]">
          Newer version is available
-@@ -3584,18 +3575,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3555,18 +3546,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
        <message name="IDS_MENU_UPDATE_UNSUPPORTED_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that the Android version on the device is unsupported. [CHAR_LIMIT=30]">
          Android version is unsupported
        </message>
