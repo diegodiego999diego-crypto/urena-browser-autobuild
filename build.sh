@@ -10,6 +10,7 @@ fi
 chromium_version=$(head -n 1 "${root_dir}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
 clean=0
 gsync=0
+history=1
 arch=""
 
 usage() {
@@ -20,7 +21,7 @@ usage() {
     echo "    -a <arch> Build specified arch"
     echo "    -c Clean"
     echo "    -h Show this message"
-    echo "    -s Sync"
+    echo "    -s Sync without history"
     echo
     exit 1
 }
@@ -55,12 +56,23 @@ patch() {
     done
 }
 
+sync() {
+    cd $chromium_dir
+    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    if [ $history -eq 1 ]; then
+        yes | gclient sync -D -R -r $chromium_version
+    else
+        yes | gclient sync --no-history -D -R -r $chromium_version
+    fi
+    patch
+}
+
 while getopts ":a:chr:s" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     h) usage ;;
-    s) gsync=1 ;;
+    s) gsync=1 && history=0 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
@@ -94,17 +106,21 @@ fi
 cd $chromium_dir
 
 if [ ! -d src ]; then
-    fetch android
-    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
-    yes | gclient sync -D -R -r $chromium_version
-    patch
+    rm -rf .gclient*
+    if [ $history -eq 1 ]; then
+        fetch android
+    else
+        fetch --no-history android
+    fi
+    sync
 fi
 
 if [ $gsync -eq 1 ]; then
+    if [ -d "$chromium_dir/src/.git/rebase-apply" ]; then
+        rm -fr "$chromium_dir/src/.git/rebase-apply"
+    fi
     find src -name index.lock -delete
-    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
-    yes | gclient sync -D -R -r $chromium_version
-    patch
+    sync
 fi
 
 cd $chromium_dir/src
