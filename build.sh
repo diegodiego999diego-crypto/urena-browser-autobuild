@@ -8,6 +8,7 @@ if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
 chromium_version=$(head -n 1 "${root_dir}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
+chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
 history=1
@@ -28,15 +29,40 @@ usage() {
 
 build() {
     apks="TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
-    mkdir -p "${root_dir}/apks/${1}"
-    gn gen "out/$1" --args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
+    code=$chromium_code
+    if [ $1 '==' "arm" ] || [ $1 '==' "arm64" ]; then
+        code+=50
+    elif [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
+        code+=60
+    fi
+    build_args+=' android_default_version_name="'$chromium_version'"'
+    build_args+=' android_default_version_code="'$code'"'
+
+    gn gen "out/$1" --args="$build_args"
     ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
             trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
-            cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/${1}/$apk.apk"
+            if [[ "$apk.apk" == *6432.apk ]]; then
+                if [ "$1" = "x64" ]; then
+                    mkdir -p "${root_dir}/apks/x86_64"
+                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86_64/${apk::-4}.apk"
+                else
+                    mkdir -p "${root_dir}/apks/arm64"
+                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm64/${apk::-4}.apk"
+                fi
+            else
+                if [ "$1" = "x64" ]; then
+                    mkdir -p "${root_dir}/apks/x86"
+                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86/${apk::-2}.apk"
+                else
+                    mkdir -p "${root_dir}/apks/arm"
+                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm/${apk::-2}.apk"
+                fi
+            fi
         fi
     done
 }
