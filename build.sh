@@ -7,6 +7,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
+date_time=$(date '+%Y%m%d%H%M%S')
 chromium_version=$(head -n 1 "${root_dir}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
@@ -28,7 +29,8 @@ usage() {
 }
 
 build() {
-    apks="TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
+    apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
     if [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
@@ -40,37 +42,60 @@ build() {
     fi
 
     code=$chromium_code
-    if [ $1 '==' "arm" ] || [ $1 '==' "arm64" ]; then
+    if [ $1 '==' "arm" ]; then
+        code+=00
+    elif [ $1 '==' "arm64" ]; then
         code+=50
-    elif [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
+    elif [ $1 '==' "x86" ]; then
+        code+=10
+    elif [ $1 '==' "x64" ]; then
         code+=60
     fi
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
 
+    if [ $clean -eq 1 ] && [ -d "out/$1" ]; then
+        rm -rf "out/$1"
+    fi
+
     build_args+=' cc_wrapper="ccache"'
 
+    echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
-    ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
-            trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
+    if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
+        ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
+                trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk \
+                chrome_public_apk system_webview_apk
+    elif [ $1 '==' "x86" ] || [ $1 '==' "arm" ]; then
+        ninja -C out/$1 chrome_public_apk system_webview_apk
+    fi
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
-            if [[ "$apk.apk" == *6432.apk ]]; then
+            echo ">> [$(date)] Moving $apk for ${1} to output folder"
+            if [[ "$apk.apk" == ChromePublic.apk ]]; then
                 if [ "$1" = "x64" ]; then
-                    mkdir -p "${root_dir}/apks/x86_64"
-                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86_64/${apk::-4}.apk"
+                    mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/x86_64/ChromePublic.apk"
                 else
-                    mkdir -p "${root_dir}/apks/arm64"
-                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm64/${apk::-4}.apk"
+                    mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/${1}/ChromePublic.apk"
+                fi
+            elif [[ "$apk.apk" == SystemWebView.apk ]]; then
+                if [ "$1" = "x64" ]; then
+                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/x86_64/SystemWebView.apk"
+                else
+                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/${1}/SystemWebView.apk"
+                fi
+            elif [[ "$apk.apk" == *6432.apk ]]; then
+                if [ "$1" = "x64" ]; then
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/x86_64/${apk::-4}.apk"
+                elif [ "$1" = "arm64" ]; then
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/arm64/${apk::-4}.apk"
                 fi
             else
                 if [ "$1" = "x64" ]; then
-                    mkdir -p "${root_dir}/apks/x86"
-                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86/${apk::-2}.apk"
-                else
-                    mkdir -p "${root_dir}/apks/arm"
-                    cp "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm/${apk::-2}.apk"
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/x86/${apk::-2}.apk"
+                elif [ "$1" = "arm64" ]; then
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/arm/${apk::-2}.apk"
                 fi
             fi
         fi
@@ -90,7 +115,7 @@ setup_ccache() {
 
 patch() {
     cd $chromium_dir/src
-    echo ">> [$(date)] Apply Bromite and /e/ patches"
+    echo ">> [$(date)] Applying bromite and /e/ patches"
 
     bromite_patches_list=$(cat "${root_dir}/bromite/build/bromite_patches_list.txt")
     for file in $bromite_patches_list; do
@@ -104,6 +129,7 @@ patch() {
 }
 
 sync() {
+    echo ">> [$(date)] Syncing chromium $chromium_version"
     cd $chromium_dir
     cp ${root_dir}/.config_gclient $chromium_dir/.gclient
     if [ $history -eq 1 ]; then
@@ -112,6 +138,17 @@ sync() {
         yes | gclient sync --no-history -D -R -r $chromium_version
     fi
     patch
+}
+
+init_repo(){
+    echo ">> [$(date)] Init chromium $chromium_version"
+    cd $chromium_dir
+    rm -rf .gclient*
+    if [ $history -eq 1 ]; then
+        fetch android
+    else
+        fetch --no-history android
+    fi
 }
 
 while getopts ":a:chr:s" opt; do
@@ -141,24 +178,15 @@ fi
 export PATH="$chromium_dir/depot_tools:$PATH"
 
 if [ $clean -eq 1 ]; then
+    echo ">> [$(date)] Cleaning chromium source code"
     if [ -d "$chromium_dir/src" ]; then
         cd $chromium_dir/src
         git reset --hard && git clean -xfdf
-        if [ -d out ]; then
-            rm -rf out
-        fi
     fi
 fi
 
-cd $chromium_dir
-
-if [ ! -d src ]; then
-    rm -rf .gclient*
-    if [ $history -eq 1 ]; then
-        fetch android
-    else
-        fetch --no-history android
-    fi
+if [ ! -d "$chromium_dir/src" ]; then
+    init_repo
     sync
 fi
 
@@ -166,9 +194,15 @@ if [ $gsync -eq 1 ]; then
     if [ -d "$chromium_dir/src/.git/rebase-apply" ]; then
         rm -fr "$chromium_dir/src/.git/rebase-apply"
     fi
-    find src -name index.lock -delete
+    find "$chromium_dir/src/.git" -name "*.lock" -delete
+    if [ ! -z $(find $chromium_dir/src/.git -name "*.lock") ]; then
+        rm -fr $chromium_dir/src
+        init_repo
+    fi
     sync
 fi
+
+mkdir -p "${root_dir}/apks/$date_time/x86_64" "${root_dir}/apks/$date_time/arm64" "${root_dir}/apks/$date_time/x86" "${root_dir}/apks/$date_time/arm"
 
 cd $chromium_dir/src
 . build/android/envsetup.sh
@@ -177,6 +211,12 @@ setup_ccache
 if [ ! -z "$arch" ]; then
     build $arch
 else
+    build arm
     build arm64
+    build x86
     build x64
+fi
+
+if [ -d "${root_dir}/apks" ]; then
+    find "${root_dir}/apks" -empty -type d -delete
 fi
