@@ -31,6 +31,14 @@ build() {
     apks="TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
+    if [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
+        build_args+=' is_cfi=false'
+        build_args+=' use_cfi_cast=false'
+    else
+        build_args+=' is_cfi=true'
+        build_args+=' use_cfi_cast=true'
+    fi
+
     code=$chromium_code
     if [ $1 '==' "arm" ] || [ $1 '==' "arm64" ]; then
         code+=50
