@@ -23,7 +23,7 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa
 
 RUN apt-get -qq update && \
     apt-get install -qqy --no-install-recommends \
-    python3.8 lib32z1 lighttpd xvfb libncurses5:i386 libstdc++6:i386 zlib1g:i386
+    python3.8 lib32z1 lighttpd xvfb libncurses5:i386 libstdc++6:i386 zlib1g:i386 ccache
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 2
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1

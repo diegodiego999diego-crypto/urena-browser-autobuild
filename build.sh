@@ -40,6 +40,8 @@ build() {
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
 
+    build_args+=' cc_wrapper="ccache"'
+
     gn gen "out/$1" --args="$build_args"
     ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
             trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk
@@ -65,6 +67,17 @@ build() {
             fi
         fi
     done
+}
+
+setup_ccache() {
+    echo ">> [$(date)] Settings up ccache"
+    export USE_CCACHE=1
+    export CCACHE_EXEC=$(command -v ccache)
+    export PATH=$chromium_dir/src/third_party/llvm-build/Release+Asserts/bin:$PATH
+    export CCACHE_CPP2=yes
+    export CCACHE_SLOPPINESS=time_macros
+    export CCACHE_DIR=$chromium_dir/.ccache
+    ccache -M 200G
 }
 
 patch() {
@@ -151,6 +164,7 @@ fi
 
 cd $chromium_dir/src
 . build/android/envsetup.sh
+setup_ccache
 
 if [ ! -z "$arch" ]; then
     build $arch
