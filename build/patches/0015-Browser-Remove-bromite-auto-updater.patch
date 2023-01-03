@@ -1,15 +1,16 @@
-From 6a89074ce04d8323ae8deb5a717aa30691b62a3c Mon Sep 17 00:00:00 2001
-From: TheScarastic <warabhishek@e.email>
-Date: Wed, 7 Dec 2022 08:11:21 +0000
-Subject: [PATCH 03/17] Revert "Bromite auto updater"
+From 16b585f43de105faf0298e21dbdd9a969b9af5a3 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Mon, 12 Dec 2022 13:48:01 +0530
+Subject: [PATCH 15/27] Browser: Remove bromite auto updater
 
-This reverts commit 7556a9a9d310baa119f5744ba6e3ccc244618c3b.
 ---
  .../java/templates/BuildConfig.template       |   2 -
  build/config/android/rules.gni                |   3 -
  chrome/android/chrome_java_sources.gni        |   3 -
+ .../android/java/res/layout/fre_tosanduma.xml |   9 -
  .../java/res/xml/about_chrome_preferences.xml |   5 -
  .../about_settings/AboutChromeSettings.java   |  28 +-
+ .../firstrun/ToSAndUMAFirstRunFragment.java   |  25 --
  .../chrome/browser/omaha/OmahaBase.java       |  57 +---
  .../chrome/browser/omaha/UpdateConfigs.java   |  30 +--
  .../browser/omaha/UpdateMenuItemHelper.java   |  82 +-----
@@ -28,7 +29,7 @@ This reverts commit 7556a9a9d310baa119f5744ba6e3ccc244618c3b.
  .../strings/android_chrome_strings.grd        |  23 +-
  .../endpoint_fetcher/endpoint_fetcher.cc      | 102 +-------
  .../endpoint_fetcher/endpoint_fetcher.h       |  22 +-
- 23 files changed, 53 insertions(+), 897 deletions(-)
+ 25 files changed, 53 insertions(+), 931 deletions(-)
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
@@ -73,6 +74,26 @@ index 25263cb9510f0..e76d977623624 100644
    "java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/HistogramUtils.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/TrackingProvider.java",
+diff --git a/chrome/android/java/res/layout/fre_tosanduma.xml b/chrome/android/java/res/layout/fre_tosanduma.xml
+index df7bd184a098f..90890fbf367f4 100644
+--- a/chrome/android/java/res/layout/fre_tosanduma.xml
++++ b/chrome/android/java/res/layout/fre_tosanduma.xml
+@@ -84,15 +84,6 @@ found in the LICENSE file.
+                         android:layout_marginBottom="@dimen/fre_tos_bottom_margin"
+                         android:lineSpacingMultiplier="1.4"
+                         android:textAppearance="@style/TextAppearance.TextMedium.Primary" />
+-
+-                    <CheckBox
+-                        android:id="@+id/auto_updater_checkbox"
+-                        android:layout_width="wrap_content"
+-                        android:layout_height="wrap_content"
+-                        android:lineSpacingMultiplier="1.4"
+-                        android:text="@string/auto_updater_check"
+-                        android:paddingStart="@dimen/fre_tos_checkbox_padding"
+-                        android:textAppearance="@style/TextAppearance.TextMedium.Primary" />
+                 </LinearLayout>
+ 
+                 <include
 diff --git a/chrome/android/java/res/xml/about_chrome_preferences.xml b/chrome/android/java/res/xml/about_chrome_preferences.xml
 index 61d465d136527..54b604b2636e4 100644
 --- a/chrome/android/java/res/xml/about_chrome_preferences.xml
@@ -147,6 +168,95 @@ index 5da0608895710..f59f62fdf971b 100644
 -        return true;
 -    }
  }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
+index 9de332c99045a..2da39d602db41 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
+@@ -64,8 +64,6 @@ public class ToSAndUMAFirstRunFragment
+     private boolean mUserInteractedWithUmaCheckbox;
+ 
+     private Button mAcceptButton;
+-    private CheckBox mAutoUpdaterCheckBox;
+-    private boolean mAutoUpdaterChecked;
+     private TextView mTosAndPrivacy;
+     private View mTitle;
+     private View mProgressSpinner;
+@@ -92,15 +90,10 @@ public class ToSAndUMAFirstRunFragment
+         mProgressSpinner = view.findViewById(R.id.progress_spinner);
+         mProgressSpinner.setVisibility(View.GONE);
+         mAcceptButton = (Button) view.findViewById(R.id.terms_accept);
+-        mAutoUpdaterCheckBox = (CheckBox) view.findViewById(R.id.auto_updater_checkbox);
+         mTosAndPrivacy = (TextView) view.findViewById(R.id.tos_and_privacy);
+ 
+         // Register event listeners.
+         mAcceptButton.setOnClickListener((v) -> onTosButtonClicked());
+-        mAutoUpdaterCheckBox.setOnCheckedChangeListener(
+-                ((compoundButton, isChecked) -> {
+-            mAutoUpdaterChecked = isChecked;
+-        }));
+ 
+         // Make TextView links clickable.
+         mTosAndPrivacy.setMovementMethod(LinkMovementMethod.getInstance());
+@@ -140,11 +133,6 @@ public class ToSAndUMAFirstRunFragment
+         if (!isVisibleToUser) {
+             // Restore original enabled & visibility states, in case the user returns to the page.
+             setSpinnerVisible(false);
+-        } else {
+-            // On certain versions of Android, the checkbox will appear unchecked upon revisiting
+-            // the page.  Force it to the end state of the drawable animation as a work around.
+-            // crbug.com/666258
+-            mAutoUpdaterCheckBox.jumpDrawablesToCurrentState();
+         }
+     }
+ 
+@@ -171,7 +159,6 @@ public class ToSAndUMAFirstRunFragment
+         assert !isWaitingForNativeAndPolicyInit();
+ 
+         setSpinnerVisible(false);
+-        mAutoUpdaterCheckBox.setChecked(true);
+     }
+ 
+     private void updateView() {
+@@ -181,8 +168,6 @@ public class ToSAndUMAFirstRunFragment
+         }
+ 
+         updateTosText();
+-
+-        updateReportCheckbox();
+     }
+ 
+     private SpanInfo buildPrivacyPolicyLink(String suffix, int url) {
+@@ -211,10 +196,6 @@ public class ToSAndUMAFirstRunFragment
+         mTosAndPrivacy.setText(SpanApplier.applySpans(tosString, spans.toArray(new SpanInfo[0])));
+     }
+ 
+-    private void updateReportCheckbox() {
+-        mAutoUpdaterCheckBox.setChecked(true);
+-    }
+-
+     private void onPolicyServiceInitialized(boolean onDevicePolicyFound) {
+         assert !mPolicyServiceInitialized;
+ 
+@@ -240,11 +221,6 @@ public class ToSAndUMAFirstRunFragment
+         mTosButtonClicked = true;
+         mTosAcceptedTime = SystemClock.elapsedRealtime();
+ 
+-        // save updater configuration only on button click
+-        SharedPreferences.Editor sharedPreferenceEditor = OmahaBase.getSharedPreferences().edit();
+-        sharedPreferenceEditor.putBoolean(OmahaBase.PREF_ALLOW_INLINE_UPDATE, mAutoUpdaterChecked);
+-        sharedPreferenceEditor.apply();
+-
+         tryMarkTermsAccepted(true);
+     }
+ 
+@@ -310,7 +286,6 @@ public class ToSAndUMAFirstRunFragment
+ 
+         mAcceptButton.setVisibility(visibility);
+         mTosAndPrivacy.setVisibility(visibility);
+-        mAutoUpdaterCheckBox.setVisibility(visibility);
+     }
+ 
+     protected View getToSAndPrivacyText() {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
 index af264b69a1ff0..4f80654a7db5a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
@@ -1612,5 +1722,5 @@ index b3d9a1804f6bf..6616c3d8a48b6 100644
  };
  
 -- 
-2.25.1
+2.34.1
 
