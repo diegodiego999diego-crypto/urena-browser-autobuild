@@ -1,0 +1,522 @@
+From 2c7448a485b9280063c537aa4f98df09ed710994 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Tue, 24 Jan 2023 05:10:24 +0000
+Subject: [PATCH 30/30] Remove webGL site setting
+
+---
+ .../browser_ui/site_settings/android/BUILD.gn |  3 -
+ .../BromiteCustomContentSettingImpl.java      |  1 -
+ .../BromiteWebGLContentSetting.java           | 85 -------------------
+ .../site_settings/SiteSettingsCategory.java   |  7 +-
+ .../strings/android/browser_ui_strings.grd    |  1 -
+ .../browser_ui/strings/android/webgl.grdp     | 18 ----
+ components/components_strings.grd             |  1 -
+ .../core/browser/content_settings_registry.cc | 14 ---
+ .../core/browser/content_settings_utils.cc    |  2 -
+ .../core/common/content_settings.cc           |  2 -
+ .../core/common/content_settings.h            |  1 -
+ .../core/common/content_settings.mojom        |  1 -
+ .../common/content_settings_mojom_traits.cc   |  1 -
+ .../common/content_settings_mojom_traits.h    |  5 --
+ .../core/common/content_settings_types.h      |  2 -
+ .../renderer/content_settings_agent_impl.cc   |  9 --
+ .../renderer/content_settings_agent_impl.h    |  1 -
+ .../platform/web_content_settings_client.h    |  2 -
+ .../execution_context/execution_context.cc    | 23 -----
+ .../execution_context/execution_context.h     |  5 --
+ .../webgl/webgl_rendering_context_base.cc     | 32 ++++---
+ .../webgl/webgl_rendering_context_base.h      |  2 -
+ 22 files changed, 22 insertions(+), 196 deletions(-)
+ delete mode 100644 components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteWebGLContentSetting.java
+ delete mode 100644 components/browser_ui/strings/android/webgl.grdp
+
+diff --git a/components/browser_ui/site_settings/android/BUILD.gn b/components/browser_ui/site_settings/android/BUILD.gn
+index 30db35d99b7d2..a2ebe582e3f54 100644
+--- a/components/browser_ui/site_settings/android/BUILD.gn
++++ b/components/browser_ui/site_settings/android/BUILD.gn
+@@ -92,9 +92,6 @@ android_library("java") {
+     "java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java",
+     "java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSetting.java",
+   ]
+-  sources += [
+-    "java/src/org/chromium/components/browser_ui/site_settings/BromiteWebGLContentSetting.java",
+-  ]
+   sources += [
+     "java/src/org/chromium/components/browser_ui/site_settings/BromiteWebRTCContentSetting.java",
+   ]
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java
+index 5c7ee75631852..fe79d7c6761b6 100644
+--- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java
++++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java
+@@ -43,7 +43,6 @@ public abstract class BromiteCustomContentSettingImpl {
+ 
+     static {
+         mItemList = new ArrayList<BromiteCustomContentSetting>();
+-        mItemList.add(new BromiteWebGLContentSetting());
+         mItemList.add(new BromiteWebRTCContentSetting());
+     }
+ 
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteWebGLContentSetting.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteWebGLContentSetting.java
+deleted file mode 100644
+index d775cd656886a..0000000000000
+--- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteWebGLContentSetting.java
++++ /dev/null
+@@ -1,85 +0,0 @@
+-/*
+-    This file is part of Bromite.
+-
+-    Bromite is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU General Public License as published by
+-    the Free Software Foundation, either version 3 of the License, or
+-    (at your option) any later version.
+-
+-    Bromite is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU General Public License for more details.
+-
+-    You should have received a copy of the GNU General Public License
+-    along with Bromite. If not, see <https://www.gnu.org/licenses/>.
+-*/
+-
+-package org.chromium.components.browser_ui.site_settings;
+-
+-import org.chromium.components.browser_ui.site_settings.ContentSettingsResources;
+-import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
+-import org.chromium.components.content_settings.ContentSettingValues;
+-import org.chromium.components.content_settings.ContentSettingsType;
+-import org.chromium.content_public.browser.BrowserContextHandle;
+-
+-import androidx.annotation.Nullable;
+-import androidx.preference.Preference;
+-import androidx.preference.PreferenceScreen;
+-
+-import java.util.ArrayList;
+-
+-public class BromiteWebGLContentSetting extends BromiteCustomContentSetting {
+-    public BromiteWebGLContentSetting() {
+-        super(/*contentSettingsType*/ ContentSettingsType.WEBGL,
+-              /*siteSettingsCategory*/ SiteSettingsCategory.Type.WEBGL,
+-              /*defaultEnabledValue*/ ContentSettingValues.ALLOW,
+-              /*defaultDisabledValue*/ ContentSettingValues.BLOCK,
+-              /*allowException*/ true,
+-              /*preferenceKey*/ "webgl",
+-              /*profilePrefKey*/ "webgl");
+-    }
+-
+-    @Override
+-    public ContentSettingsResources.ResourceItem getResourceItem() {
+-        return new ContentSettingsResources.ResourceItem(
+-            /*icon*/ R.drawable.web_asset,
+-            /*title*/ R.string.webgl_permission_title,
+-            /*defaultEnabledValue*/ getDefaultEnabledValue(),
+-            /*defaultDisabledValue*/ getDefaultDisabledValue(),
+-            /*enabledSummary*/ R.string.website_settings_category_webgl_enabled,
+-            /*disabledSummary*/ R.string.website_settings_category_webgl_disabled);
+-    }
+-
+-    @Override
+-    public int getCategorySummary(@Nullable @ContentSettingValues int value) {
+-        switch (value) {
+-            case ContentSettingValues.ALLOW:
+-                return R.string.website_settings_category_webgl_enabled;
+-            case ContentSettingValues.BLOCK:
+-                return R.string.website_settings_category_webgl_disabled;
+-            default:
+-                return 0;
+-        }
+-    }
+-
+-    @Override
+-    public boolean requiresTriStateContentSetting() {
+-        return false;
+-    }
+-
+-    @Override
+-    public boolean showOnlyDescriptions() {
+-        return true;
+-    }
+-
+-    @Override
+-    public int getAddExceptionDialogMessage() {
+-        return R.string.website_settings_category_webgl_enabled;
+-    }
+-
+-    @Override
+-    public @Nullable Boolean considerException(SiteSettingsCategory category, @ContentSettingValues int value) {
+-        return value != ContentSettingValues.BLOCK;
+-    }
+-}
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsCategory.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsCategory.java
+index fe5af0d886de9..144d868fff967 100644
+--- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsCategory.java
++++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsCategory.java
+@@ -44,7 +44,7 @@ public class SiteSettingsCategory {
+             Type.PROTECTED_MEDIA, Type.SENSORS, Type.SOUND, Type.USB, Type.VIRTUAL_REALITY,
+             Type.USE_STORAGE, Type.AUTO_DARK_WEB_CONTENT, Type.REQUEST_DESKTOP_SITE,
+             Type.FEDERATED_IDENTITY_API, Type.TIMEZONE_OVERRIDE, Type.AUTOPLAY, Type.JAVASCRIPT_JIT,
+-            Type.IMAGES, Type.WEBGL, Type.WEBRTC})
++            Type.IMAGES, Type.WEBRTC})
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface Type {
+         // All updates here must also be reflected in {@link #preferenceKey(int)
+@@ -79,12 +79,11 @@ public class SiteSettingsCategory {
+         int AUTOPLAY = 27;
+         int JAVASCRIPT_JIT = 28;
+         int IMAGES = 29;
+-        int WEBGL = 30;
+-        int WEBRTC = 31;
++        int WEBRTC = 30;
+         /**
+          * Number of handled categories used for calculating array sizes.
+          */
+-        int NUM_ENTRIES = 32;
++        int NUM_ENTRIES = 31;
+     }
+ 
+     private final BrowserContextHandle mBrowserContextHandle;
+diff --git a/components/browser_ui/strings/android/browser_ui_strings.grd b/components/browser_ui/strings/android/browser_ui_strings.grd
+index 33dd8eef87df7..ad6f9ebaaada7 100644
+--- a/components/browser_ui/strings/android/browser_ui_strings.grd
++++ b/components/browser_ui/strings/android/browser_ui_strings.grd
+@@ -174,7 +174,6 @@
+   <release seq="1">
+     <messages fallback_to_english="true">
+       <part file="site_settings.grdp" />
+-      <part file="webgl.grdp" />
+       <part file="webrtc.grdp" />
+ 
+       <message name="IDS_GOT_IT" desc="Button for the user to accept a disclosure/message" formatter_data="android_java">
+diff --git a/components/browser_ui/strings/android/webgl.grdp b/components/browser_ui/strings/android/webgl.grdp
+deleted file mode 100644
+index 1164f0f415b47..0000000000000
+--- a/components/browser_ui/strings/android/webgl.grdp
++++ /dev/null
+@@ -1,18 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<grit-part>
+-  <message name="IDS_SITE_SETTINGS_TYPE_WEBGL" desc="The label used for webgl site settings controls.">
+-    Webgl
+-  </message>
+-  <message name="IDS_SITE_SETTINGS_TYPE_WEBGL_MID_SENTENCE" desc="The label used for webgl site settings controls when used mid-sentence.">
+-    webgl
+-  </message>
+-  <message name="IDS_WEBGL_PERMISSION_TITLE" desc="Title of the permission to use webgl [CHAR-LIMIT=32]">
+-    Webgl
+-  </message>
+-  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_WEBGL_ENABLED" desc="Summary text explaining that webgl is full enabled.">
+-    Enabled
+-  </message>
+-  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_WEBGL_DISABLED" desc="Summary text explaining that webgl is full disabled.">
+-    Disabled
+-  </message>
+-</grit-part>
+diff --git a/components/components_strings.grd b/components/components_strings.grd
+index df8c44c4f6148..4393cb009b30a 100644
+--- a/components/components_strings.grd
++++ b/components/components_strings.grd
+@@ -339,7 +339,6 @@
+       <part file="webapps_strings.grdp" />
+       <part file="user_scripts/strings/userscripts_strings.grdp" />
+ 
+-      <part file="browser_ui/strings/android/webgl.grdp" />
+       <part file="browser_ui/strings/android/webrtc.grdp" />
+       <if expr="not is_ios">
+         <part file="history_clusters_strings.grdp" />
+diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
+index e50d13c335fdf..f34bd29633e0c 100644
+--- a/components/content_settings/core/browser/content_settings_registry.cc
++++ b/components/content_settings/core/browser/content_settings_registry.cc
+@@ -670,20 +670,6 @@ void ContentSettingsRegistry::Init() {
+            ContentSettingsInfo::PERSISTENT,
+            ContentSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
+ 
+-  Register(ContentSettingsType::WEBGL, "webgl", CONTENT_SETTING_BLOCK,
+-           WebsiteSettingsInfo::SYNCABLE,
+-           AllowlistedSchemes(),
+-           ValidSettings(CONTENT_SETTING_ALLOW,
+-                         CONTENT_SETTING_BLOCK),
+-           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
+-           WebsiteSettingsRegistry::PLATFORM_ANDROID,
+-           ContentSettingsInfo::INHERIT_IN_INCOGNITO,
+-           ContentSettingsInfo::PERSISTENT,
+-           ContentSettingsInfo::EXCEPTIONS_ON_SECURE_AND_INSECURE_ORIGINS,
+-           /*show_into_info_page*/ true,
+-           /*permission_type_ui*/ IDS_SITE_SETTINGS_TYPE_WEBGL,
+-           /*permission_type_ui_mid_sentence*/ IDS_SITE_SETTINGS_TYPE_WEBGL_MID_SENTENCE);
+-
+   Register(ContentSettingsType::WEBRTC, "webrtc", CONTENT_SETTING_BLOCK,
+            WebsiteSettingsInfo::SYNCABLE,
+            AllowlistedSchemes(),
+diff --git a/components/content_settings/core/browser/content_settings_utils.cc b/components/content_settings/core/browser/content_settings_utils.cc
+index 23a5c96130eb3..9973c3efc3848 100644
+--- a/components/content_settings/core/browser/content_settings_utils.cc
++++ b/components/content_settings/core/browser/content_settings_utils.cc
+@@ -156,8 +156,6 @@ void GetRendererContentSettingRules(const HostContentSettingsMap* map,
+   std::string timezone;
+   map->GetTimezoneOverrideValue(timezone);
+   rules->timezone_override_value = timezone;
+-  map->GetSettingsForOneType(ContentSettingsType::WEBGL,
+-                             &(rules->webgl_rules));
+   map->GetSettingsForOneType(ContentSettingsType::WEBRTC,
+                              &(rules->webrtc_rules));
+ }
+diff --git a/components/content_settings/core/common/content_settings.cc b/components/content_settings/core/common/content_settings.cc
+index d780d29f87517..91646ac178fb8 100644
+--- a/components/content_settings/core/common/content_settings.cc
++++ b/components/content_settings/core/common/content_settings.cc
+@@ -207,7 +207,6 @@ bool RendererContentSettingRules::IsRendererContentSetting(
+          content_type == ContentSettingsType::MIXEDSCRIPT ||
+          content_type == ContentSettingsType::AUTO_DARK_WEB_CONTENT ||
+          content_type == ContentSettingsType::TIMEZONE_OVERRIDE ||
+-         content_type == ContentSettingsType::WEBGL ||
+          content_type == ContentSettingsType::WEBRTC;
+ }
+ 
+@@ -220,7 +219,6 @@ void RendererContentSettingRules::FilterRulesByOutermostMainFrameURL(
+   FilterRulesForType(auto_dark_content_rules, outermost_main_frame_url);
+   FilterRulesForType(timezone_override_rules, outermost_main_frame_url);
+   FilterRulesForType(autoplay_rules, outermost_main_frame_url);
+-  FilterRulesForType(webgl_rules, outermost_main_frame_url);
+   FilterRulesForType(webrtc_rules, outermost_main_frame_url);
+ }
+ 
+diff --git a/components/content_settings/core/common/content_settings.h b/components/content_settings/core/common/content_settings.h
+index 90e5c4ffd66fe..4b7edca09e178 100644
+--- a/components/content_settings/core/common/content_settings.h
++++ b/components/content_settings/core/common/content_settings.h
+@@ -96,7 +96,6 @@ struct RendererContentSettingRules {
+   ContentSettingsForOneType auto_dark_content_rules;
+   ContentSettingsForOneType timezone_override_rules;
+   std::string timezone_override_value;
+-  ContentSettingsForOneType webgl_rules;
+   ContentSettingsForOneType webrtc_rules;
+ };
+ 
+diff --git a/components/content_settings/core/common/content_settings.mojom b/components/content_settings/core/common/content_settings.mojom
+index fb2cf85ef8944..b5d800ae4776f 100644
+--- a/components/content_settings/core/common/content_settings.mojom
++++ b/components/content_settings/core/common/content_settings.mojom
+@@ -81,6 +81,5 @@ struct RendererContentSettingRules {
+   array<ContentSettingPatternSource> auto_dark_content_rules;
+   array<ContentSettingPatternSource> timezone_override_rules;
+   string timezone_override_value;
+-  array<ContentSettingPatternSource> webgl_rules;
+   array<ContentSettingPatternSource> webrtc_rules;
+ };
+diff --git a/components/content_settings/core/common/content_settings_mojom_traits.cc b/components/content_settings/core/common/content_settings_mojom_traits.cc
+index 5eb84dc62ee70..c4dc8a7e0253e 100644
+--- a/components/content_settings/core/common/content_settings_mojom_traits.cc
++++ b/components/content_settings/core/common/content_settings_mojom_traits.cc
+@@ -106,7 +106,6 @@ bool StructTraits<content_settings::mojom::RendererContentSettingRulesDataView,
+          data.ReadAutoDarkContentRules(&out->auto_dark_content_rules) &&
+          data.ReadTimezoneOverrideRules(&out->timezone_override_rules) &&
+          data.ReadTimezoneOverrideValue(&out->timezone_override_value) &&
+-         data.ReadWebglRules(&out->webgl_rules) &&
+          data.ReadWebrtcRules(&out->webrtc_rules);
+ }
+ 
+diff --git a/components/content_settings/core/common/content_settings_mojom_traits.h b/components/content_settings/core/common/content_settings_mojom_traits.h
+index ae6e082e50b06..df892367c9e94 100644
+--- a/components/content_settings/core/common/content_settings_mojom_traits.h
++++ b/components/content_settings/core/common/content_settings_mojom_traits.h
+@@ -165,11 +165,6 @@ struct StructTraits<
+     return r.timezone_override_value;
+   }
+ 
+-  static const std::vector<ContentSettingPatternSource>& webgl_rules(
+-      const RendererContentSettingRules& r) {
+-    return r.webgl_rules;
+-  }
+-
+   static const std::vector<ContentSettingPatternSource>& webrtc_rules(
+       const RendererContentSettingRules& r) {
+     return r.webrtc_rules;
+diff --git a/components/content_settings/core/common/content_settings_types.h b/components/content_settings/core/common/content_settings_types.h
+index d4f2a57c7b7da..479332f739ae2 100644
+--- a/components/content_settings/core/common/content_settings_types.h
++++ b/components/content_settings/core/common/content_settings_types.h
+@@ -277,8 +277,6 @@ enum class ContentSettingsType : int32_t {
+   // site instead of the mobile one.
+   REQUEST_DESKTOP_SITE,
+ 
+-  WEBGL,
+-
+   WEBRTC,
+ 
+   // Setting to indicate whether browser should allow signing into a website via
+diff --git a/components/content_settings/renderer/content_settings_agent_impl.cc b/components/content_settings/renderer/content_settings_agent_impl.cc
+index d06b06ea29fba..fb74042dcfa68 100644
+--- a/components/content_settings/renderer/content_settings_agent_impl.cc
++++ b/components/content_settings/renderer/content_settings_agent_impl.cc
+@@ -449,15 +449,6 @@ void ContentSettingsAgentImpl::ClearBlockedContentSettings() {
+   cached_script_permissions_.clear();
+ }
+ 
+-bool ContentSettingsAgentImpl::AllowWebgl(bool enabled_per_settings) {
+-  if (!content_setting_rules_)
+-    return false;
+-  blink::WebLocalFrame* frame = render_frame()->GetWebFrame();
+-  return CONTENT_SETTING_ALLOW == GetContentSettingFromRules(
+-             content_setting_rules_->webgl_rules,
+-             url::Origin(frame->GetDocument().GetSecurityOrigin()).GetURL());
+-}
+-
+ bool ContentSettingsAgentImpl::AllowWebRTC(bool enabled_per_settings) {
+   if (!content_setting_rules_)
+     return false;
+diff --git a/components/content_settings/renderer/content_settings_agent_impl.h b/components/content_settings/renderer/content_settings_agent_impl.h
+index ef035d83b02d5..82ce1939d95bf 100644
+--- a/components/content_settings/renderer/content_settings_agent_impl.h
++++ b/components/content_settings/renderer/content_settings_agent_impl.h
+@@ -99,7 +99,6 @@ class ContentSettingsAgentImpl
+   bool AllowAutoplay(bool default_value) override;
+   bool AllowPopupsAndRedirects(bool default_value) override;
+   bool ShouldAutoupgradeMixedContent() override;
+-  bool AllowWebgl(bool enabled_per_settings) override;
+   bool AllowWebRTC(bool enabled_per_settings) override;
+ 
+   bool allow_running_insecure_content() const {
+diff --git a/third_party/blink/public/platform/web_content_settings_client.h b/third_party/blink/public/platform/web_content_settings_client.h
+index 8b0cb6245726f..2328893fd8f13 100644
+--- a/third_party/blink/public/platform/web_content_settings_client.h
++++ b/third_party/blink/public/platform/web_content_settings_client.h
+@@ -99,8 +99,6 @@ class WebContentSettingsClient {
+     return default_value;
+   }
+ 
+-  virtual bool AllowWebgl(bool default_value) { return default_value; }
+-
+   virtual bool AllowWebRTC(bool default_value) { return default_value; }
+ 
+   // Reports that passive mixed content was found at the provided URL.
+diff --git a/third_party/blink/renderer/core/execution_context/execution_context.cc b/third_party/blink/renderer/core/execution_context/execution_context.cc
+index 8680349a8b5c7..fd888b7af7357 100644
+--- a/third_party/blink/renderer/core/execution_context/execution_context.cc
++++ b/third_party/blink/renderer/core/execution_context/execution_context.cc
+@@ -65,29 +65,6 @@
+ 
+ namespace blink {
+ 
+-blink::WebContentSettingsClient* GetContentSettingsClientFor(
+-    ExecutionContext* context) {
+-  blink::WebContentSettingsClient* settings = nullptr;
+-  if (!context)
+-    return settings;
+-  if (auto* window = blink::DynamicTo<blink::LocalDOMWindow>(context)) {
+-    auto* frame = window->GetFrame();
+-    if (frame)
+-      settings = frame->GetContentSettingsClient();
+-  } else if (context->IsWorkerGlobalScope()) {
+-    settings =
+-        blink::To<blink::WorkerGlobalScope>(context)->ContentSettingsClient();
+-  }
+-  return settings;
+-}
+-
+-bool AllowWebgl(ExecutionContext* context) {
+-  blink::WebContentSettingsClient* settings = GetContentSettingsClientFor(context);
+-  if (settings)
+-    return settings->AllowWebgl(false);
+-  return false;
+-}
+-
+ ExecutionContext::ExecutionContext(v8::Isolate* isolate, Agent* agent)
+     : isolate_(isolate),
+       security_context_(this),
+diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
+index 20a7f5d8388bb..c4cd4abf13710 100644
+--- a/third_party/blink/renderer/core/execution_context/execution_context.h
++++ b/third_party/blink/renderer/core/execution_context/execution_context.h
+@@ -97,7 +97,6 @@ class SecurityOrigin;
+ class ScriptState;
+ class ScriptWrappable;
+ class TrustedTypePolicyFactory;
+-class WebContentSettingsClient;
+ 
+ enum ReasonForCallingCanExecuteScripts {
+   kAboutToExecuteScript,
+@@ -106,10 +105,6 @@ enum ReasonForCallingCanExecuteScripts {
+ 
+ enum ReferrerPolicySource { kPolicySourceHttpHeader, kPolicySourceMetaTag };
+ 
+-CORE_EXPORT bool AllowWebgl(ExecutionContext* context);
+-CORE_EXPORT WebContentSettingsClient* GetContentSettingsClientFor(
+-    ExecutionContext* context);
+-
+ // An environment in which script can execute. This class exposes the common
+ // properties of script execution environments on the web (i.e, common between
+ // script executing in a window and script executing in a worker), such as:
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index 9e479fb5c68e6..8fbce131d42bd 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -246,13 +246,6 @@ void WebGLRenderingContextBase::InitializeWebGLContextLimits(
+   }
+ }
+ 
+-bool WebGLRenderingContextBase::AllowWebglForHost(blink::CanvasRenderingContextHost* host) {
+-  if (!host)
+-    return false;
+-  blink::ExecutionContext* context = host->GetTopExecutionContext();
+-  return blink::AllowWebgl(context);
+-}
+-
+ unsigned WebGLRenderingContextBase::CurrentMaxGLContexts() {
+   base::AutoLock locker(WebGLContextLimitLock());
+   DCHECK(webgl_context_limits_initialized_);
+@@ -499,6 +492,25 @@ static String ExtractWebGLContextCreationError(
+     const Platform::GraphicsInfo& info) {
+   StringBuilder builder;
+   builder.Append("Could not create a WebGL context");
++  FormatWebGLStatusString(
++      "VENDOR",
++      info.vendor_id ? String::Format("0x%04x", info.vendor_id) : "0xffff",
++      builder);
++  FormatWebGLStatusString(
++      "DEVICE",
++      info.device_id ? String::Format("0x%04x", info.device_id) : "0xffff",
++      builder);
++  FormatWebGLStatusString("GL_VENDOR", info.vendor_info, builder);
++  FormatWebGLStatusString("GL_RENDERER", info.renderer_info, builder);
++  FormatWebGLStatusString("GL_VERSION", info.driver_version, builder);
++  FormatWebGLStatusString("Sandboxed", info.sandboxed ? "yes" : "no", builder);
++  FormatWebGLStatusString("Optimus", info.optimus ? "yes" : "no", builder);
++  FormatWebGLStatusString("AMD switchable", info.amd_switchable ? "yes" : "no",
++                          builder);
++  FormatWebGLStatusString(
++      "Reset notification strategy",
++      String::Format("0x%04x", info.reset_notification_strategy).Utf8().c_str(),
++      builder);
+   FormatWebGLStatusString("ErrorMessage", info.error_message.Utf8().c_str(),
+                           builder);
+   builder.Append('.');
+@@ -566,12 +578,6 @@ WebGLRenderingContextBase::CreateWebGraphicsContext3DProvider(
+     const CanvasContextCreationAttributesCore& attributes,
+     Platform::ContextType context_type,
+     Platform::GraphicsInfo* graphics_info) {
+-  if (!AllowWebglForHost(host)) {
+-    host->HostDispatchEvent(WebGLContextEvent::Create(
+-        event_type_names::kWebglcontextcreationerror,
+-        "disabled by site settings policy."));
+-    return nullptr;
+-  }
+   if ((context_type == Platform::kWebGL1ContextType &&
+        !host->IsWebGL1Enabled()) ||
+       (context_type == Platform::kWebGL2ContextType &&
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+index 4327e3f9d8b80..20fecc269f259 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -1920,8 +1920,6 @@ class MODULES_EXPORT WebGLRenderingContextBase : public CanvasRenderingContext,
+                         DOMArrayBufferView* pixels,
+                         int64_t offset);
+ 
+-  static bool AllowWebglForHost(blink::CanvasRenderingContextHost* host);
+-
+   // Record Canvas/OffscreenCanvas.RenderingContextDrawnTo at the first draw
+   // call.
+   void RecordUKMCanvasDrawnToAtFirstDrawCall();
+-- 
+2.25.1
+
