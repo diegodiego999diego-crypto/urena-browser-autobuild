@@ -13,6 +13,7 @@ chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
 history=1
+test=0
 arch=""
 
 usage() {
@@ -53,6 +54,16 @@ build() {
     fi
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
+
+    # AOSP test-key signing for non docker builds
+    if [ $test -eq 1 ]; then
+        echo ">> [$(date)] Using AOSP test-key to sign"
+        keystore_path="${root_dir}/build/platform.jks"
+        build_args+=' android_keystore_path="'$keystore_path'"'
+        build_args+=' android_keystore_name="platform"'
+        build_args+=' android_keystore_password="platform"'
+        build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
+    fi
 
     if [ $clean -eq 1 ] && [ -d "out/$1" ]; then
         rm -rf "out/$1"
@@ -151,12 +162,13 @@ init_repo(){
     fi
 }
 
-while getopts ":a:chr:s" opt; do
+while getopts ":a:chr:st" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     h) usage ;;
     s) gsync=1 && history=0 ;;
+    t) test=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
