@@ -14,6 +14,7 @@ clean=0
 gsync=0
 history=1
 test=0
+vanilla=0
 arch=""
 
 usage() {
@@ -33,6 +34,10 @@ build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
     apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
+
+    if [ $vanilla -eq 1 ]; then
+        build_args="$(cat "${root_dir}"/build/vanilla.gn_args) target_cpu=\"${1}\" "
+    fi
 
     if [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
         build_args+=' is_cfi=false'
@@ -128,21 +133,32 @@ patch() {
     cd $chromium_dir/src
     echo ">> [$(date)] Applying bromite and /e/ patches"
 
-    bromite_patches_list=$(cat "${root_dir}/bromite/build/bromite_patches_list.txt")
-    for file in $bromite_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/bromite/build/patches/$file"
-    done
+    if [ $vanilla -eq 1 ]; then
+        vanilla_patches_list=$(cat "${root_dir}/build/vanilla_patches_list.txt")
+        for file in $vanilla_patches_list; do
+            git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
+        done
+    else
+        bromite_patches_list=$(cat "${root_dir}/bromite/build/bromite_patches_list.txt")
+        for file in $bromite_patches_list; do
+            git am -3 --ignore-whitespace "${root_dir}/bromite/build/patches/$file"
+        done
 
-    e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
-    for file in $e_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
-    done
+        e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
+        for file in $e_patches_list; do
+            git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
+        done
+    fi
 }
 
 sync() {
     echo ">> [$(date)] Syncing chromium $chromium_version"
     cd $chromium_dir
-    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    if [ $vanilla -eq 1 ]; then
+        cp ${root_dir}/.vanilla_gclient $chromium_dir/.gclient
+    else
+        cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    fi
     if [ $history -eq 1 ]; then
         yes | gclient sync -D -R -r $chromium_version
     else
@@ -162,13 +178,14 @@ init_repo(){
     fi
 }
 
-while getopts ":a:chr:st" opt; do
+while getopts ":a:chr:stv" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     h) usage ;;
     s) gsync=1 && history=0 ;;
     t) test=1 ;;
+    v) vanilla=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
