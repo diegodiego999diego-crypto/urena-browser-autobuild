@@ -126,6 +126,9 @@ patch() {
     for file in $e_patches_list; do
         git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
     done
+
+    # Rename Chrome to Browser
+    bash ${root_dir}/rename.sh
 }
 
 sync() {
