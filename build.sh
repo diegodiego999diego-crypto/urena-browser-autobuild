@@ -32,6 +32,27 @@ build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
     apks="ChromePublic SystemWebView"
     build_args="$(cat "${root_dir}"/build/bromite.gn_args) target_cpu=\"${1}\" "
+    remove_args=(
+        "is_cfi=true"
+        "use_cfi_cast=true"
+    )
+    add_args=(
+        "use_relative_vtables_abi=false"
+        "cc_wrapper=\"ccache\""
+        "is_cfi=false"
+        "use_cfi_cast=false"
+        "use_thin_lto=false"
+    )
+
+    # Remove from build_args
+    for var in "${remove_args[@]}"; do
+        build_args="$(echo "$build_args" | sed "/$var/d")"
+    done
+
+    # Add to build_args
+    for var in "${add_args[@]}"; do
+        build_args+=" $var"
+    done
 
     code=$chromium_code
     if [ $1 '==' "arm" ]; then
@@ -49,8 +70,6 @@ build() {
     if [ $clean -eq 1 ] && [ -d "out/$1" ]; then
         rm -rf "out/$1"
     fi
-
-    build_args+=' cc_wrapper="ccache"'
 
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
