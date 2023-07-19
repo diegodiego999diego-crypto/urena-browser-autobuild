@@ -30,10 +30,8 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 RUN update-alternatives  --set python3 /usr/bin/python3.8
 
 # Install chromium build dependencies
-RUN curl -s https://raw.githubusercontent.com/chromium/chromium/main/build/install-build-deps.sh \
-    | perl -pe 's/apt-get install \$\{do_quietly-}/DEBIAN_FRONTEND=noninteractive apt-get install -y/' \
-    | bash -e -s - \
-    --no-syms --lib32 --no-arm --no-chromeos-fonts --no-nacl --no-prompt
+RUN curl -s https://raw.githubusercontent.com/chromium/chromium/main/build/install-build-deps.py \
+    | python3 - --no-syms --lib32 --no-arm --no-chromeos-fonts --no-nacl --no-prompt
 
 RUN apt-get -f install
 
