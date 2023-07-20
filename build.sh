@@ -30,24 +30,13 @@ usage() {
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="ChromePublic SystemWebView"
+    apks="ChromePublic"
     build_args="$(cat "${root_dir}"/build/bromite.gn_args) target_cpu=\"${1}\" "
-    remove_args=(
-        "is_cfi=true"
-        "use_cfi_cast=true"
-    )
     add_args=(
+        "generate_linker_map=true"
         "use_relative_vtables_abi=false"
         "cc_wrapper=\"ccache\""
-        "is_cfi=false"
-        "use_cfi_cast=false"
-        "use_thin_lto=false"
     )
-
-    # Remove from build_args
-    for var in "${remove_args[@]}"; do
-        build_args="$(echo "$build_args" | sed "/$var/d")"
-    done
 
     # Add to build_args
     for var in "${add_args[@]}"; do
@@ -73,7 +62,7 @@ build() {
 
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
-    ninja -C out/$1 chrome_public_apk system_webview_apk
+    ninja -C out/$1 chrome_public_apk
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
@@ -83,12 +72,6 @@ build() {
                     mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/x86_64/ChromePublic.apk"
                 else
                     mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/${1}/ChromePublic.apk"
-                fi
-            elif [[ "$apk.apk" == SystemWebView.apk ]]; then
-                if [ "$1" = "x64" ]; then
-                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/x86_64/SystemWebView.apk"
-                else
-                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/${1}/SystemWebView.apk"
                 fi
             fi
         fi
