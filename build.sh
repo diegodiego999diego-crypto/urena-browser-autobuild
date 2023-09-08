@@ -8,7 +8,7 @@ if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
 date_time=$(date '+%Y%m%d%H%M%S')
-chromium_version=$(head -n 1 "${root_dir}/bromite/CHANGELOG.md" | sed 's/# \(.*\)/\1/')
+chromium_version="108.0.5359.156"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0

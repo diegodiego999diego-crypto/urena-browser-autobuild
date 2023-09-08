@@ -1,0 +1,236 @@
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Sun, 8 Jul 2018 18:16:34 +0200
+Subject: Disable fetching of all field trials
+
+Disable seed-based field trials.
+Disable reporting of Omnibox suggestions header.
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ android_webview/nonembedded/BUILD.gn          |  2 --
+ .../services/VariationsSeedServer.java        |  2 --
+ .../metrics/chrome_browser_sampling_trials.cc |  4 +++
+ components/ukm/ukm_recorder_impl.cc           |  3 +++
+ .../firstrun/VariationsSeedBridge.java        |  2 +-
+ .../firstrun/VariationsSeedFetcher.java       | 26 ++++---------------
+ .../variations/net/omnibox_http_headers.cc    |  4 +--
+ .../variations/net/variations_http_headers.cc |  3 +++
+ .../service/variations_field_trial_creator.cc |  3 ++-
+ .../variations/service/variations_service.cc  | 15 +++--------
+ .../renderer/core/loader/document_loader.cc   |  7 -----
+ 11 files changed, 23 insertions(+), 48 deletions(-)
+
+diff --git a/android_webview/nonembedded/BUILD.gn b/android_webview/nonembedded/BUILD.gn
+--- a/android_webview/nonembedded/BUILD.gn
++++ b/android_webview/nonembedded/BUILD.gn
+@@ -106,7 +106,6 @@ android_library("services_java") {
+   sources = [
+     "java/src/org/chromium/android_webview/services/AwMinidumpUploadJobService.java",
+     "java/src/org/chromium/android_webview/services/AwMinidumpUploaderDelegate.java",
+-    "java/src/org/chromium/android_webview/services/AwVariationsSeedFetcher.java",
+     "java/src/org/chromium/android_webview/services/ComponentUpdaterSafeModeUtils.java",
+     "java/src/org/chromium/android_webview/services/ComponentsProviderPathUtil.java",
+     "java/src/org/chromium/android_webview/services/ComponentsProviderService.java",
+@@ -119,7 +118,6 @@ android_library("services_java") {
+     "java/src/org/chromium/android_webview/services/SafeModeService.java",
+     "java/src/org/chromium/android_webview/services/ServicesStatsHelper.java",
+     "java/src/org/chromium/android_webview/services/StartupFeatureMetadataHolder.java",
+-    "java/src/org/chromium/android_webview/services/VariationsSeedHolder.java",
+     "java/src/org/chromium/android_webview/services/VariationsSeedServer.java",
+   ]
+   deps = [
+diff --git a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/VariationsSeedServer.java b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/VariationsSeedServer.java
+--- a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/VariationsSeedServer.java
++++ b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/VariationsSeedServer.java
+@@ -31,8 +31,6 @@ public class VariationsSeedServer extends Service {
+         @Override
+         public void getSeed(ParcelFileDescriptor newSeedFile, long oldSeedDate,
+                 IVariationsSeedServerCallback callback) {
+-            maybeReportMetrics(callback);
+-            VariationsSeedHolder.getInstance().writeSeedIfNewer(newSeedFile, oldSeedDate);
+         }
+     };
+ 
+diff --git a/chrome/browser/metrics/chrome_browser_sampling_trials.cc b/chrome/browser/metrics/chrome_browser_sampling_trials.cc
+--- a/chrome/browser/metrics/chrome_browser_sampling_trials.cc
++++ b/chrome/browser/metrics/chrome_browser_sampling_trials.cc
+@@ -54,6 +54,8 @@ void CreateFallbackSamplingTrial(
+     const std::string& feature_name,
+     const int sampled_in_rate_per_mille,
+     base::FeatureList* feature_list) {
++  if ((true))
++    return;
+   scoped_refptr<base::FieldTrial> trial(
+       base::FieldTrialList::FactoryGetFieldTrial(
+           trial_name, /*total_probability=*/1000, "Default", entropy_provider));
+@@ -93,6 +95,8 @@ void CreateFallbackUkmSamplingTrial(
+     const base::FieldTrial::EntropyProvider& entropy_provider,
+     bool is_stable_channel,
+     base::FeatureList* feature_list) {
++  if ((true))
++    return;
+   static const char kSampledGroup_Stable[] = "Sampled_NoSeed_Stable";
+   static const char kSampledGroup_Other[] = "Sampled_NoSeed_Other";
+   const char* sampled_group = kSampledGroup_Other;
+diff --git a/components/ukm/ukm_recorder_impl.cc b/components/ukm/ukm_recorder_impl.cc
+--- a/components/ukm/ukm_recorder_impl.cc
++++ b/components/ukm/ukm_recorder_impl.cc
+@@ -206,6 +206,9 @@ bool HasUnknownMetrics(const builders::DecodeMap& decode_map,
+ 
+ UkmRecorderImpl::UkmRecorderImpl()
+     : sampling_seed_(static_cast<uint32_t>(base::RandUint64())) {
++  if ((true))
++    return;
++
+   max_kept_sources_ =
+       static_cast<size_t>(base::GetFieldTrialParamByFeatureAsInt(
+           kUkmFeature, "MaxKeptSources", max_kept_sources_));
+diff --git a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedBridge.java b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedBridge.java
+--- a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedBridge.java
++++ b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedBridge.java
+@@ -51,7 +51,7 @@ public class VariationsSeedBridge {
+     }
+ 
+     @CalledByNative
+-    private static void clearFirstRunPrefs() {
++    public static void clearFirstRunPrefs() {
+         ContextUtils.getAppSharedPreferences()
+                 .edit()
+                 .remove(VARIATIONS_FIRST_RUN_SEED_BASE64)
+diff --git a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
+--- a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
++++ b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
+@@ -340,29 +340,13 @@ public class VariationsSeedFetcher {
+      */
+     public void fetchSeed(String restrictMode, String milestone, String channel) {
+         assert !ThreadUtils.runningOnUiThread();
+-        // Prevent multiple simultaneous fetches
+-        synchronized (sLock) {
+-            SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+-            // Early return if an attempt has already been made to fetch the seed, even if it
+-            // failed. Only attempt to get the initial Java seed once, since a failure probably
+-            // indicates a network problem that is unlikely to be resolved by a second attempt.
+-            // Note that VariationsSeedBridge.hasNativePref() is a pure Java function, reading an
+-            // Android preference that is set when the seed is fetched by the native code.
+-            if (prefs.getBoolean(VARIATIONS_INITIALIZED_PREF, false)
+-                    || VariationsSeedBridge.hasNativePref()) {
+-                return;
+-            }
++         synchronized (sLock) {
++            VariationsSeedBridge.clearFirstRunPrefs();
+ 
+-            SeedFetchInfo fetchInfo = downloadContent(
+-                    VariationsPlatform.ANDROID, restrictMode, milestone, channel, null);
+-            if (fetchInfo.seedInfo != null) {
+-                SeedInfo info = fetchInfo.seedInfo;
+-                VariationsSeedBridge.setVariationsFirstRunSeed(info.seedData, info.signature,
+-                        info.country, info.date, info.isGzipCompressed);
+-            }
++            SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+             // VARIATIONS_INITIALIZED_PREF should still be set to true when exceptions occur
+             prefs.edit().putBoolean(VARIATIONS_INITIALIZED_PREF, true).apply();
+-        }
++         }
+     }
+ 
+     private void recordFetchResultOrCode(int resultOrCode) {
+@@ -405,7 +389,7 @@ public class VariationsSeedFetcher {
+      * @param curSeedInfo optional currently saved seed info to set the `If-None-Match` header.
+      * @return the object holds the request result and seed data with its related header fields.
+      */
+-    public SeedFetchInfo downloadContent(@VariationsPlatform int platform, String restrictMode,
++    private SeedFetchInfo downloadContent(@VariationsPlatform int platform, String restrictMode,
+             String milestone, String channel, @Nullable SeedInfo curSeedInfo) {
+         SeedFetchInfo fetchInfo = new SeedFetchInfo();
+         HttpURLConnection connection = null;
+diff --git a/components/variations/net/omnibox_http_headers.cc b/components/variations/net/omnibox_http_headers.cc
+--- a/components/variations/net/omnibox_http_headers.cc
++++ b/components/variations/net/omnibox_http_headers.cc
+@@ -21,8 +21,8 @@ const char kOmniboxOnDeviceSuggestionsHeader[] =
+ // Whether to enable reporting the header. Included as a quick escape hatch in
+ // case of crashes.
+ BASE_FEATURE(kReportOmniboxOnDeviceSuggestionsHeader,
+-             "ReportOmniboxOnDeviceSuggestionsHeader",
+-             base::FEATURE_ENABLED_BY_DEFAULT);
++             "ReportOmniboxOnDeviceSuggestionsHeader",  // disabled by default
++             base::FEATURE_DISABLED_BY_DEFAULT);        // in Bromite
+ 
+ std::string GetHeaderValue() {
+   const std::string group =
+diff --git a/components/variations/net/variations_http_headers.cc b/components/variations/net/variations_http_headers.cc
+--- a/components/variations/net/variations_http_headers.cc
++++ b/components/variations/net/variations_http_headers.cc
+@@ -257,6 +257,9 @@ class VariationsHeaderHelper {
+   VariationsHeaderHelper& operator=(const VariationsHeaderHelper&) = delete;
+ 
+   bool AppendHeaderIfNeeded(const GURL& url, InIncognito incognito) {
++    if((true))
++      return false;
++
+     AppendOmniboxOnDeviceSuggestionsHeaderIfNeeded(url, resource_request_);
+ 
+     // Note the criteria for attaching client experiment headers:
+diff --git a/components/variations/service/variations_field_trial_creator.cc b/components/variations/service/variations_field_trial_creator.cc
+--- a/components/variations/service/variations_field_trial_creator.cc
++++ b/components/variations/service/variations_field_trial_creator.cc
+@@ -161,7 +161,8 @@ Study::CpuArchitecture GetCurrentCpuArchitecture() {
+ // "--variations-server-url" switches are passed. It is however possible to
+ // apply the testing config as well as specify additional field trials (using
+ // "--force-fieldtrials") by using the "--enable-field-trial-config" switch.
+-bool ShouldUseFieldTrialTestingConfig(const base::CommandLine* command_line) {
++bool ShouldUseFieldTrialTestingConfig(const base::CommandLine* command_line) { // disabled in Bromite
++  if ((true)) return false;
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   return command_line->HasSwitch(switches::kEnableFieldTrialTestingConfig);
+ #else
+diff --git a/components/variations/service/variations_service.cc b/components/variations/service/variations_service.cc
+--- a/components/variations/service/variations_service.cc
++++ b/components/variations/service/variations_service.cc
+@@ -220,17 +220,8 @@ bool GetInstanceManipulations(const net::HttpResponseHeaders* headers,
+ // Variations seed fetching is only enabled in official Chrome builds, if a URL
+ // is specified on the command line, and for testing.
+ bool IsFetchingEnabled() {
+-#if !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          switches::kVariationsServerURL) &&
+-      !g_should_fetch_for_testing) {
+-    DVLOG(1)
+-        << "Not performing repeated fetching in unofficial build without --"
+-        << switches::kVariationsServerURL << " specified.";
+-    return false;
+-  }
+-#endif
+-  return true;
++  // set to false even if not used on Android
++  return false;
+ }
+ 
+ // Returns the already downloaded first run seed, and clear the seed from the
+@@ -589,7 +580,7 @@ bool VariationsService::DoFetchFromURL(const GURL& url, bool is_http_retry) {
+   // debugger or if the machine was suspended) and OnURLFetchComplete() hasn't
+   // had a chance to run yet from the previous request. In this case, don't
+   // start a new request and just let the previous one finish.
+-  if (pending_seed_request_)
++  if ((true) || pending_seed_request_)
+     return false;
+ 
+   last_request_was_http_retry_ = is_http_retry;
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -173,13 +173,6 @@ Vector<OriginTrialFeature> CopyInitiatorOriginTrials(
+ WebVector<int> CopyInitiatorOriginTrials(
+     const Vector<OriginTrialFeature>& initiator_origin_trial_features) {
+   WebVector<int> result;
+-  for (auto feature : initiator_origin_trial_features) {
+-    // Convert from OriginTrialFeature to int. These values are passed between
+-    // blink navigations. OriginTrialFeature isn't visible outside of blink (and
+-    // doesn't need to be) so the values are transferred outside of blink as
+-    // ints and casted to OriginTrialFeature once being processed in blink.
+-    result.emplace_back(static_cast<int>(feature));
+-  }
+   return result;
+ }
+ 
+--
+2.25.1
