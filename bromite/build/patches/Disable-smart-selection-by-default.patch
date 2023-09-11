@@ -1,6 +1,7 @@
+From e786b5cf081cb290397009ebe5341b4c6b3cd66c Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Fri, 24 Jan 2020 19:17:22 +0100
-Subject: Disable smart selection by default
+Subject: [PATCH 104/192] Disable smart selection by default
 
 Allow web search in incognito mode; Smart Selection still
 disabled in incognito as per upstream.
@@ -19,6 +20,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  6 files changed, 26 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
+index ddeb5a8302a4e..4b60e666be488 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
 @@ -10,6 +10,7 @@ import android.view.textclassifier.TextClassifier;
@@ -40,19 +42,20 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearc
              mOptionalSelectionClient = SelectionClient.createSmartSelectionClient(webContents);
              SelectionPopupController controller =
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
+index e69b3a78e7d56..0e5f5023303d4 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -188,6 +188,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
-     &kCCTBrandTransparency,
+@@ -185,6 +185,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kCCTClientDataHeader,
+     &kCCTFeatureUsage,
      &kCCTIncognito,
 +    &kChromeSmartSelection,
      &kCCTIncognitoAvailableToThirdParty,
+     &kCCTIntentFeatureOverrides,
      &kCCTNewDownloadTab,
-     &kCCTPackageNameRecording,
-@@ -996,6 +997,10 @@ BASE_FEATURE(kDiscoverFeedMultiColumn,
+@@ -1025,6 +1026,10 @@ BASE_FEATURE(kDiscoverFeedMultiColumn,
               "DiscoverFeedMultiColumn",
-              base::FEATURE_DISABLED_BY_DEFAULT);
+              base::FEATURE_ENABLED_BY_DEFAULT);
  
 +BASE_FEATURE(kChromeSmartSelection,
 +             "ChromeSmartSelection",
@@ -62,43 +65,47 @@ diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browse
               "TabStripRedesign",
               base::FEATURE_DISABLED_BY_DEFAULT);
 diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
+index 8d723beac8ee8..4a1926037e1f9 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.h
 +++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -62,6 +62,7 @@ BASE_DECLARE_FEATURE(kDontAutoHideBrowserControls);
+@@ -65,6 +65,7 @@ BASE_DECLARE_FEATURE(kCCTToolbarCustomizations);
+ BASE_DECLARE_FEATURE(kDontAutoHideBrowserControls);
  BASE_DECLARE_FEATURE(kCacheDeprecatedSystemLocationSetting);
  BASE_DECLARE_FEATURE(kChromeNewDownloadTab);
- BASE_DECLARE_FEATURE(kChromeShareLongScreenshot);
 +BASE_DECLARE_FEATURE(kChromeSmartSelection);
  BASE_DECLARE_FEATURE(kChromeShareScreenshot);
  BASE_DECLARE_FEATURE(kChromeSharingHub);
  BASE_DECLARE_FEATURE(kChromeSharingHubLaunchAdjacent);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+index eedd6878b1232..e6a5136eeadc1 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -255,6 +255,7 @@ public abstract class ChromeFeatureList {
-     public static final String CCT_POST_MESSAGE_API = "CCTPostMessageAPI";
-     public static final String CCT_REAL_TIME_ENGAGEMENT_SIGNALS = "CCTRealTimeEngagementSignals";
+@@ -180,6 +180,7 @@ public abstract class ChromeFeatureList {
+     public static final String CCT_REAL_TIME_ENGAGEMENT_SIGNALS_ALTERNATIVE_IMPL =
+             "CCTRealTimeEngagementSignalsAlternativeImpl";
      public static final String CCT_REDIRECT_PRECONNECT = "CCTRedirectPreconnect";
 +    public static final String CHROME_SMART_SELECTION = "ChromeSmartSelection";
      public static final String CCT_REMOVE_REMOTE_VIEW_IDS = "CCTRemoveRemoteViewIds";
-     public static final String CCT_RESIZABLE_90_MAXIMUM_HEIGHT = "CCTResizable90MaximumHeight";
-     public static final String CCT_RESIZABLE_ALLOW_RESIZE_BY_USER_GESTURE =
+     public static final String CCT_REPORT_PARALLEL_REQUEST_STATUS =
+             "CCTReportParallelRequestStatus";
 diff --git a/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java b/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
+index 95e2a1a3b760c..e4de67243ca71 100644
 --- a/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
 +++ b/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
-@@ -822,7 +822,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
-             menu.removeItem(R.id.select_action_menu_share);
-         }
+@@ -884,7 +884,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
+      */
+     @Override
+     public boolean canWebSearch() {
+-        return hasSelection() && !isFocusedNodeEditable() && !isIncognito()
++        return hasSelection() && !isFocusedNodeEditable()
+                 && isSelectActionModeAllowed(MENU_ITEM_WEB_SEARCH);
+     }
  
--        if (isFocusedNodeEditable() || isIncognito()
-+        if (isFocusedNodeEditable()
-                 || !isSelectActionModeAllowed(MENU_ITEM_WEB_SEARCH)) {
-             menu.removeItem(R.id.select_action_menu_web_search);
-         }
 diff --git a/testing/variations/fieldtrial_testing_config.json b/testing/variations/fieldtrial_testing_config.json
+index bce7b0cb61698..bb74fb624b616 100644
 --- a/testing/variations/fieldtrial_testing_config.json
 +++ b/testing/variations/fieldtrial_testing_config.json
-@@ -3045,6 +3045,21 @@
+@@ -3416,6 +3416,21 @@
              ]
          }
      ],
@@ -120,5 +127,6 @@ diff --git a/testing/variations/fieldtrial_testing_config.json b/testing/variati
      "CommerceHintAndroid": [
          {
              "platforms": [
---
-2.25.1
+-- 
+2.34.1
+

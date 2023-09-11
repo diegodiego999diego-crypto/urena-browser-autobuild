@@ -1,6 +1,7 @@
+From bcf20ff9dca6b972f1324747e9dd105fe58979dc Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Fri, 13 Aug 2021 17:10:47 +0000
-Subject: Experimental user scripts support
+Subject: [PATCH 142/192] Experimental user scripts support
 
 Activate the user scripts functionality for Android,
 as it is available in the Desktop version.
@@ -34,7 +35,6 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/android/java_sources.gni               |   3 +
  chrome/browser/BUILD.gn                       |   5 +
  chrome/browser/about_flags.cc                 |   5 +
- .../browser/chrome_content_browser_client.cc  |   3 +-
  chrome/browser/flag_descriptions.cc           |   5 +
  chrome/browser/flag_descriptions.h            |   3 +
  chrome/browser/prefs/browser_prefs.cc         |   2 +
@@ -68,25 +68,25 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../user_scripts/android/java_sources.gni     |  18 +
  .../android/user_scripts_bridge.cc            | 173 ++++
  .../android/user_scripts_bridge.h             |  31 +
- components/user_scripts/browser/BUILD.gn      |  81 ++
+ components/user_scripts/browser/BUILD.gn      |  77 ++
  .../user_scripts/browser/file_task_runner.cc  |  40 +
  .../user_scripts/browser/file_task_runner.h   |  34 +
  .../browser/resources/browser_resources.grd   |  14 +
- .../browser/resources/user-script-ui/BUILD.gn |  12 +
+ .../browser/resources/user-script-ui/BUILD.gn |   8 +
  .../user-script-ui/user-scripts-ui.html       |  14 +
  .../user-script-ui/user-scripts-ui.js         |   9 +
- .../browser/ui/user_scripts_ui.cc             | 147 ++++
+ .../browser/ui/user_scripts_ui.cc             | 146 ++++
  .../user_scripts/browser/ui/user_scripts_ui.h |  37 +
- .../browser/user_script_loader.cc             | 716 ++++++++++++++++
- .../user_scripts/browser/user_script_loader.h | 169 ++++
+ .../browser/user_script_loader.cc             | 715 ++++++++++++++++
+ .../user_scripts/browser/user_script_loader.h | 168 ++++
  .../browser/user_script_pref_info.cc          |  34 +
  .../browser/user_script_pref_info.h           |  72 ++
- .../user_scripts/browser/user_script_prefs.cc | 270 ++++++
+ .../user_scripts/browser/user_script_prefs.cc | 275 ++++++
  .../user_scripts/browser/user_script_prefs.h  |  62 ++
  .../browser/userscripts_browser_client.cc     |  78 ++
  .../browser/userscripts_browser_client.h      |  62 ++
  components/user_scripts/common/BUILD.gn       |  49 ++
- components/user_scripts/common/constants.h    |  21 +
+ components/user_scripts/common/constants.h    |  15 +
  components/user_scripts/common/error_utils.cc |  54 ++
  components/user_scripts/common/error_utils.h  |  24 +
  .../common/extension_message_generator.cc     |  29 +
@@ -103,22 +103,22 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  components/user_scripts/common/user_script.cc | 329 +++++++
  components/user_scripts/common/user_script.h  | 403 +++++++++
  .../common/user_scripts_features.cc           |  32 +
- .../common/user_scripts_features.h            |  34 +
+ .../common/user_scripts_features.h            |  36 +
  components/user_scripts/common/view_type.cc   |  39 +
  components/user_scripts/common/view_type.h    |  48 ++
  components/user_scripts/renderer/BUILD.gn     |  65 ++
  .../renderer/extension_frame_helper.cc        |  95 +++
- .../renderer/extension_frame_helper.h         |  91 ++
+ .../renderer/extension_frame_helper.h         |  90 ++
  .../user_scripts/renderer/injection_host.cc   |  12 +
  .../user_scripts/renderer/injection_host.h    |  41 +
  .../renderer/resources/greasemonkey_api.js    |  82 ++
  .../user_scripts_renderer_resources.grd       |  14 +
  .../user_scripts/renderer/script_context.cc   | 191 +++++
- .../user_scripts/renderer/script_context.h    |  68 ++
- .../user_scripts/renderer/script_injection.cc | 294 +++++++
- .../user_scripts/renderer/script_injection.h  | 156 ++++
- .../renderer/script_injection_manager.cc      | 417 +++++++++
- .../renderer/script_injection_manager.h       | 101 +++
+ .../user_scripts/renderer/script_context.h    |  67 ++
+ .../user_scripts/renderer/script_injection.cc | 293 +++++++
+ .../user_scripts/renderer/script_injection.h  | 155 ++++
+ .../renderer/script_injection_manager.cc      | 415 +++++++++
+ .../renderer/script_injection_manager.h       | 100 +++
  .../user_scripts/renderer/script_injector.h   |  96 +++
  .../user_scripts/renderer/scripts_run_info.cc |  31 +
  .../user_scripts/renderer/scripts_run_info.h  |  69 ++
@@ -130,13 +130,13 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../renderer/user_script_set_manager.h        |  61 ++
  .../renderer/user_scripts_dispatcher.cc       |  36 +
  .../renderer/user_scripts_dispatcher.h        |  49 ++
- .../renderer/user_scripts_renderer_client.cc  | 105 +++
- .../renderer/user_scripts_renderer_client.h   |  36 +
+ .../renderer/user_scripts_renderer_client.cc  | 108 +++
+ .../renderer/user_scripts_renderer_client.h   |  38 +
  .../renderer/web_ui_injection_host.cc         |  40 +
  .../renderer/web_ui_injection_host.h          |  27 +
  .../strings/userscripts_strings.grdp          |  54 ++
  tools/gritsettings/resource_ids.spec          |   6 +
- 109 files changed, 9449 insertions(+), 2 deletions(-)
+ 108 files changed, 9435 insertions(+), 1 deletion(-)
  create mode 100644 components/user_scripts/README.md
  create mode 100755 components/user_scripts/android/BUILD.gn
  create mode 100644 components/user_scripts/android/java/res/layout/accept_script_item.xml
@@ -224,9 +224,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100755 components/user_scripts/strings/userscripts_strings.grdp
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index b25a4bb15e7c9..e36c8b5fd8a5d 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -303,6 +303,9 @@ if (current_toolchain == default_toolchain) {
+@@ -236,6 +236,9 @@ if (current_toolchain == default_toolchain) {
        "//third_party/androidx:androidx_gridlayout_gridlayout_java",
        "//third_party/androidx:androidx_preference_preference_java",
      ]
@@ -235,8 +236,8 @@ diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
 +    deps += [ "//components/user_scripts/android:java_resources" ]
    }
  
-   if (enable_vr) {
-@@ -607,6 +610,7 @@ if (current_toolchain == default_toolchain) {
+   android_library("app_hooks_java") {
+@@ -540,6 +543,7 @@ if (current_toolchain == default_toolchain) {
        "//components/ukm/android:java",
        "//components/url_formatter/android:url_formatter_java",
        "//components/user_prefs/android:java",
@@ -245,9 +246,10 @@ diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
        "//components/variations/android:variations_java",
        "//components/version_info/android:version_constants_java",
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
+index 2b1e1e9a53fdd..f63a36cc04a6e 100644
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
-@@ -88,6 +88,11 @@ found in the LICENSE file.
+@@ -111,6 +111,11 @@ found in the LICENSE file.
          android:key="useragent_settings"
          android:order="20"
          android:title="@string/prefs_useragent_settings"/>
@@ -260,9 +262,10 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
          android:fragment="org.chromium.chrome.browser.language.settings.LanguageSettings"
          android:key="languages"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
+index 0b93ad2be69dd..09a5d38be70ff 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
-@@ -72,6 +72,7 @@ import org.chromium.content_public.browser.WebContents;
+@@ -71,6 +71,7 @@ import org.chromium.content_public.browser.WebContents;
  import org.chromium.ui.base.DeviceFormFactor;
  import org.chromium.ui.widget.Toast;
  import org.chromium.url.GURL;
@@ -270,7 +273,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/download/Downlo
  
  import java.io.File;
  
-@@ -423,6 +424,11 @@ public class DownloadUtils {
+@@ -420,6 +421,11 @@ public class DownloadUtils {
      public static boolean openFile(String filePath, String mimeType, String downloadGuid,
              OTRProfileID otrProfileID, String originalUrl, String referrer,
              @DownloadOpenSource int source, Context context) {
@@ -283,18 +286,19 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/download/Downlo
          DownloadManagerService service = DownloadManagerService.getDownloadManagerService();
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
+index 2ca41ee6bc094..e59a3c5abdd3a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-@@ -120,6 +120,8 @@ import java.util.Date;
+@@ -119,6 +119,8 @@ import java.util.ArrayList;
+ import java.util.Date;
  import java.util.List;
- import java.util.Locale;
  
 +import org.chromium.chrome.browser.user_scripts.UserScriptsUtils;
 +
  /**
   * Handles the initialization dependences of the browser process.  This is meant to handle the
   * initialization that is not tied to any particular Activity, and the logic that should only be
-@@ -308,6 +310,7 @@ public class ProcessInitializationHandler {
+@@ -315,6 +317,7 @@ public class ProcessInitializationHandler {
  
                  DefaultBrowserInfo.initBrowserFetcher();
  
@@ -303,26 +307,28 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessIni
  
                  PartnerBrowserCustomizations.getInstance().setOnInitializeAsyncFinished(
 diff --git a/chrome/android/java_sources.gni b/chrome/android/java_sources.gni
+index a5f30237c3bfa..ba61e355c51b2 100644
 --- a/chrome/android/java_sources.gni
 +++ b/chrome/android/java_sources.gni
-@@ -20,6 +20,7 @@ import("//chrome/common/features.gni")
+@@ -23,6 +23,7 @@ import("//chrome/common/features.gni")
  import("//components/feed/features.gni")
  import("//components/offline_pages/buildflags/features.gni")
  import("//device/vr/buildflags/buildflags.gni")
 +import("//components/user_scripts/android/java_sources.gni")
  
- chrome_java_sources += public_autofill_assistant_java_sources
- 
-@@ -52,3 +53,5 @@ if (enable_arcore) {
-     "java/src/org/chromium/chrome/browser/vr/ArDelegateImpl.java",
+ # Only used for testing, should not be shipped to end users.
+ if (enable_offline_pages_harness) {
+@@ -60,3 +61,5 @@ if (enable_cardboard) {
+     "java/src/org/chromium/chrome/browser/vr/VrCompositorDelegateProviderImpl.java",
    ]
  }
 +
 +chrome_java_sources += userscripts_java_sources
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index ed170329bcba9..f83e383af24a4 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -3503,6 +3503,11 @@ static_library("browser") {
+@@ -3478,6 +3478,11 @@ static_library("browser") {
        ]
        deps += [ "//chrome/android/modules/dev_ui/provider:native" ]
      }
@@ -335,18 +341,19 @@ diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
      #!is_android
      sources += [
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
+index 6fa09cb90a0fd..478daa01b7820 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -156,6 +156,7 @@
- #include "components/translate/core/browser/translate_ranker_impl.h"
- #include "components/translate/core/common/translate_util.h"
+@@ -163,6 +163,7 @@
  #include "components/ui_devtools/switches.h"
+ #include "components/variations/service/google_groups_updater_service.h"
+ #include "components/variations/variations_switches.h"
 +#include "components/user_scripts/common/user_scripts_features.h"
  #include "components/version_info/version_info.h"
  #include "components/viz/common/features.h"
  #include "components/viz/common/switches.h"
-@@ -7749,6 +7750,10 @@ const FeatureEntry kFeatureEntries[] = {
-          chromeos::features::kClipboardHistoryNudgeSessionReset)},
+@@ -8149,6 +8150,10 @@ const FeatureEntry kFeatureEntries[] = {
+      FEATURE_VALUE_TYPE(ash::features::kClipboardHistoryLongpress)},
  #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  
 +    {"enable-userscripts-log", flag_descriptions::kEnableLoggingUserScriptsName,
@@ -356,25 +363,13 @@ diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
  #if BUILDFLAG(IS_WIN)
      {"enable-media-foundation-video-capture",
       flag_descriptions::kEnableMediaFoundationVideoCaptureName,
-diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
---- a/chrome/browser/chrome_content_browser_client.cc
-+++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -5085,7 +5085,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
-   chrome::mojom::DynamicParams dynamic_params = {
-       profile->GetPrefs()->GetBoolean(prefs::kForceGoogleSafeSearch),
-       profile->GetPrefs()->GetInteger(prefs::kForceYouTubeRestrict),
--      profile->GetPrefs()->GetString(prefs::kAllowedDomainsForApps)};
-+      profile->GetPrefs()->GetString(prefs::kAllowedDomainsForApps),
-+      false /*-> allow_userscript, don't care */};
-   result.push_back(std::make_unique<GoogleURLLoaderThrottle>(
- #if BUILDFLAG(IS_ANDROID)
-       client_data_header, is_tab_large_enough,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
+index 9dbfaabbd6868..e456a80c51e45 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -6697,6 +6697,11 @@ const char kFollowingFeedSidepanelDescription[] =
- #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-         // BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_CHROMEOS)
+@@ -7203,6 +7203,11 @@ const char kUseOutOfProcessVideoDecodingDescription[] =
+     "enabled in ash-chrome).";
+ #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
  
 +const char kEnableLoggingUserScriptsName[] = "Enable logging user scripts component";
 +const char kEnableLoggingUserScriptsDescription[] =
@@ -385,9 +380,10 @@ diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descripti
  const char kWebShareName[] = "Web Share";
  const char kWebShareDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
+index 01b5525f35078..5b9efb4086fd9 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -3838,6 +3838,9 @@ extern const char kQuickCommandsDescription[];
+@@ -4123,6 +4123,9 @@ extern const char kQuickCommandsDescription[];
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // defined (OS_FUCHSIA)
  
@@ -398,40 +394,43 @@ diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptio
  extern const char kWebShareName[];
  extern const char kWebShareDescription[];
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index be3300aa542aa..f4a0124c34e27 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -251,6 +251,7 @@
- #include "components/ntp_tiles/popular_sites_impl.h"
+@@ -253,6 +253,7 @@
  #include "components/permissions/contexts/geolocation_permission_context_android.h"
  #include "components/query_tiles/tile_service_prefs.h"
+ #include "components/webapps/browser/android/install_prompt_prefs.h"
 +#include "components/user_scripts/browser/user_script_prefs.h"
  #else  // BUILDFLAG(IS_ANDROID)
  #include "chrome/browser/cart/cart_service.h"
- #include "chrome/browser/device_api/device_service_impl.h"
-@@ -1323,6 +1324,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+ #include "chrome/browser/companion/core/promo_handler.h"
+@@ -1633,6 +1634,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
    translate::TranslatePrefs::RegisterProfilePrefs(registry);
    omnibox::RegisterProfilePrefs(registry);
    ZeroSuggestProvider::RegisterProfilePrefs(registry);
 +  user_scripts::UserScriptsPrefs::RegisterProfilePrefs(registry);
  
- #if BUILDFLAG(ENABLE_SESSION_SERVICE)
-   RegisterSessionServiceLogProfilePrefs(registry);
+ #if !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   promos_utils::RegisterProfilePrefs(registry);
 diff --git a/chrome/browser/profiles/BUILD.gn b/chrome/browser/profiles/BUILD.gn
+index e8f8f22f3d76c..d1dc70952a5f5 100644
 --- a/chrome/browser/profiles/BUILD.gn
 +++ b/chrome/browser/profiles/BUILD.gn
-@@ -50,6 +50,7 @@ source_set("profile") {
+@@ -57,6 +57,7 @@ source_set("profile") {
      "//components/profile_metrics",
-     "//components/sync/driver",
+     "//components/sync/service",
      "//components/variations",
 +    "//components/user_scripts/browser",
      "//content/public/browser",
      "//extensions/buildflags",
    ]
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+index 8a666f005bb07..13e71469e88ab 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -261,6 +261,8 @@
- #include "chrome/browser/enterprise/idle/idle_service_factory.h"
+@@ -450,6 +450,8 @@
+ #include "chrome/browser/offline_pages/request_coordinator_factory.h"
  #endif
  
 +#include "components/user_scripts/browser/userscripts_browser_client.h"
@@ -439,7 +438,7 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  namespace chrome {
  
  void AddProfilesExtraParts(ChromeBrowserMainParts* main_parts) {
-@@ -620,6 +622,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -1062,6 +1064,7 @@ void ChromeBrowserMainExtraPartsProfiles::
  #endif
    WebDataServiceFactory::GetInstance();
    webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
@@ -448,9 +447,10 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
 diff --git a/chrome/browser/profiles/profile_manager.cc b/chrome/browser/profiles/profile_manager.cc
+index 9eb766c7a5818..140aa34b84745 100644
 --- a/chrome/browser/profiles/profile_manager.cc
 +++ b/chrome/browser/profiles/profile_manager.cc
-@@ -116,6 +116,8 @@
+@@ -106,6 +106,8 @@
  #include "extensions/common/manifest.h"
  #endif
  
@@ -459,7 +459,7 @@ diff --git a/chrome/browser/profiles/profile_manager.cc b/chrome/browser/profile
  #if BUILDFLAG(ENABLE_SESSION_SERVICE)
  #include "chrome/browser/sessions/app_session_service_factory.h"
  #include "chrome/browser/sessions/session_service_factory.h"
-@@ -1705,6 +1707,13 @@ void ProfileManager::DoFinalInitForServices(Profile* profile,
+@@ -1488,6 +1490,13 @@ void ProfileManager::DoFinalInitForServices(Profile* profile,
  #endif
  
  #endif
@@ -474,26 +474,27 @@ diff --git a/chrome/browser/profiles/profile_manager.cc b/chrome/browser/profile
    // Initialization needs to happen after extension system initialization (for
    // extension::ManagementPolicy) and InitProfileUserPrefs (for setting the
 diff --git a/chrome/browser/profiles/renderer_updater.cc b/chrome/browser/profiles/renderer_updater.cc
+index 884e79cd54e0d..be6cea71a7d46 100644
 --- a/chrome/browser/profiles/renderer_updater.cc
 +++ b/chrome/browser/profiles/renderer_updater.cc
-@@ -31,6 +31,8 @@
- #include "chrome/browser/ash/login/signin/oauth2_login_manager_factory.h"
- #endif
+@@ -39,6 +39,8 @@
+ #include "chrome/browser/signin/bound_session_credentials/bound_session_cookie_refresh_service_factory.h"
+ #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
  
 +#include "components/user_scripts/browser/user_script_prefs.h"
 +
  RendererUpdater::RendererUpdater(Profile* profile)
      : profile_(profile),
        is_off_the_record_(profile_->IsOffTheRecord()),
-@@ -51,6 +53,7 @@ RendererUpdater::RendererUpdater(Profile* profile)
-   force_google_safesearch_.Init(prefs::kForceGoogleSafeSearch, pref_service);
-   force_youtube_restrict_.Init(prefs::kForceYouTubeRestrict, pref_service);
+@@ -76,6 +78,7 @@ RendererUpdater::RendererUpdater(Profile* profile)
+   force_youtube_restrict_.Init(policy::policy_prefs::kForceYouTubeRestrict,
+                                pref_service);
    allowed_domains_for_apps_.Init(prefs::kAllowedDomainsForApps, pref_service);
 +  activate_userscripts_.Init(user_scripts::prefs::kUserScriptsEnabled, pref_service);
  
    pref_change_registrar_.Init(pref_service);
    pref_change_registrar_.Add(
-@@ -65,6 +68,10 @@ RendererUpdater::RendererUpdater(Profile* profile)
+@@ -90,6 +93,10 @@ RendererUpdater::RendererUpdater(Profile* profile)
        prefs::kAllowedDomainsForApps,
        base::BindRepeating(&RendererUpdater::UpdateAllRenderers,
                            base::Unretained(this)));
@@ -504,18 +505,19 @@ diff --git a/chrome/browser/profiles/renderer_updater.cc b/chrome/browser/profil
  }
  
  RendererUpdater::~RendererUpdater() {
-@@ -188,5 +195,6 @@ chrome::mojom::DynamicParamsPtr RendererUpdater::CreateRendererDynamicParams()
-     const {
-   return chrome::mojom::DynamicParams::New(
+@@ -242,5 +249,6 @@ chrome::mojom::DynamicParamsPtr RendererUpdater::CreateRendererDynamicParams()
+       GetBoundSessionParams(),
+ #endif
        force_google_safesearch_.GetValue(), force_youtube_restrict_.GetValue(),
 -      allowed_domains_for_apps_.GetValue());
 +      allowed_domains_for_apps_.GetValue(),
 +          activate_userscripts_.GetValue());
  }
 diff --git a/chrome/browser/profiles/renderer_updater.h b/chrome/browser/profiles/renderer_updater.h
+index cdd3f2239d836..ff72722b7b911 100644
 --- a/chrome/browser/profiles/renderer_updater.h
 +++ b/chrome/browser/profiles/renderer_updater.h
-@@ -93,6 +93,7 @@ class RendererUpdater : public KeyedService,
+@@ -108,6 +108,7 @@ class RendererUpdater : public KeyedService,
  
    // Prefs that we sync to the renderers.
    BooleanPrefMember force_google_safesearch_;
@@ -524,17 +526,18 @@ diff --git a/chrome/browser/profiles/renderer_updater.h b/chrome/browser/profile
    StringPrefMember allowed_domains_for_apps_;
  };
 diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
+index a3bca2f687432..80414d0e433ff 100644
 --- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-@@ -94,6 +94,7 @@
- #include "components/security_interstitials/content/urls.h"
+@@ -100,6 +100,7 @@
  #include "components/signin/public/base/signin_buildflags.h"
  #include "components/site_engagement/content/site_engagement_service.h"
+ #include "components/supervised_user/core/common/buildflags.h"
 +#include "components/user_scripts/browser/ui/user_scripts_ui.h"
  #include "content/public/browser/web_contents.h"
  #include "content/public/browser/web_ui.h"
  #include "content/public/common/content_client.h"
-@@ -834,6 +835,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
+@@ -528,6 +529,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
      return &NewWebUI<UserActionsUI>;
    if (url.host_piece() == chrome::kChromeUIVersionHost)
      return &NewWebUI<VersionUI>;
@@ -544,17 +547,18 @@ diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrom
  #if !BUILDFLAG(IS_ANDROID)
  #if !BUILDFLAG(IS_CHROMEOS)
 diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
+index 7b939af86e260..25d27905dc144 100644
 --- a/chrome/chrome_paks.gni
 +++ b/chrome/chrome_paks.gni
-@@ -107,6 +107,7 @@ template("chrome_extra_paks") {
+@@ -121,6 +121,7 @@ template("chrome_extra_paks") {
        "$root_gen_dir/skia/skia_resources.pak",
        "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
        "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
 +      "$root_gen_dir/chrome/userscripts_browser_resources.pak",
-       "$root_gen_dir/ui/resources/webui_generated_resources.pak",
+       "$root_gen_dir/ui/resources/webui_resources.pak",
      ]
      deps = [
-@@ -129,6 +130,7 @@ template("chrome_extra_paks") {
+@@ -139,6 +140,7 @@ template("chrome_extra_paks") {
        "//third_party/blink/public:devtools_inspector_resources",
        "//third_party/blink/public:resources",
        "//ui/resources",
@@ -563,20 +567,22 @@ diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
      if (defined(invoker.deps)) {
        deps += invoker.deps
 diff --git a/chrome/common/renderer_configuration.mojom b/chrome/common/renderer_configuration.mojom
+index 950f9599de5e5..71417fe885889 100644
 --- a/chrome/common/renderer_configuration.mojom
 +++ b/chrome/common/renderer_configuration.mojom
-@@ -12,6 +12,7 @@ struct DynamicParams {
+@@ -29,6 +29,7 @@ struct DynamicParams {
    bool force_safe_search = true;
    int32 youtube_restrict = 0;
    string allowed_domains_for_apps;
 +  bool allow_userscript = false;
  };
  
- interface ChromeOSListener {
+ // Allows the renderer to notify the browser process that requests in renderer
 diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
+index 76f0adaaa659d..5d01f6a913546 100644
 --- a/chrome/renderer/BUILD.gn
 +++ b/chrome/renderer/BUILD.gn
-@@ -141,6 +141,7 @@ static_library("renderer") {
+@@ -154,6 +154,7 @@ static_library("renderer") {
      "//components/content_capture/common",
      "//components/content_capture/renderer",
      "//components/content_settings/common:mojom",
@@ -585,10 +591,11 @@ diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
      "//components/continuous_search/renderer",
      "//components/dom_distiller/content/renderer",
 diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
+index 43fc365662842..e230e455920b5 100644
 --- a/chrome/renderer/chrome_content_renderer_client.cc
 +++ b/chrome/renderer/chrome_content_renderer_client.cc
-@@ -250,6 +250,9 @@
- #include "chrome/renderer/supervised_user/supervised_user_error_page_controller_delegate_impl.h"
+@@ -252,6 +252,9 @@
+ #include "chrome/renderer/media/chrome_key_systems.h"
  #endif
  
 +#include "components/user_scripts/common/user_scripts_features.h"
@@ -597,20 +604,20 @@ diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer
  using autofill::AutofillAgent;
  using autofill::PasswordAutofillAgent;
  using autofill::PasswordGenerationAgent;
-@@ -431,6 +434,12 @@ void ChromeContentRendererClient::RenderThreadStarted() {
+@@ -428,6 +431,12 @@ void ChromeContentRendererClient::RenderThreadStarted() {
        WebString::FromASCII(extensions::kExtensionScheme));
  #endif
  
 +  user_scripts::UserScriptsRendererClient* userscript_client =
 +    user_scripts::UserScriptsRendererClient::GetInstance();
 +  if (userscript_client) {
-+    userscript_client->RenderThreadStarted();
++    userscript_client->RenderThreadStarted(GetChromeObserver());
 +  }
 +
  #if BUILDFLAG(ENABLE_SPELLCHECK)
    if (!spellcheck_)
      InitSpellCheck();
-@@ -587,6 +596,13 @@ void ChromeContentRendererClient::RenderFrameCreated(
+@@ -596,6 +605,13 @@ void ChromeContentRendererClient::RenderFrameCreated(
        render_frame, registry);
  #endif
  
@@ -624,7 +631,7 @@ diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer
  #if BUILDFLAG(ENABLE_PPAPI)
    new PepperHelper(render_frame);
  #endif
-@@ -1556,7 +1572,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
+@@ -1603,7 +1619,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
    ChromeExtensionsRendererClient::GetInstance()->RunScriptsAtDocumentStart(
        render_frame);
    // |render_frame| might be dead by now.
@@ -639,7 +646,7 @@ diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer
  }
  
  void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
-@@ -1565,7 +1588,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
+@@ -1612,7 +1635,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
    ChromeExtensionsRendererClient::GetInstance()->RunScriptsAtDocumentEnd(
        render_frame);
    // |render_frame| might be dead by now.
@@ -654,7 +661,7 @@ diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer
  }
  
  void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
-@@ -1574,7 +1604,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
+@@ -1621,7 +1651,14 @@ void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
    ChromeExtensionsRendererClient::GetInstance()->RunScriptsAtDocumentIdle(
        render_frame);
    // |render_frame| might be dead by now.
@@ -670,38 +677,41 @@ diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer
  
  void ChromeContentRendererClient::
 diff --git a/chrome/renderer/chrome_render_thread_observer.cc b/chrome/renderer/chrome_render_thread_observer.cc
+index c32abc15c0b41..3cd5574b316ce 100644
 --- a/chrome/renderer/chrome_render_thread_observer.cc
 +++ b/chrome/renderer/chrome_render_thread_observer.cc
-@@ -57,6 +57,8 @@
+@@ -54,6 +54,8 @@
  #include "third_party/blink/public/web/web_security_policy.h"
  #include "third_party/blink/public/web/web_view.h"
  
 +#include "components/user_scripts/renderer/user_scripts_renderer_client.h"
 +
- #if BUILDFLAG(ENABLE_EXTENSIONS)
- #include "extensions/renderer/localization_peer.h"
+ #if BUILDFLAG(IS_CHROMEOS_ASH)
+ #include "chrome/renderer/ash_merge_session_loader_throttle.h"
  #endif
-@@ -259,6 +261,7 @@ void ChromeRenderThreadObserver::SetInitialConfiguration(
- void ChromeRenderThreadObserver::SetConfiguration(
+@@ -217,6 +219,7 @@ void ChromeRenderThreadObserver::SetConfiguration(
      chrome::mojom::DynamicParamsPtr params) {
-   *GetDynamicConfigParams() = std::move(*params);
+   base::AutoLock lock(dynamic_params_lock_);
+   dynamic_params_ = std::move(params);
 +  user_scripts::UserScriptsRendererClient::GetInstance()->ConfigurationUpdated();
  }
  
  void ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest(
 diff --git a/components/components_strings.grd b/components/components_strings.grd
+index c102f8898fc46..a20aaa9940f3d 100644
 --- a/components/components_strings.grd
 +++ b/components/components_strings.grd
-@@ -337,6 +337,7 @@
+@@ -335,6 +335,7 @@
        <part file="user_education_strings.grdp" />
        <part file="version_ui_strings.grdp" />
        <part file="webapps_strings.grdp" />
 +      <part file="user_scripts/strings/userscripts_strings.grdp" />
  
-       <part file="browser_ui/strings/android/webgl.grdp" />
-       <part file="browser_ui/strings/android/webrtc.grdp" />
+       <if expr="use_blink">
+         <part file="history_clusters_strings.grdp" />
 diff --git a/components/user_scripts/README.md b/components/user_scripts/README.md
 new file mode 100644
+index 0000000000000..257241678f0f5
 --- /dev/null
 +++ b/components/user_scripts/README.md
 @@ -0,0 +1,150 @@
@@ -857,6 +867,7 @@ new file mode 100644
 +See also: https://github.com/bromite/bromite/pull/857
 diff --git a/components/user_scripts/android/BUILD.gn b/components/user_scripts/android/BUILD.gn
 new file mode 100755
+index 0000000000000..32e954c0eef0d
 --- /dev/null
 +++ b/components/user_scripts/android/BUILD.gn
 @@ -0,0 +1,83 @@
@@ -945,6 +956,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/android/java/res/layout/accept_script_item.xml b/components/user_scripts/android/java/res/layout/accept_script_item.xml
 new file mode 100644
+index 0000000000000..753558b8e1e82
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/accept_script_item.xml
 @@ -0,0 +1,160 @@
@@ -1111,6 +1123,7 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/layout/accept_script_list.xml b/components/user_scripts/android/java/res/layout/accept_script_list.xml
 new file mode 100644
+index 0000000000000..a3d84312bd1ed
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/accept_script_list.xml
 @@ -0,0 +1,10 @@
@@ -1127,6 +1140,7 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/layout/scripts_preference.xml b/components/user_scripts/android/java/res/layout/scripts_preference.xml
 new file mode 100644
+index 0000000000000..d2b03911e1a04
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/scripts_preference.xml
 @@ -0,0 +1,40 @@
@@ -1173,6 +1187,7 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/values/dimens.xml b/components/user_scripts/android/java/res/values/dimens.xml
 new file mode 100755
+index 0000000000000..61ba4712a7268
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/values/dimens.xml
 @@ -0,0 +1,11 @@
@@ -1189,6 +1204,7 @@ new file mode 100755
 +</resources>
 diff --git a/components/user_scripts/android/java/res/xml/userscripts_preferences.xml b/components/user_scripts/android/java/res/xml/userscripts_preferences.xml
 new file mode 100644
+index 0000000000000..1f0d2e3148c69
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/xml/userscripts_preferences.xml
 @@ -0,0 +1,34 @@
@@ -1228,6 +1244,7 @@ new file mode 100644
 +</PreferenceScreen>
 diff --git a/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java b/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java
 new file mode 100755
+index 0000000000000..cff2f0d73f0b7
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java
 @@ -0,0 +1,87 @@
@@ -1320,6 +1337,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java
 new file mode 100644
+index 0000000000000..2768a0bbdec99
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java
 @@ -0,0 +1,90 @@
@@ -1415,6 +1433,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java
 new file mode 100644
+index 0000000000000..6bf09bdc28210
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java
 @@ -0,0 +1,22 @@
@@ -1443,6 +1462,7 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java
 new file mode 100644
+index 0000000000000..dfa342c74fa20
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java
 @@ -0,0 +1,37 @@
@@ -1485,6 +1505,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java
 new file mode 100644
+index 0000000000000..3747d977134ab
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java
 @@ -0,0 +1,163 @@
@@ -1653,6 +1674,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java
 new file mode 100644
+index 0000000000000..636ec0f01f349
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java
 @@ -0,0 +1,171 @@
@@ -1829,6 +1851,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java
 new file mode 100644
+index 0000000000000..e247e46621afd
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java
 @@ -0,0 +1,212 @@
@@ -2046,6 +2069,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java
 new file mode 100755
+index 0000000000000..ac0f6e7b72594
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java
 @@ -0,0 +1,116 @@
@@ -2167,6 +2191,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/android/java_sources.gni b/components/user_scripts/android/java_sources.gni
 new file mode 100644
+index 0000000000000..23b31e62a1026
 --- /dev/null
 +++ b/components/user_scripts/android/java_sources.gni
 @@ -0,0 +1,18 @@
@@ -2190,6 +2215,7 @@ new file mode 100644
 +]
 diff --git a/components/user_scripts/android/user_scripts_bridge.cc b/components/user_scripts/android/user_scripts_bridge.cc
 new file mode 100644
+index 0000000000000..0c60baf10854f
 --- /dev/null
 +++ b/components/user_scripts/android/user_scripts_bridge.cc
 @@ -0,0 +1,173 @@
@@ -2368,6 +2394,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/android/user_scripts_bridge.h b/components/user_scripts/android/user_scripts_bridge.h
 new file mode 100644
+index 0000000000000..48b6048770926
 --- /dev/null
 +++ b/components/user_scripts/android/user_scripts_bridge.h
 @@ -0,0 +1,31 @@
@@ -2405,9 +2432,10 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/browser/BUILD.gn b/components/user_scripts/browser/BUILD.gn
 new file mode 100755
+index 0000000000000..20151d6e09434
 --- /dev/null
 +++ b/components/user_scripts/browser/BUILD.gn
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,77 @@
 +# This file is part of Bromite.
 +
 +# Bromite is free software: you can redistribute it and/or modify
@@ -2476,10 +2504,6 @@ new file mode 100755
 +  ]
 +}
 +
-+group("closure_compile") {
-+  deps = [ "resources/user-script-ui:closure_compile" ]
-+}
-+
 +grit("userscripts_browser_resources") {
 +  source = "resources/browser_resources.grd"
 +
@@ -2491,6 +2515,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/browser/file_task_runner.cc b/components/user_scripts/browser/file_task_runner.cc
 new file mode 100755
+index 0000000000000..1273751f2a19e
 --- /dev/null
 +++ b/components/user_scripts/browser/file_task_runner.cc
 @@ -0,0 +1,40 @@
@@ -2536,6 +2561,7 @@ new file mode 100755
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/browser/file_task_runner.h b/components/user_scripts/browser/file_task_runner.h
 new file mode 100755
+index 0000000000000..72d6e6521b75f
 --- /dev/null
 +++ b/components/user_scripts/browser/file_task_runner.h
 @@ -0,0 +1,34 @@
@@ -2575,6 +2601,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_BROWSER_FILE_TASK_RUNNER_H_
 diff --git a/components/user_scripts/browser/resources/browser_resources.grd b/components/user_scripts/browser/resources/browser_resources.grd
 new file mode 100644
+index 0000000000000..ab3931bf89575
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/browser_resources.grd
 @@ -0,0 +1,14 @@
@@ -2595,23 +2622,21 @@ new file mode 100644
 \ No newline at end of file
 diff --git a/components/user_scripts/browser/resources/user-script-ui/BUILD.gn b/components/user_scripts/browser/resources/user-script-ui/BUILD.gn
 new file mode 100644
+index 0000000000000..54a5eb306a932
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/BUILD.gn
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,8 @@
 +import("//third_party/closure_compiler/compile_js.gni")
 +
-+js_type_check("closure_compile") {
-+  deps = [ ":view_script_source" ]
-+}
-+
 +js_library("view_script_source") {
++  sources = [ "user-scripts-ui.js" ]
 +  deps = [
-+    "//ui/webui/resources/js:cr.m",
-+    "//ui/webui/resources/js:util",
++    "//ui/webui/resources:library",
 +  ]
 +}
 diff --git a/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html
 new file mode 100644
+index 0000000000000..13e768de14938
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html
 @@ -0,0 +1,14 @@
@@ -2631,11 +2656,12 @@ new file mode 100644
 +</html>
 diff --git a/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js
 new file mode 100644
+index 0000000000000..8b2dff6af5cc9
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js
 @@ -0,0 +1,9 @@
-+import {sendWithPromise} from 'chrome://resources/js/cr.m.js';
-+import {$} from 'chrome://resources/js/util.js';
++import {sendWithPromise} from 'chrome://resources/js/cr.js';
++import {$} from 'chrome://resources/js/util_ts.js';
 +
 +document.addEventListener('DOMContentLoaded', function() {
 +  const urlParams = new URLSearchParams(window.location.search);
@@ -2645,9 +2671,10 @@ new file mode 100644
 +});
 diff --git a/components/user_scripts/browser/ui/user_scripts_ui.cc b/components/user_scripts/browser/ui/user_scripts_ui.cc
 new file mode 100644
+index 0000000000000..22c29d5a3a7c1
 --- /dev/null
 +++ b/components/user_scripts/browser/ui/user_scripts_ui.cc
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,146 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -2668,7 +2695,6 @@ new file mode 100644
 +
 +#include <memory>
 +
-+#include "base/bind.h"
 +#include "base/json/json_string_value_serializer.h"
 +#include "base/memory/writable_shared_memory_region.h"
 +#include "base/strings/string_util.h"
@@ -2762,7 +2788,7 @@ new file mode 100644
 +    std::unique_ptr<user_scripts::UserScriptList> user_scripts) {
 +  loaded_scripts_ = std::move(user_scripts);
 +
-+  base::ListValue response;
++  base::Value::List response;
 +  for (const std::unique_ptr<user_scripts::UserScript>& script : *loaded_scripts_) {
 +    if (script->key() == script_key) {
 +      base::Value::Dict scriptData;
@@ -2784,10 +2810,10 @@ new file mode 100644
 +
 +UserScriptsUI::UserScriptsUI(content::WebUI* web_ui) : WebUIController(web_ui) {
 +  content::WebUIDataSource* html_source =
-+      content::WebUIDataSource::Create(kChromeUIUserScriptsHost);
++      content::WebUIDataSource::CreateAndAdd(
++        Profile::FromWebUI(web_ui), kChromeUIUserScriptsHost);
 +  html_source->SetDefaultResource(IDR_USER_SCRIPTS_HTML);
 +  html_source->AddResourcePath("user-scripts-ui.js", IDR_USER_SCRIPTS_JS);
-+  content::WebUIDataSource::Add(Profile::FromWebUI(web_ui), html_source);
 +  web_ui->AddMessageHandler(std::make_unique<UserScriptsUIHandler>());
 +}
 +
@@ -2797,6 +2823,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/browser/ui/user_scripts_ui.h b/components/user_scripts/browser/ui/user_scripts_ui.h
 new file mode 100644
+index 0000000000000..c2dbb8e23990b
 --- /dev/null
 +++ b/components/user_scripts/browser/ui/user_scripts_ui.h
 @@ -0,0 +1,37 @@
@@ -2839,9 +2866,10 @@ new file mode 100644
 +#endif
 diff --git a/components/user_scripts/browser/user_script_loader.cc b/components/user_scripts/browser/user_script_loader.cc
 new file mode 100755
+index 0000000000000..78e3132bc4ab7
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_loader.cc
-@@ -0,0 +1,716 @@
+@@ -0,0 +1,715 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -2867,7 +2895,6 @@ new file mode 100755
 +#include <string>
 +#include <utility>
 +
-+#include "base/bind.h"
 +#include "base/memory/writable_shared_memory_region.h"
 +#include "base/strings/string_util.h"
 +#include "base/strings/strcat.h"
@@ -3560,9 +3587,10 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/browser/user_script_loader.h b/components/user_scripts/browser/user_script_loader.h
 new file mode 100755
+index 0000000000000..086cdd8f210b5
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_loader.h
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,168 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -3587,7 +3615,6 @@ new file mode 100755
 +#include <memory>
 +#include <set>
 +
-+#include "base/callback_forward.h"
 +#include "base/compiler_specific.h"
 +#include "base/memory/read_only_shared_memory_region.h"
 +#include "base/memory/weak_ptr.h"
@@ -3708,10 +3735,10 @@ new file mode 100755
 +  bool ready_;
 +
 +  // The browser_context for which the scripts managed here are installed.
-+  content::BrowserContext* browser_context_;
++  raw_ptr<content::BrowserContext> browser_context_;
 +
 +  // Manage load and store from preferences
-+  UserScriptsPrefs* prefs_;
++  raw_ptr<UserScriptsPrefs> prefs_;
 +
 +  // The associated observers.
 +  base::ObserverList<Observer>::Unchecked observers_;
@@ -3734,6 +3761,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_BROWSER_USER_SCRIPT_LOADER_H_
 diff --git a/components/user_scripts/browser/user_script_pref_info.cc b/components/user_scripts/browser/user_script_pref_info.cc
 new file mode 100644
+index 0000000000000..fc78f8ff84aa3
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_pref_info.cc
 @@ -0,0 +1,34 @@
@@ -3773,6 +3801,7 @@ new file mode 100644
 +}
 diff --git a/components/user_scripts/browser/user_script_pref_info.h b/components/user_scripts/browser/user_script_pref_info.h
 new file mode 100644
+index 0000000000000..94f32fa65f8c0
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_pref_info.h
 @@ -0,0 +1,72 @@
@@ -3850,9 +3879,10 @@ new file mode 100644
 +#endif // USERSCRIPTS_BROWSER_USERSCRIPT_PREF_INFO_H_
 diff --git a/components/user_scripts/browser/user_script_prefs.cc b/components/user_scripts/browser/user_script_prefs.cc
 new file mode 100644
+index 0000000000000..6b28ad5b058c0
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_prefs.cc
-@@ -0,0 +1,270 @@
+@@ -0,0 +1,275 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -3884,6 +3914,8 @@ new file mode 100644
 +#include "components/prefs/pref_service.h"
 +#include "components/prefs/scoped_user_pref_update.h"
 +#include "components/pref_registry/pref_registry_syncable.h"
++#include "services/preferences/public/cpp/dictionary_value_update.h"
++#include "services/preferences/public/cpp/scoped_pref_update.h"
 +#include "user_script_prefs.h"
 +#include "user_script_pref_info.h"
 +#include "../common/user_script.h"
@@ -3910,23 +3942,24 @@ new file mode 100644
 +const char kScriptParserError[] = "parser_error";
 +const char kScriptForceDisabled[] = "force_disabled";
 +
-+class PrefUpdate : public DictionaryPrefUpdate {
++class PrefUpdate : public ::prefs::ScopedDictionaryPrefUpdate {
 + public:
 +  PrefUpdate(PrefService* service,
 +             const std::string& id,
 +             const std::string& path)
-+      : DictionaryPrefUpdate(service, path), id_(id) {}
++      : ::prefs::ScopedDictionaryPrefUpdate(service, path), id_(id) {}
 +
 +  PrefUpdate(const PrefUpdate&) = delete;
 +  PrefUpdate& operator=(const PrefUpdate&) = delete;
 +  ~PrefUpdate() override = default;
 +
-+  base::Value* Get() override {
-+    base::Value* dict = DictionaryPrefUpdate::Get();
-+    base::Value* dict_item =
-+        dict->FindKeyOfType(id_, base::Value::Type::DICTIONARY);
-+    if (!dict_item)
-+      dict_item = dict->SetKey(id_, base::Value(base::Value::Type::DICTIONARY));
++  std::unique_ptr<::prefs::DictionaryValueUpdate> Get() override {
++    std::unique_ptr<::prefs::DictionaryValueUpdate> dict =
++        ScopedDictionaryPrefUpdate::Get();
++    std::unique_ptr<::prefs::DictionaryValueUpdate> dict_item;
++    if (!dict->GetDictionaryWithoutPathExpansion(id_, &dict_item)) {
++      dict_item = dict->SetDictionaryWithoutPathExpansion(id_, base::Value::Dict());
++    }
 +    return dict_item;
 +  }
 +
@@ -3938,7 +3971,7 @@ new file mode 100644
 +                      const std::string& key,
 +                      int64_t* value) {
 +  DCHECK(dict);
-+  const std::string* value_str = dict->FindStringKey(key);
++  const std::string* value_str = dict->GetDict().FindString(key);
 +  if (!value_str) {
 +    VLOG(2) << "Can't find key in local pref dictionary. Invalid key: " << key
 +            << ".";
@@ -4016,20 +4049,20 @@ new file mode 100644
 +    scriptInfo->force_disabled = (it->get()->force_disabled());
 +
 +    PrefUpdate update(prefs_, key, kUserScriptsList);
-+    base::Value* script_dict = update.Get();
++    std::unique_ptr<::prefs::DictionaryValueUpdate> script_dict = update.Get();
 +
-+    script_dict->SetStringKey(kScriptName, scriptInfo->name());
-+    script_dict->SetStringKey(kScriptDescription, scriptInfo->description());
-+    script_dict->SetBoolKey(kScriptIsEnabled, scriptInfo->enabled);
-+    script_dict->SetStringKey(kScriptVersion, scriptInfo->version());
-+    script_dict->SetStringKey(kScriptFilePath, scriptInfo->file_path());
-+    script_dict->SetStringKey(kScriptUrlSource, scriptInfo->url_source());
-+    script_dict->SetStringKey(kScriptParserError, scriptInfo->parser_error());
-+    script_dict->SetBoolKey(kScriptForceDisabled, scriptInfo->force_disabled);
++    script_dict->SetString(kScriptName, scriptInfo->name());
++    script_dict->SetString(kScriptDescription, scriptInfo->description());
++    script_dict->SetBoolean(kScriptIsEnabled, scriptInfo->enabled);
++    script_dict->SetString(kScriptVersion, scriptInfo->version());
++    script_dict->SetString(kScriptFilePath, scriptInfo->file_path());
++    script_dict->SetString(kScriptUrlSource, scriptInfo->url_source());
++    script_dict->SetString(kScriptParserError, scriptInfo->parser_error());
++    script_dict->SetBoolean(kScriptForceDisabled, scriptInfo->force_disabled);
 +
 +    std::string install_time_str =
 +        base::NumberToString(scriptInfo->install_time.ToInternalValue());
-+    script_dict->SetStringKey(kScriptInstallTime, install_time_str);
++    script_dict->SetString(kScriptInstallTime, install_time_str);
 +
 +   if (!scriptInfo->enabled) {
 +      it = user_scripts.erase(it);
@@ -4049,10 +4082,10 @@ new file mode 100644
 +    }
 +  }
 +
-+  DictionaryPrefUpdate update(prefs_, kUserScriptsList);
-+  base::Value* const update_dict = update.Get();
++  ::prefs::ScopedDictionaryPrefUpdate update(prefs_, kUserScriptsList);
++  std::unique_ptr<::prefs::DictionaryValueUpdate> update_dict = update.Get();
 +  for (auto key : all_scripts_to_remove) {
-+      update_dict->RemoveKey(key);
++      update_dict->RemoveWithoutPathExpansion(key, nullptr);
 +  }
 +
 +  return;
@@ -4084,21 +4117,22 @@ new file mode 100644
 +  if (!script)
 +    return scriptInfo;
 +
-+  const std::string* name = script->FindStringKey(kScriptName);
-+  const std::string* description = script->FindStringKey(kScriptDescription);
-+  const std::string* version = script->FindStringKey(kScriptVersion);
-+  const std::string* file_path = script->FindStringKey(kScriptFilePath);
-+  const std::string* url_source = script->FindStringKey(kScriptUrlSource);
-+  const std::string* parser_error = script->FindStringKey(kScriptParserError);
++  const base::Value::Dict& dict = script->GetDict();
++  const std::string* name = dict.FindString(kScriptName);
++  const std::string* description = dict.FindString(kScriptDescription);
++  const std::string* version = dict.FindString(kScriptVersion);
++  const std::string* file_path = dict.FindString(kScriptFilePath);
++  const std::string* url_source = dict.FindString(kScriptUrlSource);
++  const std::string* parser_error = dict.FindString(kScriptParserError);
 +
 +  scriptInfo->set_name( name ? *name : "no name" );
 +  scriptInfo->set_description( description ? *description : "no description" );
 +  scriptInfo->set_version( version ? *version : "no version" );
-+  scriptInfo->enabled = script->FindBoolKey(kScriptIsEnabled).value_or(false);
++  scriptInfo->enabled = dict.FindBool(kScriptIsEnabled).value_or(false);
 +  scriptInfo->set_file_path( file_path ? *file_path : "no file path" );
 +  scriptInfo->set_url_source( url_source ? *url_source : "" );
 +  scriptInfo->set_parser_error( parser_error ? *parser_error : "" );
-+  scriptInfo->force_disabled = script->FindBoolKey(kScriptForceDisabled).value_or(false);
++  scriptInfo->force_disabled = dict.FindBool(kScriptForceDisabled).value_or(false);
 +
 +  int64_t time_interval = 0;
 +  if (GetInt64FromPref(script, kScriptInstallTime, &time_interval)) {
@@ -4109,22 +4143,24 @@ new file mode 100644
 +}
 +
 +void UserScriptsPrefs::RemoveScriptFromPrefs(const std::string& script_id) {
-+  DictionaryPrefUpdate update(prefs_, kUserScriptsList);
-+  base::Value* const update_dict = update.Get();
-+  update_dict->RemoveKey(script_id);
++  ::prefs::ScopedDictionaryPrefUpdate update(prefs_, kUserScriptsList);
++  std::unique_ptr<::prefs::DictionaryValueUpdate> const update_dict = update.Get();
++  update_dict->RemoveWithoutPathExpansion(script_id, nullptr);
 +}
 +
 +void UserScriptsPrefs::SetScriptEnabled(const std::string& script_id, bool is_enabled) {
 +  PrefUpdate update(prefs_, script_id, kUserScriptsList);
-+  base::Value* script_dict = update.Get();
-+  if (script_dict->FindBoolKey(kScriptForceDisabled).value_or(false))
-+    is_enabled = true;
-+  script_dict->SetBoolKey(kScriptIsEnabled, is_enabled);
++  std::unique_ptr<::prefs::DictionaryValueUpdate> script_dict = update.Get();
++  bool force_disabled;
++  script_dict->GetBoolean(kScriptForceDisabled, &force_disabled);
++  if (force_disabled) is_enabled = false;
++  script_dict->SetBoolean(kScriptIsEnabled, is_enabled);
 +}
 +
 +}
 diff --git a/components/user_scripts/browser/user_script_prefs.h b/components/user_scripts/browser/user_script_prefs.h
 new file mode 100644
+index 0000000000000..9780ba97e2332
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_prefs.h
 @@ -0,0 +1,62 @@
@@ -4184,7 +4220,7 @@ new file mode 100644
 +        const std::string& script_id) const;
 +
 + private:
-+    PrefService* prefs_;
++    raw_ptr<PrefService> prefs_;
 +};
 +
 +}
@@ -4192,6 +4228,7 @@ new file mode 100644
 +#endif // USERSCRIPTS_BROWSER_USERSCRIPT_PREFS_H_
 diff --git a/components/user_scripts/browser/userscripts_browser_client.cc b/components/user_scripts/browser/userscripts_browser_client.cc
 new file mode 100755
+index 0000000000000..751b016447ab6
 --- /dev/null
 +++ b/components/user_scripts/browser/userscripts_browser_client.cc
 @@ -0,0 +1,78 @@
@@ -4275,6 +4312,7 @@ new file mode 100755
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/browser/userscripts_browser_client.h b/components/user_scripts/browser/userscripts_browser_client.h
 new file mode 100755
+index 0000000000000..52b169c1e15ba
 --- /dev/null
 +++ b/components/user_scripts/browser/userscripts_browser_client.h
 @@ -0,0 +1,62 @@
@@ -4332,7 +4370,7 @@ new file mode 100755
 +
 +  private:
 +    std::unique_ptr<UserScriptList> scripts_;
-+    content::BrowserContext* browser_context_;
++    raw_ptr<content::BrowserContext> browser_context_;
 +    std::unique_ptr<user_scripts::UserScriptsPrefs> prefs_;
 +    std::unique_ptr<user_scripts::UserScriptLoader> userscript_loader_;
 +};
@@ -4342,6 +4380,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_BROWSER_USERSCRIPTS_BROWSER_CLIENT_H_
 diff --git a/components/user_scripts/common/BUILD.gn b/components/user_scripts/common/BUILD.gn
 new file mode 100755
+index 0000000000000..ccb6ffebb0ab6
 --- /dev/null
 +++ b/components/user_scripts/common/BUILD.gn
 @@ -0,0 +1,49 @@
@@ -4396,21 +4435,16 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/common/constants.h b/components/user_scripts/common/constants.h
 new file mode 100755
+index 0000000000000..a12ed45a2ecc2
 --- /dev/null
 +++ b/components/user_scripts/common/constants.h
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,15 @@
 +// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +
 +#ifndef USERSCRIPTS_COMMON_CONSTANTS_H_
 +#define USERSCRIPTS_COMMON_CONSTANTS_H_
-+
-+#include "base/files/file_path.h"
-+#include "base/strings/string_piece_forward.h"
-+#include "components/services/app_service/public/mojom/types.mojom.h"
-+#include "components/version_info/channel.h"
-+#include "ui/base/layout.h"
 +
 +namespace user_scripts {
 +
@@ -4422,6 +4456,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_CONSTANTS_H_
 diff --git a/components/user_scripts/common/error_utils.cc b/components/user_scripts/common/error_utils.cc
 new file mode 100755
+index 0000000000000..8c671cd3b34bd
 --- /dev/null
 +++ b/components/user_scripts/common/error_utils.cc
 @@ -0,0 +1,54 @@
@@ -4481,6 +4516,7 @@ new file mode 100755
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/common/error_utils.h b/components/user_scripts/common/error_utils.h
 new file mode 100755
+index 0000000000000..c4141ee066cba
 --- /dev/null
 +++ b/components/user_scripts/common/error_utils.h
 @@ -0,0 +1,24 @@
@@ -4510,6 +4546,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_ERROR_UTILS_H_
 diff --git a/components/user_scripts/common/extension_message_generator.cc b/components/user_scripts/common/extension_message_generator.cc
 new file mode 100755
+index 0000000000000..69fa3f10242e4
 --- /dev/null
 +++ b/components/user_scripts/common/extension_message_generator.cc
 @@ -0,0 +1,29 @@
@@ -4544,6 +4581,7 @@ new file mode 100755
 +}  // namespace IPC
 diff --git a/components/user_scripts/common/extension_message_generator.h b/components/user_scripts/common/extension_message_generator.h
 new file mode 100755
+index 0000000000000..5707859274658
 --- /dev/null
 +++ b/components/user_scripts/common/extension_message_generator.h
 @@ -0,0 +1,11 @@
@@ -4560,6 +4598,7 @@ new file mode 100755
 +#endif
 diff --git a/components/user_scripts/common/extension_messages.cc b/components/user_scripts/common/extension_messages.cc
 new file mode 100755
+index 0000000000000..928614cfb9ff7
 --- /dev/null
 +++ b/components/user_scripts/common/extension_messages.cc
 @@ -0,0 +1,40 @@
@@ -4605,6 +4644,7 @@ new file mode 100755
 +}  // namespace IPC
 diff --git a/components/user_scripts/common/extension_messages.h b/components/user_scripts/common/extension_messages.h
 new file mode 100755
+index 0000000000000..7ade312a2e94a
 --- /dev/null
 +++ b/components/user_scripts/common/extension_messages.h
 @@ -0,0 +1,70 @@
@@ -4680,6 +4720,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_EXTENSION_MESSAGES_H_
 diff --git a/components/user_scripts/common/host_id.cc b/components/user_scripts/common/host_id.cc
 new file mode 100755
+index 0000000000000..3f284589391a7
 --- /dev/null
 +++ b/components/user_scripts/common/host_id.cc
 @@ -0,0 +1,31 @@
@@ -4716,6 +4757,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/common/host_id.h b/components/user_scripts/common/host_id.h
 new file mode 100755
+index 0000000000000..b5e4c9dcfeea6
 --- /dev/null
 +++ b/components/user_scripts/common/host_id.h
 @@ -0,0 +1,35 @@
@@ -4756,6 +4798,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_HOST_ID_H_
 diff --git a/components/user_scripts/common/script_constants.h b/components/user_scripts/common/script_constants.h
 new file mode 100755
+index 0000000000000..6b05e2d7cdea5
 --- /dev/null
 +++ b/components/user_scripts/common/script_constants.h
 @@ -0,0 +1,33 @@
@@ -4794,6 +4837,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_SCRIPT_CONSTANTS_H_
 diff --git a/components/user_scripts/common/url_pattern.cc b/components/user_scripts/common/url_pattern.cc
 new file mode 100755
+index 0000000000000..6a3d5cee1eaa3
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern.cc
 @@ -0,0 +1,803 @@
@@ -5602,6 +5646,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/common/url_pattern.h b/components/user_scripts/common/url_pattern.h
 new file mode 100755
+index 0000000000000..86632a553e362
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern.h
 @@ -0,0 +1,302 @@
@@ -5909,6 +5954,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_URL_PATTERN_H_
 diff --git a/components/user_scripts/common/url_pattern_set.cc b/components/user_scripts/common/url_pattern_set.cc
 new file mode 100755
+index 0000000000000..33d6aed70ca8c
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern_set.cc
 @@ -0,0 +1,335 @@
@@ -6188,14 +6234,14 @@ new file mode 100755
 +  return false;
 +}
 +
-+std::unique_ptr<base::ListValue> URLPatternSet::ToValue() const {
-+  std::unique_ptr<base::ListValue> value(new base::ListValue);
-+  for (auto i = patterns_.cbegin(); i != patterns_.cend(); ++i) {
-+    base::Value pattern_str_value(i->GetAsString());
-+    if (!base::Contains(value->GetList(), pattern_str_value))
-+      value->Append(std::move(pattern_str_value));
++base::Value::List URLPatternSet::ToValue() const {
++  base::Value::List result;
++  for (const auto& pattern : patterns_) {
++    base::Value pattern_str_value(pattern.GetAsString());
++    if (!base::Contains(result, pattern_str_value))
++      result.Append(std::move(pattern_str_value));
 +  }
-+  return value;
++  return result;
 +}
 +
 +bool URLPatternSet::Populate(const std::vector<std::string>& patterns,
@@ -6232,12 +6278,12 @@ new file mode 100755
 +  return value;
 +}
 +
-+bool URLPatternSet::Populate(const base::ListValue& value,
++bool URLPatternSet::Populate(const base::Value::List& value,
 +                             int valid_schemes,
 +                             bool allow_file_access,
 +                             std::string* error) {
 +  std::vector<std::string> patterns;
-+  for (const base::Value& pattern : value.GetList()) {
++  for (const base::Value& pattern : value) {
 +    const std::string* item = pattern.GetIfString();
 +    if (!item)
 +      return false;
@@ -6249,6 +6295,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/url_pattern_set.h b/components/user_scripts/common/url_pattern_set.h
 new file mode 100755
+index 0000000000000..93818e97c4357
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern_set.h
 @@ -0,0 +1,160 @@
@@ -6265,12 +6312,12 @@ new file mode 100755
 +#include <memory>
 +#include <set>
 +
++#include "base/values.h"
 +#include "url_pattern.h"
 +
 +class GURL;
 +
 +namespace base {
-+class ListValue;
 +class Value;
 +}
 +
@@ -6388,8 +6435,8 @@ new file mode 100755
 +  bool OverlapsWith(const URLPatternSet& other) const;
 +
 +  // Converts to and from Value for serialization to preferences.
-+  std::unique_ptr<base::ListValue> ToValue() const;
-+  bool Populate(const base::ListValue& value,
++  base::Value::List ToValue() const;
++  bool Populate(const base::Value::List& value,
 +                int valid_schemes,
 +                bool allow_file_access,
 +                std::string* error);
@@ -6414,6 +6461,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_URL_PATTERN_SET_H_
 diff --git a/components/user_scripts/common/user_script.cc b/components/user_scripts/common/user_script.cc
 new file mode 100755
+index 0000000000000..ae88cc74490d5
 --- /dev/null
 +++ b/components/user_scripts/common/user_script.cc
 @@ -0,0 +1,329 @@
@@ -6748,6 +6796,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/user_script.h b/components/user_scripts/common/user_script.h
 new file mode 100755
+index 0000000000000..cf5af2e553d0c
 --- /dev/null
 +++ b/components/user_scripts/common/user_script.h
 @@ -0,0 +1,403 @@
@@ -7156,6 +7205,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_USER_SCRIPT_H_
 diff --git a/components/user_scripts/common/user_scripts_features.cc b/components/user_scripts/common/user_scripts_features.cc
 new file mode 100644
+index 0000000000000..21ff96b73a7a5
 --- /dev/null
 +++ b/components/user_scripts/common/user_scripts_features.cc
 @@ -0,0 +1,32 @@
@@ -7184,19 +7234,19 @@ new file mode 100644
 +
 +namespace features {
 +
-+const base::Feature kEnableLoggingUserScripts =
-+                                        {"EnableLoggingUserScripts",
-+                                          base::FEATURE_DISABLED_BY_DEFAULT};
++BASE_FEATURE(kEnableLoggingUserScripts,
++             "EnableLoggingUserScripts",
++             base::FEATURE_DISABLED_BY_DEFAULT);
 +
 +}
 +
 +}
-\ No newline at end of file
 diff --git a/components/user_scripts/common/user_scripts_features.h b/components/user_scripts/common/user_scripts_features.h
 new file mode 100644
+index 0000000000000..bf72a547ee471
 --- /dev/null
 +++ b/components/user_scripts/common/user_scripts_features.h
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,36 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -7225,15 +7275,17 @@ new file mode 100644
 +namespace user_scripts {
 +
 +namespace features {
-+    extern const base::Feature kEnableLoggingUserScripts;
++
++BASE_DECLARE_FEATURE(kEnableLoggingUserScripts);
++
 +}
 +
 +}
 +
 +#endif
-\ No newline at end of file
 diff --git a/components/user_scripts/common/view_type.cc b/components/user_scripts/common/view_type.cc
 new file mode 100755
+index 0000000000000..10b5fe5559dbf
 --- /dev/null
 +++ b/components/user_scripts/common/view_type.cc
 @@ -0,0 +1,39 @@
@@ -7278,6 +7330,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/view_type.h b/components/user_scripts/common/view_type.h
 new file mode 100755
+index 0000000000000..977318725b91a
 --- /dev/null
 +++ b/components/user_scripts/common/view_type.h
 @@ -0,0 +1,48 @@
@@ -7331,6 +7384,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_COMMON_VIEW_TYPE_H_
 diff --git a/components/user_scripts/renderer/BUILD.gn b/components/user_scripts/renderer/BUILD.gn
 new file mode 100755
+index 0000000000000..868757daf6305
 --- /dev/null
 +++ b/components/user_scripts/renderer/BUILD.gn
 @@ -0,0 +1,65 @@
@@ -7401,6 +7455,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/renderer/extension_frame_helper.cc b/components/user_scripts/renderer/extension_frame_helper.cc
 new file mode 100755
+index 0000000000000..fe105fb0e7e60
 --- /dev/null
 +++ b/components/user_scripts/renderer/extension_frame_helper.cc
 @@ -0,0 +1,95 @@
@@ -7501,9 +7556,10 @@ new file mode 100755
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/renderer/extension_frame_helper.h b/components/user_scripts/renderer/extension_frame_helper.h
 new file mode 100755
+index 0000000000000..741e4dda031a5
 --- /dev/null
 +++ b/components/user_scripts/renderer/extension_frame_helper.h
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,90 @@
 +// Copyright 2013 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -7514,7 +7570,6 @@ new file mode 100755
 +#include <string>
 +#include <vector>
 +
-+#include "base/callback_forward.h"
 +#include "base/memory/weak_ptr.h"
 +#include "content/public/renderer/render_frame_observer.h"
 +#include "content/public/renderer/render_frame_observer_tracker.h"
@@ -7597,6 +7652,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_EXTENSION_FRAME_HELPER_H_
 diff --git a/components/user_scripts/renderer/injection_host.cc b/components/user_scripts/renderer/injection_host.cc
 new file mode 100755
+index 0000000000000..58abe06444f63
 --- /dev/null
 +++ b/components/user_scripts/renderer/injection_host.cc
 @@ -0,0 +1,12 @@
@@ -7614,6 +7670,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/renderer/injection_host.h b/components/user_scripts/renderer/injection_host.h
 new file mode 100755
+index 0000000000000..2cd552ac96445
 --- /dev/null
 +++ b/components/user_scripts/renderer/injection_host.h
 @@ -0,0 +1,41 @@
@@ -7660,6 +7717,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_INJECTION_HOST_H_
 diff --git a/components/user_scripts/renderer/resources/greasemonkey_api.js b/components/user_scripts/renderer/resources/greasemonkey_api.js
 new file mode 100755
+index 0000000000000..bc09911571a81
 --- /dev/null
 +++ b/components/user_scripts/renderer/resources/greasemonkey_api.js
 @@ -0,0 +1,82 @@
@@ -7747,6 +7805,7 @@ new file mode 100755
 +})();
 diff --git a/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd b/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd
 new file mode 100755
+index 0000000000000..cd64e7dafefb6
 --- /dev/null
 +++ b/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd
 @@ -0,0 +1,14 @@
@@ -7766,6 +7825,7 @@ new file mode 100755
 +</grit>
 diff --git a/components/user_scripts/renderer/script_context.cc b/components/user_scripts/renderer/script_context.cc
 new file mode 100755
+index 0000000000000..675750354c7f7
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_context.cc
 @@ -0,0 +1,191 @@
@@ -7962,9 +8022,10 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_context.h b/components/user_scripts/renderer/script_context.h
 new file mode 100755
+index 0000000000000..96f99d12ec13b
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_context.h
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,67 @@
 +// Copyright 2014 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -7977,7 +8038,6 @@ new file mode 100755
 +#include <utility>
 +#include <vector>
 +
-+#include "base/callback.h"
 +#include "base/compiler_specific.h"
 +#include "base/threading/thread_checker.h"
 +#include "base/unguessable_token.h"
@@ -8035,9 +8095,10 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_CONTEXT_H_
 diff --git a/components/user_scripts/renderer/script_injection.cc b/components/user_scripts/renderer/script_injection.cc
 new file mode 100755
+index 0000000000000..5705d28a6b0c7
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection.cc
-@@ -0,0 +1,294 @@
+@@ -0,0 +1,293 @@
 +// Copyright 2014 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -8047,7 +8108,6 @@ new file mode 100755
 +#include <map>
 +#include <utility>
 +
-+#include "base/bind.h"
 +#include "base/feature_list.h"
 +#include "base/lazy_instance.h"
 +#include "base/metrics/histogram_macros.h"
@@ -8334,9 +8394,10 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_injection.h b/components/user_scripts/renderer/script_injection.h
 new file mode 100755
+index 0000000000000..c02c16443d639
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection.h
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,155 @@
 +// Copyright 2014 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -8349,7 +8410,6 @@ new file mode 100755
 +#include <memory>
 +#include <vector>
 +
-+#include "base/callback.h"
 +#include "base/memory/weak_ptr.h"
 +#include "base/values.h"
 +#include "../common/user_script.h"
@@ -8495,9 +8555,10 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_INJECTION_H_
 diff --git a/components/user_scripts/renderer/script_injection_manager.cc b/components/user_scripts/renderer/script_injection_manager.cc
 new file mode 100755
+index 0000000000000..c2d8add684af1
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection_manager.cc
-@@ -0,0 +1,417 @@
+@@ -0,0 +1,415 @@
 +// Copyright 2014 The Chromium Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -8508,10 +8569,8 @@ new file mode 100755
 +#include <utility>
 +
 +#include "base/auto_reset.h"
-+#include "base/bind.h"
 +#include "base/feature_list.h"
 +#include "base/memory/weak_ptr.h"
-+#include "base/threading/thread_task_runner_handle.h"
 +#include "base/values.h"
 +#include "base/logging.h"
 +#include "content/public/renderer/render_frame.h"
@@ -8917,9 +8976,10 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_injection_manager.h b/components/user_scripts/renderer/script_injection_manager.h
 new file mode 100755
+index 0000000000000..252b3c70ee0bd
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection_manager.h
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,100 @@
 +#include <stdint.h>
 +
 +#include <map>
@@ -8927,7 +8987,6 @@ new file mode 100755
 +#include <string>
 +#include <vector>
 +
-+#include "base/callback.h"
 +#include "base/scoped_observation.h"
 +#include "../common/user_script.h"
 +#include "script_injection.h"
@@ -9023,6 +9082,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/renderer/script_injector.h b/components/user_scripts/renderer/script_injector.h
 new file mode 100755
+index 0000000000000..c9e26fd5903a5
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injector.h
 @@ -0,0 +1,96 @@
@@ -9124,6 +9184,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_INJECTOR_H_
 diff --git a/components/user_scripts/renderer/scripts_run_info.cc b/components/user_scripts/renderer/scripts_run_info.cc
 new file mode 100755
+index 0000000000000..5a85b7e4c73bc
 --- /dev/null
 +++ b/components/user_scripts/renderer/scripts_run_info.cc
 @@ -0,0 +1,31 @@
@@ -9160,6 +9221,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/scripts_run_info.h b/components/user_scripts/renderer/scripts_run_info.h
 new file mode 100755
+index 0000000000000..fd23cfd71ac9f
 --- /dev/null
 +++ b/components/user_scripts/renderer/scripts_run_info.h
 @@ -0,0 +1,69 @@
@@ -9234,6 +9296,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_SCRIPTS_RUN_INFO_H_
 diff --git a/components/user_scripts/renderer/user_script_injector.cc b/components/user_scripts/renderer/user_script_injector.cc
 new file mode 100755
+index 0000000000000..f2fbbb4871320
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_injector.cc
 @@ -0,0 +1,227 @@
@@ -9466,6 +9529,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/user_script_injector.h b/components/user_scripts/renderer/user_script_injector.h
 new file mode 100755
+index 0000000000000..1c6064ea6401c
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_injector.h
 @@ -0,0 +1,86 @@
@@ -9557,6 +9621,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_USER_SCRIPT_INJECTOR_H_
 diff --git a/components/user_scripts/renderer/user_script_set.cc b/components/user_scripts/renderer/user_script_set.cc
 new file mode 100755
+index 0000000000000..f2a47e2e54177
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set.cc
 @@ -0,0 +1,266 @@
@@ -9828,6 +9893,7 @@ new file mode 100755
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/user_script_set.h b/components/user_scripts/renderer/user_script_set.h
 new file mode 100755
+index 0000000000000..3b6703a6d2750
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set.h
 @@ -0,0 +1,101 @@
@@ -9934,6 +10000,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_USER_SCRIPT_SET_H_
 diff --git a/components/user_scripts/renderer/user_script_set_manager.cc b/components/user_scripts/renderer/user_script_set_manager.cc
 new file mode 100755
+index 0000000000000..f601abca4cc54
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set_manager.cc
 @@ -0,0 +1,77 @@
@@ -10017,6 +10084,7 @@ new file mode 100755
 \ No newline at end of file
 diff --git a/components/user_scripts/renderer/user_script_set_manager.h b/components/user_scripts/renderer/user_script_set_manager.h
 new file mode 100755
+index 0000000000000..56e209afda773
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set_manager.h
 @@ -0,0 +1,61 @@
@@ -10083,6 +10151,7 @@ new file mode 100755
 +#endif
 diff --git a/components/user_scripts/renderer/user_scripts_dispatcher.cc b/components/user_scripts/renderer/user_scripts_dispatcher.cc
 new file mode 100755
+index 0000000000000..6bf2606e60c23
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_dispatcher.cc
 @@ -0,0 +1,36 @@
@@ -10125,6 +10194,7 @@ new file mode 100755
 \ No newline at end of file
 diff --git a/components/user_scripts/renderer/user_scripts_dispatcher.h b/components/user_scripts/renderer/user_scripts_dispatcher.h
 new file mode 100755
+index 0000000000000..9a51c5b53b6e1
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_dispatcher.h
 @@ -0,0 +1,49 @@
@@ -10179,9 +10249,10 @@ new file mode 100755
 +#endif
 diff --git a/components/user_scripts/renderer/user_scripts_renderer_client.cc b/components/user_scripts/renderer/user_scripts_renderer_client.cc
 new file mode 100755
+index 0000000000000..f41c37786d1bb
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_renderer_client.cc
-@@ -0,0 +1,105 @@
+@@ -0,0 +1,108 @@
 +#include "user_scripts_renderer_client.h"
 +
 +#include <memory>
@@ -10212,7 +10283,10 @@ new file mode 100755
 +  return client.Pointer();
 +}
 +
-+void UserScriptsRendererClient::RenderThreadStarted() {
++void UserScriptsRendererClient::RenderThreadStarted(
++        ChromeRenderThreadObserver* chrome_observer) {
++  chrome_observer_ = chrome_observer;
++
 +  if (base::FeatureList::IsEnabled(features::kEnableLoggingUserScripts))
 +    LOG(INFO) << "UserScripts: RenderThreadStarted";
 +
@@ -10242,8 +10316,8 @@ new file mode 100755
 +    content::RenderFrame* render_frame,
 +    service_manager::BinderRegistry* registry) {
 +
-+  auto params = ChromeRenderThreadObserver::GetDynamicParams();
-+  enabled_ = params.allow_userscript;
++  auto params = chrome_observer_->GetDynamicParams();
++  enabled_ = params->allow_userscript;
 +  if (!enabled_) return;
 +
 +  ExtensionFrameHelper* frame_helper = ExtensionFrameHelper::Get(render_frame);
@@ -10289,9 +10363,10 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/renderer/user_scripts_renderer_client.h b/components/user_scripts/renderer/user_scripts_renderer_client.h
 new file mode 100755
+index 0000000000000..4733292c8bf0f
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_renderer_client.h
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,38 @@
 +#ifndef USERSCRIPTS_RENDER_CLIENT_H_
 +#define USERSCRIPTS_RENDER_CLIENT_H_
 +
@@ -10300,6 +10375,7 @@ new file mode 100755
 +
 +#include "user_scripts_dispatcher.h"
 +#include "services/service_manager/public/cpp/binder_registry.h"
++#include "chrome/renderer/chrome_render_thread_observer.h"
 +
 +namespace user_scripts {
 +
@@ -10312,7 +10388,7 @@ new file mode 100755
 +
 +  static UserScriptsRendererClient* GetInstance();
 +
-+  void RenderThreadStarted();
++  void RenderThreadStarted(ChromeRenderThreadObserver* chrome_observer);
 +  void ConfigurationUpdated();
 +  void RenderFrameCreated(content::RenderFrame* render_frame,
 +    service_manager::BinderRegistry* registry);
@@ -10323,6 +10399,7 @@ new file mode 100755
 + private:
 +  std::unique_ptr<UserScriptsDispatcher> dispatcher_;
 +  bool enabled_ = false;
++  raw_ptr<ChromeRenderThreadObserver> chrome_observer_;
 +};
 +
 +}
@@ -10330,6 +10407,7 @@ new file mode 100755
 +#endif
 diff --git a/components/user_scripts/renderer/web_ui_injection_host.cc b/components/user_scripts/renderer/web_ui_injection_host.cc
 new file mode 100755
+index 0000000000000..8049f3c7e0062
 --- /dev/null
 +++ b/components/user_scripts/renderer/web_ui_injection_host.cc
 @@ -0,0 +1,40 @@
@@ -10375,6 +10453,7 @@ new file mode 100755
 +}
 diff --git a/components/user_scripts/renderer/web_ui_injection_host.h b/components/user_scripts/renderer/web_ui_injection_host.h
 new file mode 100755
+index 0000000000000..810fc66854d64
 --- /dev/null
 +++ b/components/user_scripts/renderer/web_ui_injection_host.h
 @@ -0,0 +1,27 @@
@@ -10407,6 +10486,7 @@ new file mode 100755
 +#endif  // USERSCRIPTS_RENDERER_WEB_UI_INJECTION_HOST_H_
 diff --git a/components/user_scripts/strings/userscripts_strings.grdp b/components/user_scripts/strings/userscripts_strings.grdp
 new file mode 100755
+index 0000000000000..a512c68c96412
 --- /dev/null
 +++ b/components/user_scripts/strings/userscripts_strings.grdp
 @@ -0,0 +1,54 @@
@@ -10465,20 +10545,22 @@ new file mode 100755
 +
 +</grit-part>
 diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index a34293da90260..b283cd492acc6 100644
 --- a/tools/gritsettings/resource_ids.spec
 +++ b/tools/gritsettings/resource_ids.spec
-@@ -738,6 +738,12 @@
+@@ -899,6 +899,12 @@
    "components/autofill/core/browser/autofill_address_rewriter_resources.grd":{
-     "includes": [3720]
+     "includes": [6220]
    },
 +  "components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd": {
-+    "includes": [6000],
++    "includes": [7000],
 +  },
 +  "components/user_scripts/browser/resources/browser_resources.grd": {
-+    "includes": [6020],
++    "includes": [7020],
 +  },
    # END components/ section.
  
    # START ios/ section.
---
-2.25.1
+-- 
+2.34.1
+

@@ -1,6 +1,7 @@
+From 408b265b7e8aed46c834c9e93a14a51308138721 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 28 Oct 2017 10:09:41 +0200
-Subject: Inject scripts for AMP, tracking, ads and video
+Subject: [PATCH 051/192] Inject scripts for AMP, tracking, ads and video
 
 Remove AMP, tracking and ads from search/news results
 Break Page Visibility API and Fullscreen API for youtube.com and vimeo.com to allow playing videos in background (original Javascript code by timdream)
@@ -21,9 +22,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 third_party/blink/renderer/core/dom/extensions/video_bg_play.h
 
 diff --git a/third_party/blink/renderer/core/dom/build.gni b/third_party/blink/renderer/core/dom/build.gni
+index 158f5d3010642..9960761f94e21 100644
 --- a/third_party/blink/renderer/core/dom/build.gni
 +++ b/third_party/blink/renderer/core/dom/build.gni
-@@ -159,6 +159,8 @@ blink_core_sources_dom = [
+@@ -170,6 +170,8 @@ blink_core_sources_dom = [
    "has_invalidation_flags.h",
    "icon_url.cc",
    "icon_url.h",
@@ -33,9 +35,10 @@ diff --git a/third_party/blink/renderer/core/dom/build.gni b/third_party/blink/r
    "id_target_observer.h",
    "id_target_observer_registry.cc",
 diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+index 5e47f5d8e6e59..326349969f375 100644
 --- a/third_party/blink/renderer/core/dom/document.cc
 +++ b/third_party/blink/renderer/core/dom/document.cc
-@@ -284,6 +284,7 @@
+@@ -292,6 +292,7 @@
  #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
  #include "third_party/blink/renderer/core/page/scrolling/scroll_state_callback.h"
  #include "third_party/blink/renderer/core/page/scrolling/scrolling_coordinator.h"
@@ -43,7 +46,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
  #include "third_party/blink/renderer/core/page/scrolling/snap_coordinator.h"
  #include "third_party/blink/renderer/core/page/scrolling/top_document_root_scroller_controller.h"
  #include "third_party/blink/renderer/core/page/spatial_navigation_controller.h"
-@@ -356,6 +357,8 @@
+@@ -368,6 +369,8 @@
  #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
  #include "third_party/blink/renderer/platform/wtf/text/text_encoding_registry.h"
  
@@ -52,7 +55,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
  #ifndef NDEBUG
  using WeakDocumentSet = blink::HeapHashSet<blink::WeakMember<blink::Document>>;
  static WeakDocumentSet& LiveDocumentSet();
-@@ -7109,6 +7112,64 @@ void Document::OnPrepareToStopParsing() {
+@@ -7489,6 +7492,64 @@ void Document::OnPrepareToStopParsing() {
        MilestoneForDelayedAsyncScript::kFinishedParsing);
  }
  
@@ -117,7 +120,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
  void Document::FinishedParsing() {
    DCHECK(!GetScriptableDocumentParser() || !parser_->IsParsing());
    DCHECK(!GetScriptableDocumentParser() || ready_state_ != kLoading);
-@@ -7160,6 +7221,10 @@ void Document::FinishedParsing() {
+@@ -7540,6 +7601,10 @@ void Document::FinishedParsing() {
  
      frame->Loader().FinishedParsing();
  
@@ -129,11 +132,12 @@ diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink
        FontPerformance::MarkDomContentLoaded();
  
 diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
+index 88c64a875224a..ea3d4b7b120e7 100644
 --- a/third_party/blink/renderer/core/dom/document.h
 +++ b/third_party/blink/renderer/core/dom/document.h
-@@ -1993,6 +1993,9 @@ class CORE_EXPORT Document : public ContainerNode,
-   // Called when the AXMode of an existing AXContext changes.
+@@ -2049,6 +2049,9 @@ class CORE_EXPORT Document : public ContainerNode,
    void AXContextModeChanged();
+   void ClearAXObjectCache();
  
 +  void injectScripts();
 +  const AtomicString& findFirstScriptNonce();
@@ -143,6 +147,7 @@ diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/
    bool IsDocumentNode() const =
 diff --git a/third_party/blink/renderer/core/dom/extensions/anti_amp_cure.h b/third_party/blink/renderer/core/dom/extensions/anti_amp_cure.h
 new file mode 100644
+index 0000000000000..9922dc460c671
 --- /dev/null
 +++ b/third_party/blink/renderer/core/dom/extensions/anti_amp_cure.h
 @@ -0,0 +1,6 @@
@@ -154,6 +159,7 @@ new file mode 100644
 +#endif  // anti_amp_cure_h
 diff --git a/third_party/blink/renderer/core/dom/extensions/video_bg_play.h b/third_party/blink/renderer/core/dom/extensions/video_bg_play.h
 new file mode 100644
+index 0000000000000..e730bd799a98d
 --- /dev/null
 +++ b/third_party/blink/renderer/core/dom/extensions/video_bg_play.h
 @@ -0,0 +1,6 @@
@@ -164,9 +170,10 @@ new file mode 100644
 +
 +#endif  // video_bg_play_h
 diff --git a/third_party/blink/renderer/core/html/html_script_element.cc b/third_party/blink/renderer/core/html/html_script_element.cc
+index bb0ba22a7fde0..0626202fdaa55 100644
 --- a/third_party/blink/renderer/core/html/html_script_element.cc
 +++ b/third_party/blink/renderer/core/html/html_script_element.cc
-@@ -190,6 +190,11 @@ void HTMLScriptElement::setTextContent(const String& string) {
+@@ -188,6 +188,11 @@ void HTMLScriptElement::setTextContent(const String& string) {
    Node::setTextContent(string);
  }
  
@@ -179,6 +186,7 @@ diff --git a/third_party/blink/renderer/core/html/html_script_element.cc b/third
    // https://html.spec.whatwg.org/multipage/scripting.html#dom-script-async
    SetBooleanAttribute(html_names::kAsyncAttr, async);
 diff --git a/third_party/blink/renderer/core/html/html_script_element.h b/third_party/blink/renderer/core/html/html_script_element.h
+index 61fbc04ed71aa..8a69933607ebd 100644
 --- a/third_party/blink/renderer/core/html/html_script_element.h
 +++ b/third_party/blink/renderer/core/html/html_script_element.h
 @@ -60,6 +60,7 @@ class CORE_EXPORT HTMLScriptElement final : public HTMLElement,
@@ -189,5 +197,6 @@ diff --git a/third_party/blink/renderer/core/html/html_script_element.h b/third_
  
    void setAsync(bool);
    bool async() const;
---
-2.25.1
+-- 
+2.34.1
+

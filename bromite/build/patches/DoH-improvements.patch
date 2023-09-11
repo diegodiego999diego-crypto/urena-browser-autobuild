@@ -1,6 +1,7 @@
+From c3f15ff6cfd0503fdb1f19890a7a6fd0b7003ff7 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 26 Sep 2020 14:23:19 +0100
-Subject: DoH improvements
+Subject: [PATCH 097/192] DoH improvements
 
 Enable secure mode by default
 Always enforce DoH even with inconsistent system DNS configuration
@@ -13,9 +14,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  3 files changed, 10 insertions(+), 19 deletions(-)
 
 diff --git a/chrome/browser/net/stub_resolver_config_reader.cc b/chrome/browser/net/stub_resolver_config_reader.cc
+index 14db5800fac2a..e2c77b5aac8a2 100644
 --- a/chrome/browser/net/stub_resolver_config_reader.cc
 +++ b/chrome/browser/net/stub_resolver_config_reader.cc
-@@ -156,7 +156,7 @@ StubResolverConfigReader::StubResolverConfigReader(PrefService* local_state,
+@@ -149,7 +149,7 @@ StubResolverConfigReader::StubResolverConfigReader(PrefService* local_state,
        if (entries.count("dns-over-https@1")) {
          // The user has "Enabled" selected.
          local_state_->SetString(prefs::kDnsOverHttpsMode,
@@ -24,7 +26,7 @@ diff --git a/chrome/browser/net/stub_resolver_config_reader.cc b/chrome/browser/
        } else if (entries.count("dns-over-https@2")) {
          // The user has "Disabled" selected.
          local_state_->SetString(prefs::kDnsOverHttpsMode,
-@@ -341,22 +341,7 @@ SecureDnsConfig StubResolverConfigReader::GetAndUpdateConfiguration(
+@@ -344,22 +344,7 @@ SecureDnsConfig StubResolverConfigReader::GetAndUpdateConfiguration(
      check_parental_controls = false;
    }
  
@@ -48,9 +50,10 @@ diff --git a/chrome/browser/net/stub_resolver_config_reader.cc b/chrome/browser/
    }
  
 diff --git a/net/dns/dns_client.cc b/net/dns/dns_client.cc
+index db550a7b6ed01..9ce967588fe6f 100644
 --- a/net/dns/dns_client.cc
 +++ b/net/dns/dns_client.cc
-@@ -244,11 +244,14 @@ class DnsClientImpl : public DnsClient {
+@@ -242,11 +242,14 @@ class DnsClientImpl : public DnsClient {
   private:
    absl::optional<DnsConfig> BuildEffectiveConfig() const {
      DnsConfig config;
@@ -67,7 +70,7 @@ diff --git a/net/dns/dns_client.cc b/net/dns/dns_client.cc
  
        config = config_overrides_.ApplyOverrides(system_config_.value());
      }
-@@ -263,8 +266,10 @@ class DnsClientImpl : public DnsClient {
+@@ -261,8 +264,10 @@ class DnsClientImpl : public DnsClient {
      if (config.unhandled_options)
        config.nameservers.clear();
  
@@ -80,9 +83,10 @@ diff --git a/net/dns/dns_client.cc b/net/dns/dns_client.cc
      return config;
    }
 diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
+index 793a253da3482..6f8c7d8f1d2ed 100644
 --- a/net/dns/host_resolver_manager.cc
 +++ b/net/dns/host_resolver_manager.cc
-@@ -2933,6 +2933,7 @@ void HostResolverManager::SetDnsConfigOverrides(DnsConfigOverrides overrides) {
+@@ -3141,6 +3141,7 @@ void HostResolverManager::SetDnsConfigOverrides(DnsConfigOverrides overrides) {
    bool changed = dns_client_->SetConfigOverrides(std::move(overrides));
  
    if (changed) {
@@ -90,5 +94,6 @@ diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
      NetworkChangeNotifier::TriggerNonSystemDnsChange();
  
      // Only invalidate cache if new overrides have resulted in a config change.
---
-2.25.1
+-- 
+2.34.1
+

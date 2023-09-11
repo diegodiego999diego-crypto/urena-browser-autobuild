@@ -1,6 +1,7 @@
+From c13cac36689b652e9f976d6489306ac4c37e4558 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Thu, 29 Mar 2018 00:43:32 +0200
-Subject: Add a proxy configuration page
+Subject: [PATCH 066/192] Add a proxy configuration page
 
 Accessible from proxy settings and chrome://proxy
 Allows to use a PAC script URL, automatic configuration and explicit proxy settings.
@@ -19,27 +20,27 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../java/res/xml/privacy_preferences.xml      |   4 +
  .../privacy/settings/PrivacySettings.java     |   1 +
  .../chrome_autocomplete_provider_client.cc    |   2 +
- chrome/browser/browser_resources.grd          |   6 +
+ chrome/browser/browser_resources.grd          |   6 +-
  chrome/browser/net/proxy_service_factory.cc   |  24 +-
  chrome/browser/net/proxy_service_factory.h    |   3 +
  chrome/browser/prefs/browser_prefs.cc         |   4 +
  .../prefs/chrome_command_line_pref_store.cc   |   2 +-
  chrome/browser/resources/proxy_config.css     |  61 +++
- chrome/browser/resources/proxy_config.html    |  78 ++++
- chrome/browser/resources/proxy_config.js      | 267 +++++++++++
+ chrome/browser/resources/proxy_config.html    |  77 ++++
+ chrome/browser/resources/proxy_config.js      | 278 +++++++++++++
  chrome/browser/ui/BUILD.gn                    |   2 +
  .../webui/chrome_web_ui_controller_factory.cc |   3 +
- chrome/browser/ui/webui/proxy_config_ui.cc    | 418 ++++++++++++++++++
+ chrome/browser/ui/webui/proxy_config_ui.cc    | 393 ++++++++++++++++++
  chrome/browser/ui/webui/proxy_config_ui.h     |  31 ++
  chrome/common/webui_url_constants.cc          |   4 +
  chrome/common/webui_url_constants.h           |   2 +
- .../pref_proxy_config_tracker_impl.cc         |   1 +
+ .../pref_proxy_config_tracker_impl.cc         |   5 +-
  .../proxy_config/proxy_config_dictionary.cc   |  30 +-
  .../proxy_config/proxy_config_dictionary.h    |   7 +-
  .../proxy_config/proxy_policy_handler.cc      |   2 +-
  net/proxy_resolution/proxy_config.cc          |  52 ++-
  net/proxy_resolution/proxy_config.h           |   3 +
- 24 files changed, 996 insertions(+), 14 deletions(-)
+ 24 files changed, 982 insertions(+), 17 deletions(-)
  create mode 100644 chrome/browser/resources/proxy_config.css
  create mode 100644 chrome/browser/resources/proxy_config.html
  create mode 100644 chrome/browser/resources/proxy_config.js
@@ -47,6 +48,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 chrome/browser/ui/webui/proxy_config_ui.h
 
 diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res/values/values.xml
+index ce68e038c7d31..9a30818faacaa 100644
 --- a/chrome/android/java/res/values/values.xml
 +++ b/chrome/android/java/res/values/values.xml
 @@ -27,6 +27,9 @@ found in the LICENSE file.
@@ -60,9 +62,10 @@ diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res
      <integer name="download_infobar_fill_in_delay">1200</integer>
      <integer name="download_infobar_fill_out_delay">200</integer>
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+index 4c71a1e2ba2ab..68b5042d47935 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -8,6 +8,10 @@ found in the LICENSE file.
+@@ -9,6 +9,10 @@ found in the LICENSE file.
  <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:app="http://schemas.android.com/apk/res-auto">
  
@@ -74,20 +77,22 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
          android:key="clear_browsing_data"
          android:title="@string/clear_browsing_data_title"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+index 7ef15d2b6602e..bf1d9e1d63677 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -59,6 +59,7 @@ public class PrivacySettings
-     private static final String PREF_DO_NOT_TRACK = "do_not_track";
-     private static final String PREF_CLEAR_BROWSING_DATA = "clear_browsing_data";
+@@ -82,6 +82,7 @@ public class PrivacySettings extends PreferenceFragmentCompat
+     private static final String PREF_SAFE_BROWSING = "safe_browsing";
+     private static final String PREF_SYNC_AND_SERVICES_LINK = "sync_and_services_link";
      private static final String PREF_PRIVACY_SANDBOX = "privacy_sandbox";
 +    private static final String PREF_PROXY_OPTIONS = "proxy";
      private static final String PREF_PRIVACY_GUIDE = "privacy_guide";
      private static final String PREF_INCOGNITO_LOCK = "incognito_lock";
- 
+     private static final String PREF_THIRD_PARTY_COOKIES = "third_party_cookies";
 diff --git a/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc b/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
+index ed307f6c1c9f7..1437a1741f3a4 100644
 --- a/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
 +++ b/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
-@@ -284,6 +284,8 @@ ChromeAutocompleteProviderClient::GetBuiltinsToProvideAsUserTypes() {
+@@ -304,6 +304,8 @@ ChromeAutocompleteProviderClient::GetBuiltinsToProvideAsUserTypes() {
    builtins_to_provide.push_back(
        base::ASCIIToUTF16(chrome::kChromeUISettingsURL));
  #endif
@@ -97,22 +102,28 @@ diff --git a/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc 
        base::ASCIIToUTF16(chrome::kChromeUIVersionURL));
    return builtins_to_provide;
 diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resources.grd
+index 3b93dd29ebca0..431bba1dc42d6 100644
 --- a/chrome/browser/browser_resources.grd
 +++ b/chrome/browser/browser_resources.grd
-@@ -81,6 +81,12 @@
-         <include name="IDR_DESK_API_MANIFEST" file="resources\chromeos\desk_api\manifest.json" type="BINDATA" />
+@@ -284,11 +284,15 @@
+         <include name="IDR_PREF_HASH_SEED_BIN" file="resources\settings_internal\pref_hash_seed.bin" type="BINDATA" />
+         <include name="IDR_ADDITIONAL_MODULE_IDS" file="${additional_modules_list_file}" use_base_dir="false" type="BINDATA" />
        </if>
- 
 +      <!-- Bromite Proxy Configuration UI -->
 +      <if expr="is_android">
 +        <include name="IDR_PROXY_CONFIG_HTML" file="resources\proxy_config.html" flattenhtml="true" type="BINDATA" compress="gzip" />
 +        <include name="IDR_PROXY_CONFIG_JS" file="resources\proxy_config.js" type="BINDATA" compress="gzip" />
 +      </if>
-+
        <if expr="not is_android">
+         <include name="IDR_ABOUT_SYS_HTML" file="resources\about_sys\about_sys.html" type="BINDATA" />
+         <include name="IDR_ABOUT_SYS_CSS" file="resources\about_sys\about_sys.css" type="BINDATA" />
+         <include name="IDR_ABOUT_SYS_JS" file="resources\about_sys\about_sys.js" preprocess="true" type="BINDATA" />
+-
          <!-- Page not available for guest. -->
          <include name="IDR_PAGE_NOT_AVAILABLE_FOR_GUEST_APP_HTML" file="resources\page_not_available_for_guest\app.html" type="BINDATA" />
+         <include name="IDR_MEDIA_ROUTER_INTERNALS_HTML" file="resources\media_router\internals\media_router_internals.html" type="BINDATA" />
 diff --git a/chrome/browser/net/proxy_service_factory.cc b/chrome/browser/net/proxy_service_factory.cc
+index 281a393f03936..5dedebc3a9f16 100644
 --- a/chrome/browser/net/proxy_service_factory.cc
 +++ b/chrome/browser/net/proxy_service_factory.cc
 @@ -6,6 +6,7 @@
@@ -120,7 +131,7 @@ diff --git a/chrome/browser/net/proxy_service_factory.cc b/chrome/browser/net/pr
  #include <utility>
  
 +#include "base/logging.h"
- #include "base/threading/thread_task_runner_handle.h"
+ #include "base/task/single_thread_task_runner.h"
  #include "build/build_config.h"
  #include "build/chromeos_buildflags.h"
 @@ -13,6 +14,9 @@
@@ -165,6 +176,7 @@ diff --git a/chrome/browser/net/proxy_service_factory.cc b/chrome/browser/net/pr
 +  registry->RegisterBooleanPref("proxy_migrated", false);
 +}
 diff --git a/chrome/browser/net/proxy_service_factory.h b/chrome/browser/net/proxy_service_factory.h
+index a5074896c5ebd..9d2060d09fca2 100644
 --- a/chrome/browser/net/proxy_service_factory.h
 +++ b/chrome/browser/net/proxy_service_factory.h
 @@ -6,6 +6,7 @@
@@ -185,9 +197,10 @@ diff --git a/chrome/browser/net/proxy_service_factory.h b/chrome/browser/net/pro
    // should be used for the system request context and the signin screen
    // (ChromeOS only).
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index a3de4152dfd4c..14d123fe4bc47 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -165,6 +165,8 @@
+@@ -175,6 +175,8 @@
  #include "rlz/buildflags/buildflags.h"
  #include "third_party/abseil-cpp/absl/types/optional.h"
  
@@ -196,9 +209,9 @@ diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browse
  #if BUILDFLAG(ENABLE_BACKGROUND_MODE)
  #include "chrome/browser/background/background_mode_manager.h"
  #endif
-@@ -1013,6 +1015,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
-   chrome::enterprise_util::RegisterLocalStatePrefs(registry);
+@@ -1315,6 +1317,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
    component_updater::RegisterPrefs(registry);
+   domain_reliability::RegisterPrefs(registry);
    embedder_support::OriginTrialPrefs::RegisterPrefs(registry);
 +  ProxyServiceFactory::RegisterPrefs(registry);
 +
@@ -206,9 +219,10 @@ diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browse
    ExternalProtocolHandler::RegisterPrefs(registry);
    flags_ui::PrefServiceFlagsStorage::RegisterPrefs(registry);
 diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.cc b/chrome/browser/prefs/chrome_command_line_pref_store.cc
+index dd4824764ecf6..03019827319af 100644
 --- a/chrome/browser/prefs/chrome_command_line_pref_store.cc
 +++ b/chrome/browser/prefs/chrome_command_line_pref_store.cc
-@@ -159,7 +159,7 @@ void ChromeCommandLinePrefStore::ApplyProxyMode() {
+@@ -156,7 +156,7 @@ void ChromeCommandLinePrefStore::ApplyProxyMode() {
          command_line()->GetSwitchValueASCII(switches::kProxyBypassList);
      SetValue(proxy_config::prefs::kProxy,
               base::Value(ProxyConfigDictionary::CreateFixedServers(
@@ -219,6 +233,7 @@ diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.cc b/chrome/bro
  }
 diff --git a/chrome/browser/resources/proxy_config.css b/chrome/browser/resources/proxy_config.css
 new file mode 100644
+index 0000000000000..0ce4fc031fa12
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.css
 @@ -0,0 +1,61 @@
@@ -285,9 +300,10 @@ new file mode 100644
 +}
 diff --git a/chrome/browser/resources/proxy_config.html b/chrome/browser/resources/proxy_config.html
 new file mode 100644
+index 0000000000000..71df46a98a601
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.html
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,77 @@
 +﻿<!doctype html>
 +<html>
 +<head>
@@ -301,7 +317,6 @@ new file mode 100644
 +<script src="chrome://resources/js/ios/web_ui.js"></script>
 +</if>
 +
-+<script type="module" src="chrome://resources/js/assert.js"></script>
 +<script type="module" src="chrome://proxy/proxy_config.js"></script>
 +<link rel="stylesheet" href="chrome://resources/css/text_defaults.css">
 +<link rel="stylesheet" href="proxy_config.css">
@@ -368,9 +383,10 @@ new file mode 100644
 +</html>
 diff --git a/chrome/browser/resources/proxy_config.js b/chrome/browser/resources/proxy_config.js
 new file mode 100644
+index 0000000000000..7f92b18dfff49
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.js
-@@ -0,0 +1,267 @@
+@@ -0,0 +1,278 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -388,8 +404,7 @@ new file mode 100644
 +    along with Bromite. If not, see <https://www.gnu.org/licenses/>.
 +*/
 +
-+import {$} from 'chrome://resources/js/util.js';
-+import {addSingletonGetter} from 'chrome://resources/js/cr.m.js';
++import {$} from 'chrome://resources/js/util_ts.js';
 +
 +/**
 + * Main entry point called once the page has loaded.
@@ -432,6 +447,18 @@ new file mode 100644
 +  var kIdHttpsProxies = 'https-proxies';
 +  var kIdFtpProxies = 'ftp-proxies';
 +  var kIdFallbackProxies = 'fallback-proxies';
++
++  /**
++  * Adds a {@code getInstance} static method that always return the same
++  * instance object.
++  * @param {!Function} ctor The constructor for the class to add the static
++  *     method to.
++  */
++  function addSingletonGetter(ctor) {
++    ctor.getInstance = function() {
++      return ctor.instance_ || (ctor.instance_ = new ctor());
++    };
++  }
 +
 +  /**
 +   * @constructor
@@ -639,9 +666,10 @@ new file mode 100644
 +  return ProxyConfigView;
 +})();
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index be74e41618d74..c8ef769387df2 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -285,6 +285,8 @@ static_library("ui") {
+@@ -397,6 +397,8 @@ static_library("ui") {
      "webui/metrics_internals/metrics_internals_ui.h",
      "webui/net_export_ui.cc",
      "webui/net_export_ui.h",
@@ -651,9 +679,10 @@ diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
      "webui/net_internals/net_internals_ui.h",
      "webui/ntp_tiles_internals_ui.cc",
 diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
+index df4841449a99b..a3bca2f687432 100644
 --- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-@@ -60,6 +60,7 @@
+@@ -59,6 +59,7 @@
  #include "chrome/browser/ui/webui/ntp_tiles_internals_ui.h"
  #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
  #include "chrome/browser/ui/webui/policy/policy_ui.h"
@@ -661,7 +690,7 @@ diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrom
  #include "chrome/browser/ui/webui/predictors/predictors_ui.h"
  #include "chrome/browser/ui/webui/segmentation_internals/segmentation_internals_ui.h"
  #include "chrome/browser/ui/webui/signin_internals_ui.h"
-@@ -795,6 +796,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
+@@ -489,6 +490,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
      return &NewWebUI<MetricsInternalsUI>;
    if (url.host_piece() == chrome::kChromeUINetExportHost)
      return &NewWebUI<NetExportUI>;
@@ -672,9 +701,10 @@ diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrom
    if (url.host_piece() == chrome::kChromeUINTPTilesInternalsHost)
 diff --git a/chrome/browser/ui/webui/proxy_config_ui.cc b/chrome/browser/ui/webui/proxy_config_ui.cc
 new file mode 100644
+index 0000000000000..e0269904b6dfe
 --- /dev/null
 +++ b/chrome/browser/ui/webui/proxy_config_ui.cc
-@@ -0,0 +1,418 @@
+@@ -0,0 +1,393 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -700,7 +730,6 @@ new file mode 100644
 +#include <string>
 +#include <vector>
 +
-+#include "base/bind.h"
 +#include "base/command_line.h"
 +#include "base/lazy_instance.h"
 +#include "base/memory/ref_counted.h"
@@ -731,16 +760,6 @@ new file mode 100644
 +using content::WebUIMessageHandler;
 +
 +namespace {
-+
-+content::WebUIDataSource* CreateProxyConfigHTMLSource() {
-+  content::WebUIDataSource* source =
-+      content::WebUIDataSource::Create(chrome::kChromeUIProxyConfigHost);
-+
-+  source->UseStringsJs();
-+  source->AddResourcePath("proxy_config.js", IDR_PROXY_CONFIG_JS);
-+  source->SetDefaultResource(IDR_PROXY_CONFIG_HTML);
-+  return source;
-+}
 +
 +// This class receives javascript messages from the renderer.
 +// Note that the WebUI infrastructure runs on the UI thread, therefore all of
@@ -775,13 +794,13 @@ new file mode 100644
 +
 + private:
 +  // Not owned.
-+  PrefService *pref_service_;
++  raw_ptr<PrefService> pref_service_;
 +  std::unique_ptr<net::ProxyConfigService> proxy_config_service_;
 +  // Monitors global and Profile prefs related to proxy configuration.
 +  std::unique_ptr<PrefProxyConfigTracker> pref_proxy_config_tracker_;
 +  bool is_observing_;
 +
-+  void encodeConfig(const net::ProxyConfig& config, base::DictionaryValue& state);
++  void encodeConfig(const net::ProxyConfig& config, base::Value::Dict& state);
 +
 +  void apply(const net::ProxyConfig& config);
 +
@@ -823,25 +842,25 @@ new file mode 100644
 +  DCHECK(BrowserThread::CurrentlyOn(BrowserThread::UI) ||
 +         !BrowserThread::IsThreadInitialized(BrowserThread::UI));
 +
-+  base::DictionaryValue state;
++  base::Value::Dict state;
 +  bool pending = false;
 +  switch (availability) {
 +    case net::ProxyConfigService::CONFIG_VALID:
 +      encodeConfig(config.value(), state);
 +      break;
 +    case net::ProxyConfigService::CONFIG_UNSET:
-+      state.SetPath({"config", "rules", "type"}, base::Value("none"));
++      state.SetByDottedPath("config.rules.type", base::Value("none"));
 +      break;
 +    case net::ProxyConfigService::CONFIG_PENDING:
 +      //NOTE: this can only happen when triggered manually first time
 +      pending = true;
 +      break;
 +  }
-+  state.SetKey("pending", base::Value(pending));
++  state.Set("pending", base::Value(pending));
 +
 +  // call Javascript function
 +  web_ui()->CallJavascriptFunctionUnsafe("ProxyConfigView.getInstance().onProxyConfigChanged",
-+                                         *state.CreateDeepCopy());
++                                         state.Clone());
 +}
 +
 +const std::string omitDirect(const std::string pacString) {
@@ -851,19 +870,19 @@ new file mode 100644
 +  return pacString;
 +}
 +
-+void ProxyConfigMessageHandler::encodeConfig(const net::ProxyConfig& config, base::DictionaryValue& state) {
++void ProxyConfigMessageHandler::encodeConfig(const net::ProxyConfig& config, base::Value::Dict& state) {
 +  // when automatic settings are enabled they take precedence over manual settings
 +  // automatic settings are either the "auto-detect" flag or the existance of a PAC URL
 +
-+  state.SetPath({"config", "auto_detect"}, base::Value(config.auto_detect()));
++  state.SetByDottedPath("config.auto_detect", base::Value(config.auto_detect()));
 +
 +  auto rules = config.proxy_rules();
 +  if (config.has_pac_url()) {
-+    state.SetPath({"config", "pac_url"}, base::Value(config.pac_url().spec()));
-+    state.SetPath({"config", "pac_mandatory"}, base::Value(config.pac_mandatory()));
-+    state.SetPath({"config", "rules", "type"}, base::Value("none"));
-+    state.SetPath({"config", "rules", "bypass_rules"}, base::Value(rules.bypass_rules.ToString()));
-+    state.SetPath({"config", "rules", "reverse_bypass"}, base::Value(rules.reverse_bypass));
++    state.SetByDottedPath("config.pac_url", base::Value(config.pac_url().spec()));
++    state.SetByDottedPath("config.pac_mandatory", base::Value(config.pac_mandatory()));
++    state.SetByDottedPath("config.rules.type", base::Value("none"));
++    state.SetByDottedPath("config.rules.bypass_rules", base::Value(rules.bypass_rules.ToString()));
++    state.SetByDottedPath("config.rules.reverse_bypass", base::Value(rules.reverse_bypass));
 +    return;
 +  }
 +
@@ -875,23 +894,23 @@ new file mode 100644
 +    case net::ProxyConfig::ProxyRules::Type::PROXY_LIST:
 +      type = "list";
 +
-+      state.SetPath({"config", "rules", "single_proxies"}, base::Value(omitDirect(rules.single_proxies.ToPacString())));
++      state.SetByDottedPath("config.rules.single_proxies", base::Value(omitDirect(rules.single_proxies.ToPacString())));
 +      break;
 +    case net::ProxyConfig::ProxyRules::Type::PROXY_LIST_PER_SCHEME:
 +      type = "list_per_scheme";
 +
-+      state.SetPath({"config", "rules", "proxies_for_http"}, base::Value(omitDirect(rules.proxies_for_http.ToPacString())));
-+      state.SetPath({"config", "rules", "proxies_for_https"}, base::Value(omitDirect(rules.proxies_for_https.ToPacString())));
-+      state.SetPath({"config", "rules", "proxies_for_ftp"}, base::Value(omitDirect(rules.proxies_for_ftp.ToPacString())));
-+      state.SetPath({"config", "rules", "fallback_proxies"}, base::Value(omitDirect(rules.fallback_proxies.ToPacString())));
++      state.SetByDottedPath("config.rules.proxies_for_http", base::Value(omitDirect(rules.proxies_for_http.ToPacString())));
++      state.SetByDottedPath("config.rules.proxies_for_https", base::Value(omitDirect(rules.proxies_for_https.ToPacString())));
++      state.SetByDottedPath("config.rules.proxies_for_ftp", base::Value(omitDirect(rules.proxies_for_ftp.ToPacString())));
++      state.SetByDottedPath("config.rules.fallback_proxies", base::Value(omitDirect(rules.fallback_proxies.ToPacString())));
 +      break;
 +    default:
 +     NOTREACHED();
 +     break;
 +  }
-+  state.SetPath({"config", "rules", "type"}, base::Value(type));
-+  state.SetPath({"config", "rules", "bypass_rules"}, base::Value(rules.bypass_rules.ToString()));
-+  state.SetPath({"config", "rules", "reverse_bypass"}, base::Value(rules.reverse_bypass));
++  state.SetByDottedPath("config.rules.type", base::Value(type));
++  state.SetByDottedPath("config.rules.bypass_rules", base::Value(rules.bypass_rules.ToString()));
++  state.SetByDottedPath("config.rules.reverse_bypass", base::Value(rules.reverse_bypass));
 +}
 +
 +ProxyConfigMessageHandler::~ProxyConfigMessageHandler() {
@@ -961,77 +980,59 @@ new file mode 100644
 +    return;
 +  }
 +
-+  const base::DictionaryValue* config = nullptr;
-+  if (!list[0].GetAsDictionary(&config))
-+    return;
++  const base::Value::Dict& config = list[0].GetDict();
 +
-+  const base::Value *autoDetect = config->FindKeyOfType("auto_detect", base::Value::Type::BOOLEAN);
-+  if (autoDetect == nullptr)
-+    return;
-+
-+  if (autoDetect->GetBool()) {
++  if (config.FindBool("auto_detect").value_or(false)) {
 +    apply(net::ProxyConfig::CreateAutoDetect());
 +    return;
 +  }
 +
-+  const base::Value *pacURL = config->FindKeyOfType("pac_url", base::Value::Type::STRING);
-+  if (pacURL != nullptr) {
-+    const base::Value *pacMandatory = config->FindKeyOfType("pac_mandatory", base::Value::Type::BOOLEAN);
-+    if (pacMandatory == nullptr)
-+      return;
-+    auto proxyConfig = net::ProxyConfig::CreateFromCustomPacURL(GURL(pacURL->GetString()));
-+    proxyConfig.set_pac_mandatory(pacMandatory->GetBool());
-+
++  if (const std::string* pacURL = config.FindString("pac_url")) {
++    absl::optional<bool> pacMandatory = config.FindBool("pac_mandatory");
++    auto proxyConfig = net::ProxyConfig::CreateFromCustomPacURL(
++                                GURL(*pacURL));
++    proxyConfig.set_pac_mandatory(pacMandatory.value_or(false));
 +    apply(proxyConfig);
 +    return;
 +  }
 +
-+  const base::Value *rules = config->FindKeyOfType("rules", base::Value::Type::DICTIONARY);
++  const base::Value::Dict* rules = config.FindDict("rules");
 +  if (rules == nullptr)
 +    return;
 +
-+  const base::Value *type = rules->FindKeyOfType("type", base::Value::Type::STRING);
++  net::ProxyConfig proxyConfig;
++  bool readBypass = false;
++
++  const std::string* type = rules->FindString("type");
 +  if (type == nullptr)
 +    return;
 +
-+  net::ProxyConfig proxyConfig;
-+
-+  bool readBypass = false;
-+
-+  auto t = type->GetString();
-+  if (t == "list") {
-+      const base::Value *single_proxies = rules->FindKeyOfType("single_proxies", base::Value::Type::STRING);
++  if (*type == "list") {
++      const std::string* single_proxies = rules->FindString("single_proxies");
 +      if (single_proxies == nullptr)
 +        return;
 +      proxyConfig.proxy_rules().type = net::ProxyConfig::ProxyRules::Type::PROXY_LIST;
-+      proxyConfig.proxy_rules().single_proxies.SetFromPacString(single_proxies->GetString());
++      proxyConfig.proxy_rules().single_proxies.SetFromPacString(*single_proxies);
 +      readBypass = true;
-+  } else if (t == "list_per_scheme") {
-+      const base::Value *http = rules->FindKeyOfType("proxies_for_http", base::Value::Type::STRING);
-+      if (http == nullptr)
-+        return;
-+
-+      const base::Value *https = rules->FindKeyOfType("proxies_for_https", base::Value::Type::STRING);
-+      if (https == nullptr)
-+        return;
-+
-+      const base::Value *ftp = rules->FindKeyOfType("proxies_for_ftp", base::Value::Type::STRING);
-+      if (ftp == nullptr)
-+        return;
-+
-+      const base::Value *fallback = rules->FindKeyOfType("fallback_proxies", base::Value::Type::STRING);
-+      if (fallback == nullptr)
-+        return;
++  } else if (*type == "list_per_scheme") {
++      const std::string* http = rules->FindString("proxies_for_http");
++      const std::string* https = rules->FindString("proxies_for_https");
++      const std::string* ftp = rules->FindString("proxies_for_ftp");
++      const std::string* fallback = rules->FindString("fallback_proxies");
 +
 +      proxyConfig.proxy_rules().type = net::ProxyConfig::ProxyRules::Type::PROXY_LIST_PER_SCHEME;
-+      proxyConfig.proxy_rules().proxies_for_http.SetFromPacString(http->GetString());
-+      proxyConfig.proxy_rules().proxies_for_https.SetFromPacString(https->GetString());
-+      proxyConfig.proxy_rules().proxies_for_ftp.SetFromPacString(ftp->GetString());
-+      proxyConfig.proxy_rules().fallback_proxies.SetFromPacString(fallback->GetString());
++      if (http)
++        proxyConfig.proxy_rules().proxies_for_http.SetFromPacString(*http);
++      if (https)
++        proxyConfig.proxy_rules().proxies_for_https.SetFromPacString(*https);
++      if (ftp)
++        proxyConfig.proxy_rules().proxies_for_ftp.SetFromPacString(*ftp);
++      if (fallback)
++        proxyConfig.proxy_rules().fallback_proxies.SetFromPacString(*fallback);
 +      readBypass = true;
-+  } else if (t == "direct") {
++  } else if (*type == "direct") {
 +      proxyConfig.proxy_rules().type = net::ProxyConfig::ProxyRules::Type::EMPTY;
-+  } else if (t == "none") {
++  } else if (*type == "none") {
 +      base::Value::List empty;
 +      OnClear(empty);
 +      return;
@@ -1043,16 +1044,14 @@ new file mode 100644
 +
 +  // bypass rules and reverse flag are common to both list types of proxy rules
 +  if (readBypass) {
-+    const base::Value *bypass_rules = rules->FindKeyOfType("bypass_rules", base::Value::Type::STRING);
++    const std::string* bypass_rules = rules->FindString("bypass_rules");
 +    if (bypass_rules == nullptr)
 +      return;
 +
-+    const base::Value *reverse_bypass = rules->FindKeyOfType("reverse_bypass", base::Value::Type::BOOLEAN);
-+    if (reverse_bypass == nullptr)
-+      return;
++    absl::optional<bool> reverse_bypass = rules->FindBool("reverse_bypass");
 +
-+    proxyConfig.proxy_rules().bypass_rules.ParseFromString(bypass_rules->GetString());
-+    proxyConfig.proxy_rules().reverse_bypass = reverse_bypass->GetBool();
++    proxyConfig.proxy_rules().bypass_rules.ParseFromString(*bypass_rules);
++    proxyConfig.proxy_rules().reverse_bypass = reverse_bypass.value_or(false);
 +  }
 +
 +  apply(proxyConfig);
@@ -1091,10 +1090,17 @@ new file mode 100644
 +  web_ui->AddMessageHandler(std::make_unique<ProxyConfigMessageHandler>(profile));
 +
 +  // Set up the chrome://proxy/ source.
-+  content::WebUIDataSource::Add(profile, CreateProxyConfigHTMLSource());
++  content::WebUIDataSource* source =
++      content::WebUIDataSource::CreateAndAdd(web_ui->GetWebContents()->GetBrowserContext(),
++          chrome::kChromeUIProxyConfigHost);
++
++  source->UseStringsJs();
++  source->AddResourcePath("proxy_config.js", IDR_PROXY_CONFIG_JS);
++  source->SetDefaultResource(IDR_PROXY_CONFIG_HTML);
 +}
 diff --git a/chrome/browser/ui/webui/proxy_config_ui.h b/chrome/browser/ui/webui/proxy_config_ui.h
 new file mode 100644
+index 0000000000000..04ef3f7c1fb6d
 --- /dev/null
 +++ b/chrome/browser/ui/webui/proxy_config_ui.h
 @@ -0,0 +1,31 @@
@@ -1130,9 +1136,10 @@ new file mode 100644
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_PROXY_CONFIG_UI_H_
 diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_constants.cc
+index 84a868b10b7c4..fc0cd0df24b9b 100644
 --- a/chrome/common/webui_url_constants.cc
 +++ b/chrome/common/webui_url_constants.cc
-@@ -47,6 +47,8 @@ const char kChromeUICertificateViewerHost[] = "view-cert";
+@@ -50,6 +50,8 @@ const char kChromeUICertificateViewerHost[] = "view-cert";
  const char kChromeUICertificateViewerURL[] = "chrome://view-cert/";
  const char kChromeUIChromeSigninHost[] = "chrome-signin";
  const char kChromeUIChromeSigninURL[] = "chrome://chrome-signin/";
@@ -1141,7 +1148,7 @@ diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_cons
  const char kChromeUIChromeURLsHost[] = "chrome-urls";
  const char kChromeUIChromeURLsURL[] = "chrome://chrome-urls/";
  const char kChromeUIComponentsHost[] = "components";
-@@ -439,6 +441,7 @@ bool IsSystemWebUIHost(base::StringPiece host) {
+@@ -431,6 +433,7 @@ bool IsSystemWebUIHost(base::StringPiece host) {
      kChromeUILockScreenNetworkHost,
      kChromeUILockScreenStartReauthHost,
      kChromeUIMobileSetupHost,
@@ -1149,7 +1156,7 @@ diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_cons
      kChromeUIMultiDeviceSetupHost,
      kChromeUINetworkHost,
      kChromeUINotificationTesterHost,
-@@ -704,6 +707,7 @@ const char* const kChromeHostURLs[] = {
+@@ -730,6 +733,7 @@ const char* const kChromeHostURLs[] = {
  #if !BUILDFLAG(IS_ANDROID)
  #if !BUILDFLAG(IS_CHROMEOS_ASH)
      kChromeUIAppLauncherPageHost,
@@ -1158,21 +1165,40 @@ diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_cons
      kChromeUIBookmarksHost,
      kChromeUIDownloadsHost,
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
+index 66248d78221a7..3d07abca616fd 100644
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
-@@ -134,6 +134,8 @@ extern const char kChromeUIMetricsInternalsHost[];
- extern const char kChromeUINTPTilesInternalsHost[];
+@@ -136,6 +136,8 @@ extern const char kChromeUINTPTilesInternalsHost[];
  extern const char kChromeUINaClHost[];
  extern const char kChromeUINetExportHost[];
+ extern const char kChromeUINetExportURL[];
 +extern const char kChromeUIProxyConfigHost[];
 +extern const char kChromeUIProxyConfigURL[];
  extern const char kChromeUINetInternalsHost[];
  extern const char kChromeUINetInternalsURL[];
  extern const char kChromeUINewTabHost[];
 diff --git a/components/proxy_config/pref_proxy_config_tracker_impl.cc b/components/proxy_config/pref_proxy_config_tracker_impl.cc
+index 6fb7e5f3ae652..9eb0e3fcdfe31 100644
 --- a/components/proxy_config/pref_proxy_config_tracker_impl.cc
 +++ b/components/proxy_config/pref_proxy_config_tracker_impl.cc
-@@ -380,6 +380,7 @@ bool PrefProxyConfigTrackerImpl::PrefConfigToNetConfig(
+@@ -244,14 +244,14 @@ PrefProxyConfigTrackerImpl::GetEffectiveProxyConfig(
+ // static
+ void PrefProxyConfigTrackerImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+   registry->RegisterDictionaryPref(proxy_config::prefs::kProxy,
+-                                   ProxyConfigDictionary::CreateSystem());
++                                   ProxyConfigDictionary::CreateDirect());
+ }
+ 
+ // static
+ void PrefProxyConfigTrackerImpl::RegisterProfilePrefs(
+     PrefRegistrySimple* registry) {
+   registry->RegisterDictionaryPref(proxy_config::prefs::kProxy,
+-                                   ProxyConfigDictionary::CreateSystem());
++                                   ProxyConfigDictionary::CreateDirect());
+   registry->RegisterBooleanPref(proxy_config::prefs::kUseSharedProxies, false);
+ }
+ 
+@@ -384,6 +384,7 @@ bool PrefProxyConfigTrackerImpl::PrefConfigToNetConfig(
        if (proxy_dict.GetBypassList(&proxy_bypass)) {
          proxy_config.proxy_rules().bypass_rules.ParseFromString(proxy_bypass);
        }
@@ -1181,6 +1207,7 @@ diff --git a/components/proxy_config/pref_proxy_config_tracker_impl.cc b/compone
            proxy_config, kSettingsProxyConfigTrafficAnnotation);
        return true;
 diff --git a/components/proxy_config/proxy_config_dictionary.cc b/components/proxy_config/proxy_config_dictionary.cc
+index e2c6ce30f8e6e..ba6d314afeca6 100644
 --- a/components/proxy_config/proxy_config_dictionary.cc
 +++ b/components/proxy_config/proxy_config_dictionary.cc
 @@ -30,6 +30,8 @@ const char kProxyPacMandatory[] = "pac_mandatory";
@@ -1276,6 +1303,7 @@ diff --git a/components/proxy_config/proxy_config_dictionary.cc b/components/pro
  }
  
 diff --git a/components/proxy_config/proxy_config_dictionary.h b/components/proxy_config/proxy_config_dictionary.h
+index 6f65a50e97f1f..76a439905877d 100644
 --- a/components/proxy_config/proxy_config_dictionary.h
 +++ b/components/proxy_config/proxy_config_dictionary.h
 @@ -42,6 +42,7 @@ class PROXY_CONFIG_EXPORT ProxyConfigDictionary {
@@ -1307,9 +1335,10 @@ diff --git a/components/proxy_config/proxy_config_dictionary.h b/components/prox
    base::Value::Dict dict_;
  };
 diff --git a/components/proxy_config/proxy_policy_handler.cc b/components/proxy_config/proxy_policy_handler.cc
+index 5976751880f5d..4f8eeacc93347 100644
 --- a/components/proxy_config/proxy_policy_handler.cc
 +++ b/components/proxy_config/proxy_policy_handler.cc
-@@ -263,7 +263,7 @@ void ProxyPolicyHandler::ApplyPolicySettings(const PolicyMap& policies,
+@@ -262,7 +262,7 @@ void ProxyPolicyHandler::ApplyPolicySettings(const PolicyMap& policies,
          set_proxy_pref_value(ProxyConfigDictionary::CreateFixedServers(
              server->GetString(), bypass_list && bypass_list->is_string()
                                       ? bypass_list->GetString()
@@ -1319,6 +1348,7 @@ diff --git a/components/proxy_config/proxy_policy_handler.cc b/components/proxy_
        break;
      }
 diff --git a/net/proxy_resolution/proxy_config.cc b/net/proxy_resolution/proxy_config.cc
+index 58f501167035c..6ecd5f47e8900 100644
 --- a/net/proxy_resolution/proxy_config.cc
 +++ b/net/proxy_resolution/proxy_config.cc
 @@ -109,7 +109,7 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules) {
@@ -1388,6 +1418,7 @@ diff --git a/net/proxy_resolution/proxy_config.cc b/net/proxy_resolution/proxy_c
      const std::string& url_scheme) const {
    const ProxyList* proxy_server_list = const_cast<ProxyRules*>(this)->
 diff --git a/net/proxy_resolution/proxy_config.h b/net/proxy_resolution/proxy_config.h
+index d041b912eea32..1e7310be9afd4 100644
 --- a/net/proxy_resolution/proxy_config.h
 +++ b/net/proxy_resolution/proxy_config.h
 @@ -103,6 +103,9 @@ class NET_EXPORT ProxyConfig {
@@ -1400,5 +1431,6 @@ diff --git a/net/proxy_resolution/proxy_config.h b/net/proxy_resolution/proxy_co
  
      // Returns one of {&proxies_for_http, &proxies_for_https, &proxies_for_ftp,
      // &fallback_proxies}, or NULL if there is no proxy to use.
---
-2.25.1
+-- 
+2.34.1
+

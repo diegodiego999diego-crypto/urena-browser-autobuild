@@ -1,6 +1,7 @@
+From 1238d0754e82452887124e0fc7b4786539f32301 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 6 Mar 2022 18:55:58 +0100
-Subject: OpenSearch: miscellaneous
+Subject: [PATCH 158/192] OpenSearch: miscellaneous
 
 Fix upstream bug with recently added engines prematurely discarded
 because they have no last-visit timestamp
@@ -14,14 +15,16 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../settings/SearchEngineAdapter.java         |  4 +-
  .../search_engine_tab_helper.cc               | 51 ++++++++++++++-----
  .../renderer/chrome_render_frame_observer.cc  |  2 +
- .../search_engines/template_url_fetcher.cc    | 23 +++++++--
+ .../search_engines/template_url_fetcher.cc    | 24 +++++++--
+ .../search_engines/template_url_parser.cc     |  2 +-
  .../search_engines/template_url_service.h     |  8 +--
- 5 files changed, 65 insertions(+), 23 deletions(-)
+ 6 files changed, 67 insertions(+), 24 deletions(-)
 
 diff --git a/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java b/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
+index 11aae72d279fb..a2a47f13434d9 100644
 --- a/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
 +++ b/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
-@@ -247,7 +247,9 @@ public class SearchEngineAdapter extends BaseAdapter
+@@ -249,7 +249,9 @@ public class SearchEngineAdapter extends BaseAdapter
                  continue;
              }
              if (recentEngineNum < MAX_RECENT_ENGINE_NUM
@@ -33,6 +36,7 @@ diff --git a/chrome/browser/search_engines/android/java/src/org/chromium/chrome/
              } else {
                  iterator.remove();
 diff --git a/chrome/browser/ui/search_engines/search_engine_tab_helper.cc b/chrome/browser/ui/search_engines/search_engine_tab_helper.cc
+index 8fd09baf04eaf..d6747f6a6a849 100644
 --- a/chrome/browser/ui/search_engines/search_engine_tab_helper.cc
 +++ b/chrome/browser/ui/search_engines/search_engine_tab_helper.cc
 @@ -6,6 +6,7 @@
@@ -177,28 +181,30 @@ diff --git a/chrome/browser/ui/search_engines/search_engine_tab_helper.cc b/chro
      return;
  
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
+index cc639b5dab4cb..78fd25db24176 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
 @@ -14,6 +14,7 @@
  
- #include "base/bind.h"
  #include "base/command_line.h"
+ #include "base/functional/bind.h"
 +#include "base/logging.h"
  #include "base/metrics/histogram_macros.h"
  #include "base/no_destructor.h"
  #include "base/strings/string_number_conversions.h"
-@@ -251,6 +252,7 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+@@ -260,6 +261,7 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
  
    GURL osdd_url = frame->GetDocument().OpenSearchDescriptionURL();
    if (!osdd_url.is_empty()) {
-+    LOG(INFO) << "OpenSearch: found OSDD URL: " << osdd_url;
++    DLOG(INFO) << "OpenSearch: found OSDD URL: " << osdd_url;
      mojo::Remote<chrome::mojom::OpenSearchDescriptionDocumentHandler>
          osdd_handler;
      render_frame()->GetBrowserInterfaceBroker()->GetInterface(
 diff --git a/components/search_engines/template_url_fetcher.cc b/components/search_engines/template_url_fetcher.cc
+index 0032d89f702f8..9ce17529ad129 100644
 --- a/components/search_engines/template_url_fetcher.cc
 +++ b/components/search_engines/template_url_fetcher.cc
-@@ -259,16 +259,29 @@ void TemplateURLFetcher::ScheduleDownload(
+@@ -259,18 +259,32 @@ void TemplateURLFetcher::ScheduleDownload(
      return;
    }
  
@@ -216,7 +222,7 @@ diff --git a/components/search_engines/template_url_fetcher.cc b/components/sear
 +    if (template_url->originating_url() == osdd_url) {
 +      // Either there is a user created TemplateURL for this keyword, or the
 +      // keyword has the same OSDD url and we've parsed it.
-+      LOG(INFO) << "OpenSearch: OSDD URL was already parsed: " << osdd_url;
++      DLOG(INFO) << "OpenSearch: OSDD URL was already parsed: " << osdd_url;
 +      // always update the visit timestamp
 +      template_url_service_->UpdateTemplateURLVisitTime(template_url);
 +      return;
@@ -232,11 +238,28 @@ diff --git a/components/search_engines/template_url_fetcher.cc b/components/sear
 +    }
    }
  
++  LOG(INFO) << "OpenSearch: getting " << osdd_url;
    requests_.push_back(std::make_unique<RequestDelegate>(
+       this, keyword, osdd_url, favicon_url, initiator, url_loader_factory,
+       render_frame_id, request_id));
+diff --git a/components/search_engines/template_url_parser.cc b/components/search_engines/template_url_parser.cc
+index 76e281653818c..b7f2328ed439a 100644
+--- a/components/search_engines/template_url_parser.cc
++++ b/components/search_engines/template_url_parser.cc
+@@ -171,7 +171,7 @@ void SafeTemplateURLParser::OnXmlParseComplete(
+     data_decoder::DataDecoder::ValueOrError value_or_error) {
+   std::move(callback_).Run([&]() -> std::unique_ptr<TemplateURL> {
+     if (!value_or_error.has_value()) {
+-      DLOG(ERROR) << "Failed to parse XML: " << value_or_error.error();
++      LOG(ERROR) << "Failed to parse XML: " << value_or_error.error();
+       return nullptr;
+     }
+     const base::Value& root = *value_or_error;
 diff --git a/components/search_engines/template_url_service.h b/components/search_engines/template_url_service.h
+index f143f6d65d3f4..160fba00b3f74 100644
 --- a/components/search_engines/template_url_service.h
 +++ b/components/search_engines/template_url_service.h
-@@ -282,7 +282,10 @@ class TemplateURLService : public WebDataServiceConsumer,
+@@ -264,7 +264,10 @@ class TemplateURLService : public WebDataServiceConsumer,
    void UpdateProviderFavicons(const GURL& potential_search_url,
                                const GURL& favicon_url);
  
@@ -248,7 +271,7 @@ diff --git a/components/search_engines/template_url_service.h b/components/searc
    // regardless of |url| if the default search provider is managed by policy or
    // controlled by an extension.
    bool CanMakeDefault(const TemplateURL* url) const;
-@@ -646,9 +649,6 @@ class TemplateURLService : public WebDataServiceConsumer,
+@@ -626,9 +629,6 @@ class TemplateURLService : public WebDataServiceConsumer,
    // SetKeywordSearchTermsForURL is invoked.
    void UpdateKeywordSearchTermsForURL(const URLVisitedDetails& details);
  
@@ -258,5 +281,6 @@ diff --git a/components/search_engines/template_url_service.h b/components/searc
    // If necessary, generates a visit for the site http:// + t_url.keyword().
    void AddTabToSearchVisit(const TemplateURL& t_url);
  
---
-2.25.1
+-- 
+2.34.1
+

@@ -1,17 +1,19 @@
+From 35eb584bd64c6c16502438b53e659854cc966103 Mon Sep 17 00:00:00 2001
 From: AlexeyBarabash <alexey@brave.com>
 Date: Thu, 2 Nov 2017 18:21:16 +0200
-Subject: Allow playing audio in background
+Subject: [PATCH 052/192] Allow playing audio in background
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../renderer/platform/media/web_media_player_impl.cc | 12 +++++++++++-
- .../renderer/platform/media/web_media_player_impl.h  |  3 +++
- 2 files changed, 14 insertions(+), 1 deletion(-)
+ .../renderer/platform/media/web_media_player_impl.cc  | 11 ++++++++++-
+ .../renderer/platform/media/web_media_player_impl.h   |  3 +++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.cc b/third_party/blink/renderer/platform/media/web_media_player_impl.cc
+index b64ab0cbbc0ef..b791c32af7d2a 100644
 --- a/third_party/blink/renderer/platform/media/web_media_player_impl.cc
 +++ b/third_party/blink/renderer/platform/media/web_media_player_impl.cc
-@@ -1226,6 +1226,12 @@ bool WebMediaPlayerImpl::HasAudio() const {
+@@ -1184,6 +1184,12 @@ bool WebMediaPlayerImpl::HasAudio() const {
    return pipeline_metadata_.has_audio;
  }
  
@@ -24,23 +26,23 @@ diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.cc 
  void WebMediaPlayerImpl::EnabledAudioTracksChanged(
      const WebVector<WebMediaPlayer::TrackId>& enabledTrackIds) {
    DCHECK(main_task_runner_->BelongsToCurrentThread());
-@@ -3627,7 +3633,11 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
+@@ -3503,7 +3509,10 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
+           : HasAudio();
+ 
    // Audio only stream is allowed to play when in background.
-   // TODO: We should check IsBackgroundOptimizationCandidate here. But we need
-   // to move the logic of checking video frames out of that function.
--  if (!HasVideo())
-+
+-  if (!HasVideo() && preserve_audio)
 +  //pipeline_metadata_.has_video is true for MediaPlayerRenderer,
 +  //see media/base/pipeline_metadata.h. This is a workaround to allow audio
 +  //streams be played in background.
-+  if (!HasVideoNonEmptySize())
++  if (!HasVideoNonEmptySize() && preserve_audio)
      return false;
  
-   if (using_media_player_renderer_ &&
+   // MediaPlayer always signals audio and video, so use an empty natural size to
 diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.h b/third_party/blink/renderer/platform/media/web_media_player_impl.h
+index 0d6c31cb68249..7b11cb471ad41 100644
 --- a/third_party/blink/renderer/platform/media/web_media_player_impl.h
 +++ b/third_party/blink/renderer/platform/media/web_media_player_impl.h
-@@ -195,6 +195,9 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
+@@ -200,6 +200,9 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
    bool HasVideo() const override;
    bool HasAudio() const override;
  
@@ -50,5 +52,6 @@ diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.h b
    void EnabledAudioTracksChanged(
        const WebVector<WebMediaPlayer::TrackId>& enabledTrackIds) override;
    void SelectedVideoTrackChanged(
---
-2.25.1
+-- 
+2.34.1
+

@@ -1,72 +1,50 @@
+From 4243f05897568e0f1439fa71cfb3f79cf7ba6fdf Mon Sep 17 00:00:00 2001
 From: Daniel Micay <danielmicay@gmail.com>
 Date: Thu, 4 Jul 2019 19:08:52 -0400
-Subject: Disable media router and remoting by default
+Subject: [PATCH 088/192] Disable media router and remoting by default
 
 Original License: MIT - https://spdx.org/licenses/MIT.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../media/router/media_router_feature.cc      | 27 ++++++-------------
- chrome/browser/profiles/profile_impl.cc       |  2 +-
- 2 files changed, 9 insertions(+), 20 deletions(-)
+ chrome/browser/media/router/media_router_feature.cc | 5 +++--
+ chrome/browser/profiles/profile_impl.cc             | 2 +-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/chrome/browser/media/router/media_router_feature.cc b/chrome/browser/media/router/media_router_feature.cc
+index b0c08749791e6..58b0d943012e0 100644
 --- a/chrome/browser/media/router/media_router_feature.cc
 +++ b/chrome/browser/media/router/media_router_feature.cc
-@@ -59,26 +59,15 @@ BASE_FEATURE(kGlobalMediaControlsCastStartStop,
- 
- #endif  // !BUILDFLAG(IS_ANDROID)
- 
--namespace {
--const PrefService::Preference* GetMediaRouterPref(
--    content::BrowserContext* context) {
--  return user_prefs::UserPrefs::Get(context)->FindPreference(
--      ::prefs::kEnableMediaRouter);
--}
--
--base::flat_map<content::BrowserContext*, bool>& GetStoredPrefValues() {
--  static base::NoDestructor<base::flat_map<content::BrowserContext*, bool>>
--      stored_pref_values;
--
--  return *stored_pref_values;
--}
--}  // namespace
--
--void ClearMediaRouterStoredPrefsForTesting() {
-+/*void ClearMediaRouterStoredPrefsForTesting() {
-   GetStoredPrefValues().clear();
--}
-+}*/
+@@ -49,7 +49,7 @@ BASE_FEATURE(kCastAnotherContentWhileCasting,
+              "CastAnotherContentWhileCasting",
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ #else
+-BASE_FEATURE(kMediaRouter, "MediaRouter", base::FEATURE_ENABLED_BY_DEFAULT);
++BASE_FEATURE(kMediaRouter, "MediaRouter", base::FEATURE_DISABLED_BY_DEFAULT);
+ BASE_FEATURE(kCastAllowAllIPsFeature,
+              "CastAllowAllIPs",
+              base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -99,6 +99,7 @@ void ClearMediaRouterStoredPrefsForTesting() {
+ }
  
  bool MediaRouterEnabled(content::BrowserContext* context) {
-+  return false;
-+}
-+
-+/*
++  if ((true)) return false;
  #if !BUILDFLAG(IS_ANDROID)
    if (!base::FeatureList::IsEnabled(kMediaRouter))
      return false;
-@@ -106,7 +95,7 @@ bool MediaRouterEnabled(content::BrowserContext* context) {
-     return allowed;
-   }
-   return true;
--}
-+}*/
- 
- #if !BUILDFLAG(IS_ANDROID)
- void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
-@@ -119,7 +108,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+@@ -147,7 +148,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterStringPref(prefs::kMediaRouterReceiverIdHashToken, "",
                                 PrefRegistry::PUBLIC);
- 
    registry->RegisterBooleanPref(
 -      media_router::prefs::kMediaRouterMediaRemotingEnabled, true);
 +      media_router::prefs::kMediaRouterMediaRemotingEnabled, false); // disabled in Bromite
-   registry->RegisterListPref(
-       media_router::prefs::kMediaRouterTabMirroringSources);
- 
+   registry->RegisterBooleanPref(
+       media_router::prefs::kMediaRouterShowCastSessionsStartedByOtherDevices,
+       true);
 diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
+index b1f6f22bed680..272a2c513816c 100644
 --- a/chrome/browser/profiles/profile_impl.cc
 +++ b/chrome/browser/profiles/profile_impl.cc
-@@ -411,7 +411,7 @@ void ProfileImpl::RegisterProfilePrefs(
+@@ -419,7 +419,7 @@ void ProfileImpl::RegisterProfilePrefs(
  #endif
  
    registry->RegisterBooleanPref(prefs::kForceEphemeralProfiles, false);
@@ -75,5 +53,6 @@ diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/p
  #if !BUILDFLAG(IS_ANDROID)
    registry->RegisterBooleanPref(prefs::kShowCastIconInToolbar, false);
  #endif  // !BUILDFLAG(IS_ANDROID)
---
-2.25.1
+-- 
+2.34.1
+

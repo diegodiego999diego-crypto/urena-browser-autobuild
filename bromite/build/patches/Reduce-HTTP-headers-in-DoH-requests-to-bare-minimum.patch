@@ -1,18 +1,20 @@
+From 8c9ac5138791476349295aa6e286fac4924a118a Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 28 Apr 2018 08:30:26 +0200
-Subject: Reduce HTTP headers in DoH requests to bare minimum
+Subject: [PATCH 098/192] Reduce HTTP headers in DoH requests to bare minimum
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- net/base/load_flags_list.h              | 6 ++++++
+ net/base/load_flags_list.h              | 5 +++++
  net/dns/dns_transaction.cc              | 2 +-
  net/url_request/url_request_http_job.cc | 8 ++++++--
- 3 files changed, 13 insertions(+), 3 deletions(-)
+ 3 files changed, 12 insertions(+), 3 deletions(-)
 
 diff --git a/net/base/load_flags_list.h b/net/base/load_flags_list.h
+index f936d951fe272..d84d356e3592a 100644
 --- a/net/base/load_flags_list.h
 +++ b/net/base/load_flags_list.h
-@@ -101,3 +101,9 @@ LOAD_FLAG(RESTRICTED_PREFETCH, 1 << 15)
+@@ -103,3 +103,8 @@ LOAD_FLAG(RESTRICTED_PREFETCH, 1 << 15)
  // is considered privileged, and therefore this flag must only be set from a
  // trusted process.
  LOAD_FLAG(CAN_USE_RESTRICTED_PREFETCH, 1 << 16)
@@ -21,11 +23,11 @@ diff --git a/net/base/load_flags_list.h b/net/base/load_flags_list.h
 +// Used to comply with IETF (draft) DNS-over-HTTPS:
 +// "Implementors SHOULD NOT set non-essential HTTP headers in DoH client requests."
 +LOAD_FLAG(MINIMAL_HEADERS, 1 << 19)
-+
 diff --git a/net/dns/dns_transaction.cc b/net/dns/dns_transaction.cc
+index d89174ba20270..a21e98bb5ba4f 100644
 --- a/net/dns/dns_transaction.cc
 +++ b/net/dns/dns_transaction.cc
-@@ -445,7 +445,7 @@ class DnsHTTPAttempt : public DnsAttempt, public URLRequest::Delegate {
+@@ -478,7 +478,7 @@ class DnsHTTPAttempt : public DnsAttempt, public URLRequest::Delegate {
      // avoid deadlock and enable the use of preconfigured IP addresses.
      request_->SetSecureDnsPolicy(SecureDnsPolicy::kBootstrap);
      request_->SetLoadFlags(request_->load_flags() | LOAD_DISABLE_CACHE |
@@ -35,9 +37,10 @@ diff --git a/net/dns/dns_transaction.cc b/net/dns/dns_transaction.cc
      request_->set_isolation_info(isolation_info);
    }
 diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
+index 00b3c891bf3bd..0506d5e087b9c 100644
 --- a/net/url_request/url_request_http_job.cc
 +++ b/net/url_request/url_request_http_job.cc
-@@ -341,6 +341,7 @@ void URLRequestHttpJob::OnGotFirstPartySetCacheFilterMatchInfo(
+@@ -351,6 +351,7 @@ void URLRequestHttpJob::OnGotFirstPartySetCacheFilterMatchInfo(
    // fields in the referrer.
    GURL referrer(request_->referrer());
  
@@ -45,7 +48,7 @@ diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_reque
    // Our consumer should have made sure that this is a safe referrer (e.g. via
    // URLRequestJob::ComputeReferrerForPolicy).
    if (referrer.is_valid()) {
-@@ -348,11 +349,14 @@ void URLRequestHttpJob::OnGotFirstPartySetCacheFilterMatchInfo(
+@@ -358,11 +359,14 @@ void URLRequestHttpJob::OnGotFirstPartySetCacheFilterMatchInfo(
      request_info_.extra_headers.SetHeader(HttpRequestHeaders::kReferer,
                                            referer_value);
    }
@@ -60,7 +63,7 @@ diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_reque
  
    AddExtraHeaders();
  
-@@ -608,9 +612,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
+@@ -615,9 +619,9 @@ void URLRequestHttpJob::StartTransactionInternal() {
  void URLRequestHttpJob::AddExtraHeaders() {
    request_info_.extra_headers.SetAcceptEncodingIfMissing(
        request()->url(), request()->accepted_stream_types(),
@@ -72,5 +75,6 @@ diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_reque
      // Only add default Accept-Language if the request didn't have it
      // specified.
      std::string accept_language =
---
-2.25.1
+-- 
+2.34.1
+

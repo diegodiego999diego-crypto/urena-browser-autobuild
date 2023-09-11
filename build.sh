@@ -122,7 +122,7 @@ patch() {
         git am -3 --ignore-whitespace "${root_dir}/bromite/build/patches/$file"
     done
 
-    e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
+    e_patches_list=$(cat "${root_dir}/build/patches_list.txt")
     for file in $e_patches_list; do
         git am -3 --ignore-whitespace "${root_dir}/build/patches/$file"
     done

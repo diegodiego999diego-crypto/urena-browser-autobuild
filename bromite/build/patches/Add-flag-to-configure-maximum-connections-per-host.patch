@@ -1,6 +1,7 @@
+From 6694f486cd47af33753b01daeeb207ed3c547440 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 8 Jul 2018 22:42:04 +0200
-Subject: Add flag to configure maximum connections per host
+Subject: [PATCH 058/192] Add flag to configure maximum connections per host
 
 With the introduction of this flag it is possible to increase the maximum
 allowed connections per host; this can however be detrimental to devices
@@ -19,9 +20,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  8 files changed, 44 insertions(+)
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
+index 678e2dc13d3ea..09aff791060a2 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -1040,6 +1040,11 @@ const FeatureEntry::Choice kForceColorProfileChoices[] = {
+@@ -1230,6 +1230,11 @@ const FeatureEntry::Choice kForceColorProfileChoices[] = {
       switches::kForceDisplayColorProfile, "hdr10"},
  };
  
@@ -33,20 +35,21 @@ diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
  const FeatureEntry::Choice kMemlogModeChoices[] = {
      {flags_ui::kGenericExperimentChoiceDisabled, "", ""},
      {flag_descriptions::kMemlogModeMinimal, heap_profiling::kMemlogMode,
-@@ -4884,6 +4889,9 @@ const FeatureEntry kFeatureEntries[] = {
-      flag_descriptions::kAndroidPictureInPictureAPIName,
-      flag_descriptions::kAndroidPictureInPictureAPIDescription, kOsAndroid,
-      FEATURE_VALUE_TYPE(media::kPictureInPictureAPI)},
+@@ -5147,6 +5152,9 @@ const FeatureEntry kFeatureEntries[] = {
+      FEATURE_VALUE_TYPE(chrome::android::kShareSheetCustomActionsPolish)},
+ 
+ #endif  // BUILDFLAG(IS_ANDROID)
 +    {"max-connections-per-host", flag_descriptions::kMaxConnectionsPerHostName,
 +     flag_descriptions::kMaxConnectionsPerHostDescription, kOsAll,
 +     MULTI_VALUE_TYPE(kMaxConnectionsPerHostChoices)},
-     {"reengagement-notification",
-      flag_descriptions::kReengagementNotificationName,
-      flag_descriptions::kReengagementNotificationDescription, kOsAndroid,
+     {"disallow-doc-written-script-loads",
+      flag_descriptions::kDisallowDocWrittenScriptsUiName,
+      flag_descriptions::kDisallowDocWrittenScriptsUiDescription, kOsAll,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
+index f7e52a6256d6e..795d5afd40e6b 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -1875,6 +1875,10 @@ const char kUnthrottledNestedTimeoutDescription[] =
+@@ -2115,6 +2115,10 @@ const char kUnthrottledNestedTimeoutDescription[] =
      "websites abusing the API will still eventually have their setTimeouts "
      "clamped.";
  
@@ -58,9 +61,10 @@ diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descripti
      "Connect to Cast devices on all IP addresses";
  const char kMediaRouterCastAllowAllIPsDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
+index f984806374b68..0cfc2a7d06e69 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -1050,6 +1050,9 @@ extern const char kLogJsConsoleMessagesDescription[];
+@@ -1185,6 +1185,9 @@ extern const char kLogJsConsoleMessagesDescription[];
  extern const char kUnthrottledNestedTimeoutName[];
  extern const char kUnthrottledNestedTimeoutDescription[];
  
@@ -71,6 +75,7 @@ diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptio
  extern const char kMediaRouterCastAllowAllIPsDescription[];
  
 diff --git a/components/network_session_configurator/common/network_features.cc b/components/network_session_configurator/common/network_features.cc
+index c1bd42fa99e7b..f6387f1cd9362 100644
 --- a/components/network_session_configurator/common/network_features.cc
 +++ b/components/network_session_configurator/common/network_features.cc
 @@ -8,4 +8,7 @@
@@ -82,6 +87,7 @@ diff --git a/components/network_session_configurator/common/network_features.cc 
 +
  }  // namespace features
 diff --git a/components/network_session_configurator/common/network_features.h b/components/network_session_configurator/common/network_features.h
+index 84d71f126019d..0cbcd7f5b0d17 100644
 --- a/components/network_session_configurator/common/network_features.h
 +++ b/components/network_session_configurator/common/network_features.h
 @@ -10,6 +10,10 @@
@@ -96,6 +102,7 @@ diff --git a/components/network_session_configurator/common/network_features.h b
  
  #endif  // COMPONENTS_NETWORK_SESSION_CONFIGURATOR_COMMON_NETWORK_FEATURES_H_
 diff --git a/components/network_session_configurator/common/network_switch_list.h b/components/network_session_configurator/common/network_switch_list.h
+index 719e70b660371..709c9d64b0401 100644
 --- a/components/network_session_configurator/common/network_switch_list.h
 +++ b/components/network_session_configurator/common/network_switch_list.h
 @@ -19,6 +19,10 @@ NETWORK_SWITCH(kEnableUserAlternateProtocolPorts,
@@ -110,6 +117,7 @@ diff --git a/components/network_session_configurator/common/network_switch_list.
  NETWORK_SWITCH(kIgnoreCertificateErrors, "ignore-certificate-errors")
  
 diff --git a/components/url_formatter/spoof_checks/top_domains/BUILD.gn b/components/url_formatter/spoof_checks/top_domains/BUILD.gn
+index f51a88044250a..2b1d132cd3c78 100644
 --- a/components/url_formatter/spoof_checks/top_domains/BUILD.gn
 +++ b/components/url_formatter/spoof_checks/top_domains/BUILD.gn
 @@ -89,6 +89,7 @@ executable("make_top_domain_list_variables") {
@@ -121,6 +129,7 @@ diff --git a/components/url_formatter/spoof_checks/top_domains/BUILD.gn b/compon
    if (is_ios) {
      frameworks = [ "UIKit.framework" ]
 diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
+index 521ebc8f5023e..41692c9212b16 100644
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc
 @@ -19,6 +19,10 @@
@@ -154,5 +163,6 @@ diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket
    return g_max_sockets_per_group[pool_type];
  }
  
---
-2.25.1
+-- 
+2.34.1
+

@@ -1,6 +1,7 @@
+From db8db6f8a32d3ead4fbe09d36ea4df09fe3c049a Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 7 Sep 2019 15:07:42 +0200
-Subject: Add option to not persist tabs across sessions
+Subject: [PATCH 065/192] Add option to not persist tabs across sessions
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
@@ -11,9 +12,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  4 files changed, 30 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+index 31168cba63391..4c71a1e2ba2ab 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -45,6 +45,11 @@ found in the LICENSE file.
+@@ -55,6 +55,11 @@ found in the LICENSE file.
          android:title="@string/incognito_settings_title"
          android:summary="@string/incognito_settings_summary"
          android:fragment="org.chromium.chrome.browser.privacy.settings.IncognitoSettings"/>
@@ -26,17 +28,18 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
          android:fragment="org.chromium.chrome.browser.privacy.settings.DoNotTrackSettings"
          android:key="do_not_track"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+index 7009d56e8a8f7..b78446b29cd69 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-@@ -40,6 +40,7 @@ import androidx.lifecycle.LifecycleRegistry;
- import org.chromium.base.BuildInfo;
+@@ -38,6 +38,7 @@ import org.chromium.base.BuildInfo;
+ import org.chromium.base.Callback;
  import org.chromium.base.CallbackController;
  import org.chromium.base.CommandLine;
 +import org.chromium.base.ContextUtils;
  import org.chromium.base.IntentUtils;
  import org.chromium.base.Log;
  import org.chromium.base.MemoryPressureListener;
-@@ -1322,8 +1323,10 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+@@ -1283,8 +1284,10 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
              boolean hadCipherData =
                      CipherFactory.getInstance().restoreFromBundle(getSavedInstanceState());
  
@@ -45,39 +48,40 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedAct
 -                    CommandLine.getInstance().hasSwitch(ChromeSwitches.NO_RESTORE_STATE);
 +                CommandLine.getInstance().hasSwitch(ChromeSwitches.NO_RESTORE_STATE) ||
 +                ContextUtils.getAppSharedPreferences().getBoolean(PREF_CLOSE_TABS_ON_EXIT, false);
+             boolean shouldShowHomeSurfaceAtStartupOnTablet = false;
+             final AtomicBoolean isActiveUrlNTP = new AtomicBoolean(false);
              if (noRestoreState) {
-                 // Clear the state files because they are inconsistent and useless from now on.
-                 mTabModelOrchestrator.clearState();
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+index ebed50f0da17f..7ef15d2b6602e 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -5,6 +5,7 @@
- package org.chromium.chrome.browser.privacy.settings;
+@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.privacy.settings;
+ import static org.chromium.components.content_settings.PrefNames.COOKIE_CONTROLS_MODE;
  
  import android.os.Build;
 +import android.content.SharedPreferences;
  import android.os.Bundle;
  import android.text.SpannableString;
- import android.view.Menu;
-@@ -15,6 +16,8 @@ import androidx.preference.Preference;
- import androidx.preference.PreferenceFragmentCompat;
- import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
+ import android.text.style.ForegroundColorSpan;
+@@ -21,6 +22,8 @@ import androidx.preference.PreferenceFragmentCompat;
  
+ import org.chromium.base.metrics.RecordHistogram;
+ import org.chromium.base.metrics.RecordUserAction;
 +import org.chromium.base.ContextUtils;
 +import org.chromium.base.BuildInfo;
  import org.chromium.chrome.R;
- import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherImpl;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
-@@ -67,6 +70,8 @@ public class PrivacySettings
+ import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
+ import org.chromium.chrome.browser.feedback.FragmentHelpAndFeedbackLauncher;
+@@ -92,6 +95,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+     private final SharedPreferencesManager mSharedPreferencesManager =
              SharedPreferencesManager.getInstance();
-     private final PrefService prefService = UserPrefs.get(Profile.getLastUsedRegularProfile());
  
 +    private static final String PREF_CLOSE_TABS_ON_EXIT = "close_tabs_on_exit";
 +
      private ManagedPreferenceDelegate mManagedPreferenceDelegate;
      private IncognitoLockSettings mIncognitoLockSettings;
- 
-@@ -132,7 +137,11 @@ public class PrivacySettings
+     private HelpAndFeedbackLauncher mHelpAndFeedbackLauncher;
+@@ -247,7 +252,11 @@ public class PrivacySettings extends PreferenceFragmentCompat
      @Override
      public boolean onPreferenceChange(Preference preference, Object newValue) {
          String key = preference.getKey();
@@ -87,10 +91,10 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 +            sharedPreferencesEditor.putBoolean(PREF_CLOSE_TABS_ON_EXIT, (boolean)newValue);
 +            sharedPreferencesEditor.apply();
 +        } else if (PREF_CAN_MAKE_PAYMENT.equals(key)) {
-             UserPrefs.get(Profile.getLastUsedRegularProfile())
-                     .setBoolean(Pref.CAN_MAKE_PAYMENT_ENABLED, (boolean) newValue);
+             UserPrefs.get(mProfile).setBoolean(Pref.CAN_MAKE_PAYMENT_ENABLED, (boolean) newValue);
          } else if (PREF_HTTPS_FIRST_MODE.equals(key)) {
-@@ -176,6 +185,11 @@ public class PrivacySettings
+             UserPrefs.get(mProfile).setBoolean(Pref.HTTPS_ONLY_MODE_ENABLED, (boolean) newValue);
+@@ -290,6 +299,11 @@ public class PrivacySettings extends PreferenceFragmentCompat
                      PreloadPagesSettingsFragment.getPreloadPagesSummaryString(getContext()));
          }
  
@@ -103,9 +107,10 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
          if (secureDnsPref != null && secureDnsPref.isVisible()) {
              secureDnsPref.setSummary(SecureDnsSettings.getSummary(getContext()));
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index 064a416ffc4d3..078c15abf9349 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -4420,6 +4420,12 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -4653,6 +4653,12 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
        <message name="IDS_CONTEXTMENU_IMAGE_TITLE" desc="The title of a context menu tab when the item pressed contains more than one type. This indicates that all the actions are related to the image.">
          IMAGE
        </message>
@@ -118,5 +123,6 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
        <message name="IDS_CONTEXTMENU_LINK_TITLE" desc="The title of a context menu tab when the item pressed contains more than one type. This indicates that all the actions are related to the link.">
          LINK
        </message>
---
-2.25.1
+-- 
+2.34.1
+

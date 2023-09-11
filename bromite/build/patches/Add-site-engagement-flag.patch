@@ -1,8 +1,9 @@
+From c798612175e2ac82e318225ecc7b61d64edf47f2 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Mon, 2 May 2022 11:48:03 +0000
-Subject: Add site engagement flag
+Subject: [PATCH 170/192] Add site engagement flag
 
-Enabled by default.
+Disabled by default.
 
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
@@ -19,9 +20,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 components/site_engagement/core/features.h
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
+index 5e2a1e49ae57f..5ac70d2698356 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -142,6 +142,7 @@
+@@ -146,6 +146,7 @@
  #include "components/segmentation_platform/public/features.h"
  #include "components/send_tab_to_self/features.h"
  #include "components/services/heap_profiling/public/cpp/switches.h"
@@ -29,22 +31,23 @@ diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
  #include "components/shared_highlighting/core/common/shared_highlighting_features.h"
  #include "components/signin/core/browser/dice_account_reconcilor_delegate.h"
  #include "components/signin/public/base/signin_buildflags.h"
-@@ -9174,6 +9175,11 @@ const FeatureEntry kFeatureEntries[] = {
-      flag_descriptions::kSearchReadyOmniboxDescription, kOsAndroid,
-      FEATURE_VALUE_TYPE(chrome::android::kSearchReadyOmniboxFeature)},
+@@ -9445,6 +9446,11 @@ const FeatureEntry kFeatureEntries[] = {
+                                     kLargeFaviconFromGoogleVariations,
+                                     "LargeFaviconFromGoogle")},
  
 +    {"site-engagement",
 +     flag_descriptions::kSiteEngagementName,
 +     flag_descriptions::kSiteEngagementDescription, kOsAll,
 +     FEATURE_VALUE_TYPE(site_engagement::features::kSiteEngagement)},
 +
- #if BUILDFLAG(IS_CHROMEOS_ASH)
-     {"use-multiple-overlays", flag_descriptions::kUseMultipleOverlaysName,
-      flag_descriptions::kUseMultipleOverlaysDescription, kOsCrOS,
+ #if BUILDFLAG(IS_ANDROID)
+     {"force-off-text-autosizing",
+      flag_descriptions::kForceOffTextAutosizingName,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
+index b846a68f779ca..67f722d51a426 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -3461,6 +3461,11 @@ const char kSkipServiceWorkerFetchHandlerDescription[] =
+@@ -3699,6 +3699,11 @@ const char kSkipServiceWorkerFetchHandlerDescription[] =
      "Skips starting the service worker and run the fetch handler if the fetch "
      "handler is recognized as skippable.";
  
@@ -57,9 +60,10 @@ diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descripti
  const char kWebSQLAccessDescription[] =
      "The WebSQL API is enabled by default, but can be disabled here.";
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
+index aee54e948fb96..8b08d96cda94d 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -1975,6 +1975,9 @@ extern const char kReduceUserAgentPlatformOsCpuDescription[];
+@@ -2146,6 +2146,9 @@ extern const char kReduceAcceptLanguageDescription[];
  extern const char kSkipServiceWorkerFetchHandlerName[];
  extern const char kSkipServiceWorkerFetchHandlerDescription[];
  
@@ -70,16 +74,17 @@ diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptio
  extern const char kWebSQLAccessDescription[];
  
 diff --git a/components/site_engagement/content/site_engagement_score.cc b/components/site_engagement/content/site_engagement_score.cc
+index b5f8f39dca4b8..18b3ba8919005 100644
 --- a/components/site_engagement/content/site_engagement_score.cc
 +++ b/components/site_engagement/content/site_engagement_score.cc
-@@ -17,6 +17,7 @@
+@@ -18,6 +18,7 @@
  #include "components/content_settings/core/common/content_settings.h"
  #include "components/content_settings/core/common/content_settings_types.h"
  #include "components/content_settings/core/common/content_settings_utils.h"
 +#include "components/site_engagement/core/features.h"
  #include "components/site_engagement/content/engagement_type.h"
  #include "components/site_engagement/content/site_engagement_metrics.h"
- #include "components/variations/variations_associated_data.h"
+ #include "third_party/blink/public/mojom/site_engagement/site_engagement.mojom.h"
 @@ -275,6 +276,10 @@ void SiteEngagementScore::Commit() {
    if (!UpdateScoreDict(*score_dict_))
      return;
@@ -92,6 +97,7 @@ diff --git a/components/site_engagement/content/site_engagement_score.cc b/compo
        origin_, GURL(), ContentSettingsType::SITE_ENGAGEMENT,
        base::Value(std::move(*score_dict_)));
 diff --git a/components/site_engagement/core/BUILD.gn b/components/site_engagement/core/BUILD.gn
+index 4975a87fc555c..307b7a27c29a0 100644
 --- a/components/site_engagement/core/BUILD.gn
 +++ b/components/site_engagement/core/BUILD.gn
 @@ -4,8 +4,14 @@
@@ -111,6 +117,7 @@ diff --git a/components/site_engagement/core/BUILD.gn b/components/site_engageme
  }
 diff --git a/components/site_engagement/core/features.cc b/components/site_engagement/core/features.cc
 new file mode 100644
+index 0000000000000..a8c8bed9df7b6
 --- /dev/null
 +++ b/components/site_engagement/core/features.cc
 @@ -0,0 +1,29 @@
@@ -139,12 +146,13 @@ new file mode 100644
 +namespace features {
 +
 +const base::Feature kSiteEngagement{"SiteEngagement",
-+                                    base::FEATURE_ENABLED_BY_DEFAULT};
++                                    base::FEATURE_DISABLED_BY_DEFAULT};
 +
 +}  // namespace features
 +}  // namespace site_engagement
 diff --git a/components/site_engagement/core/features.h b/components/site_engagement/core/features.h
 new file mode 100644
+index 0000000000000..2eaf1540dca6b
 --- /dev/null
 +++ b/components/site_engagement/core/features.h
 @@ -0,0 +1,34 @@
@@ -182,5 +190,6 @@ new file mode 100644
 +}  // namespace site_engagement
 +
 +#endif  // SITE_ENGAGEMENT_CORE_FEATURES_H_
---
-2.25.1
+-- 
+2.34.1
+

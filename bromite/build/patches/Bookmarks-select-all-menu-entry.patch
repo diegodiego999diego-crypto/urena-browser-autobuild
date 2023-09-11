@@ -1,17 +1,19 @@
+From e43ecd7f663985a8a5fdfb4b9ed1e95ab47bfbd6 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 9 Apr 2022 23:01:55 +0200
-Subject: Bookmarks select all menu entry
+Subject: [PATCH 062/192] Bookmarks select all menu entry
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../java/res/menu/bookmark_action_bar_menu.xml    |  7 +++++++
- .../browser/bookmarks/BookmarkActionBar.java      | 15 +++++++++++++++
+ .../java/res/menu/bookmark_toolbar_menu.xml       |  7 +++++++
+ .../chrome/browser/bookmarks/BookmarkToolbar.java | 15 +++++++++++++++
  .../ui/android/strings/android_chrome_strings.grd |  3 +++
  3 files changed, 25 insertions(+)
 
-diff --git a/chrome/android/java/res/menu/bookmark_action_bar_menu.xml b/chrome/android/java/res/menu/bookmark_action_bar_menu.xml
---- a/chrome/android/java/res/menu/bookmark_action_bar_menu.xml
-+++ b/chrome/android/java/res/menu/bookmark_action_bar_menu.xml
+diff --git a/chrome/android/java/res/menu/bookmark_toolbar_menu.xml b/chrome/android/java/res/menu/bookmark_toolbar_menu.xml
+index bb414a0d4069d..06e8b38817949 100644
+--- a/chrome/android/java/res/menu/bookmark_toolbar_menu.xml
++++ b/chrome/android/java/res/menu/bookmark_toolbar_menu.xml
 @@ -23,6 +23,13 @@ found in the LICENSE file.
              android:visible="false"
              app:showAsAction="ifRoom"
@@ -26,63 +28,58 @@ diff --git a/chrome/android/java/res/menu/bookmark_action_bar_menu.xml b/chrome/
          <item
              android:id="@+id/import_menu_id"
              android:icon="@drawable/ic_folder_blue_24dp"
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkActionBar.java b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkActionBar.java
---- a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkActionBar.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkActionBar.java
-@@ -27,6 +27,7 @@ import org.chromium.components.browser_ui.widget.selectable_list.SelectableListT
- import org.chromium.components.browser_ui.widget.selectable_list.SelectionDelegate;
- 
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkToolbar.java b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkToolbar.java
+index f4cacc323bad7..24fdc5a7b14d3 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkToolbar.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkToolbar.java
+@@ -28,6 +28,8 @@ import org.chromium.components.browser_ui.widget.selectable_list.SelectionDelega
+ import java.util.ArrayList;
  import java.util.List;
+ import java.util.function.Function;
 +import java.util.HashSet;
- 
++
  /**
-  * Main action bar of bookmark UI. It is responsible for displaying title and buttons
-@@ -132,6 +133,17 @@ public class BookmarkActionBar extends SelectableListToolbar<BookmarkId>
-                     /*openInNewTab=*/true, /*incognito=*/true);
-             selectionDelegate.clearSelection();
+  * Main toolbar of bookmark UI. It is responsible for displaying title and buttons
+  * associated with the current context.
+@@ -158,6 +160,7 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
+ 
+     void setCurrentFolder(BookmarkId folder) {
+         mCurrentFolder = mBookmarkModel.getBookmarkById(folder);
++        getMenu().findItem(R.id.select_all_menu_id).setVisible(true);
+         getMenu().findItem(R.id.import_menu_id).setVisible(true);
+         getMenu().findItem(R.id.export_menu_id).setVisible(true);
+     }
+@@ -186,6 +189,17 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
+             mExportBookmarkRunnable.run();
              return true;
-+        } else if (menuItem.getItemId() == R.id.select_all_menu_id) {
-+            BookmarkModel bookmarkModel = mDelegate.getModel();
-+            if (bookmarkModel.isBookmarkModelLoaded()) {
-+                List<BookmarkItem> items = bookmarkModel.getBookmarksForFolder(mCurrentFolder.getId());
+         }
++        if (menuItem.getItemId() == R.id.select_all_menu_id) {
++            if (mBookmarkModel.isBookmarkModelLoaded()) {
++                List<BookmarkItem> items = mBookmarkModel.getBookmarksForFolder(mCurrentFolder.getId());
 +                HashSet<BookmarkId> ids = new HashSet<>(items.size());
 +                for (BookmarkItem item : items) {
 +                    ids.add(item.getId());
 +                }
-+                selectionDelegate.setSelectedItems(ids);
++                mSelectionDelegate.setSelectedItems(ids);
 +            }
 +            return true;
-         }
++        }
+         return mMenuIdClickedFunction.apply(menuItem.getItemId());
+     }
  
-         assert false : "Unhandled menu click.";
-@@ -141,6 +153,7 @@ public class BookmarkActionBar extends SelectableListToolbar<BookmarkId>
-     void showLoadingUi() {
-         setTitle(null);
-         setNavigationButton(NAVIGATION_BUTTON_NONE);
-+        getMenu().findItem(R.id.select_all_menu_id).setVisible(false);
-         getMenu().findItem(R.id.import_menu_id).setVisible(false);
-         getMenu().findItem(R.id.export_menu_id).setVisible(false);
-         getMenu().findItem(R.id.search_menu_id).setVisible(false);
-@@ -152,6 +165,7 @@ public class BookmarkActionBar extends SelectableListToolbar<BookmarkId>
-         super.showNormalView();
+@@ -208,6 +222,7 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
  
-         if (mDelegate == null) {
-+            getMenu().findItem(R.id.select_all_menu_id).setVisible(false);
-             getMenu().findItem(R.id.import_menu_id).setVisible(false);
-             getMenu().findItem(R.id.export_menu_id).setVisible(false);
-             getMenu().findItem(R.id.search_menu_id).setVisible(false);
-@@ -183,6 +197,7 @@ public class BookmarkActionBar extends SelectableListToolbar<BookmarkId>
-     @Override
-     public void onFolderStateSet(BookmarkId folder) {
-         mCurrentFolder = mDelegate.getModel().getBookmarkById(folder);
-+        getMenu().findItem(R.id.select_all_menu_id).setVisible(true);
-         getMenu().findItem(R.id.import_menu_id).setVisible(true);
-         getMenu().findItem(R.id.export_menu_id).setVisible(true);
-         getMenu().findItem(R.id.search_menu_id).setVisible(true);
+         getMenu().findItem(R.id.import_menu_id).setVisible(mCurrentFolder != null);
+         getMenu().findItem(R.id.export_menu_id).setVisible(mCurrentFolder != null);
++        getMenu().findItem(R.id.select_all_menu_id).setVisible(mCurrentFolder != null);
+ 
+         // SelectableListToolbar will show/hide the entire group.
+         setSearchButtonVisible(mSearchButtonVisible);
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index 61cc0218605bf..40c52e274ec50 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -243,6 +243,9 @@ CHAR_LIMIT guidelines:
+@@ -240,6 +240,9 @@ CHAR_LIMIT guidelines:
        <message name="IDS_NOTIFICATION_CATEGORY_SITES" desc="Label for notifications from websites, within a list of notification categories. [CHAR_LIMIT=32]">
          Sites
        </message>
@@ -92,5 +89,6 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
        <message name="IDS_IMPORT_BOOKMARKS" desc="The label for the import bookmarks button.">
          Import
        </message>
---
-2.25.1
+-- 
+2.34.1
+
