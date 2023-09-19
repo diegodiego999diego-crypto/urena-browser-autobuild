@@ -8,7 +8,7 @@ if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
 date_time=$(date '+%Y%m%d%H%M%S')
-chromium_version="108.0.5359.156"
+chromium_version="116.0.5845.163"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
@@ -32,14 +32,6 @@ build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
     apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
-
-    if [ $1 '==' "x86" ] || [ $1 '==' "x64" ]; then
-        build_args+=' is_cfi=false'
-        build_args+=' use_cfi_cast=false'
-    else
-        build_args+=' is_cfi=true'
-        build_args+=' use_cfi_cast=true'
-    fi
 
     code=$chromium_code
     if [ $1 '==' "arm" ]; then

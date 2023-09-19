@@ -1,35 +1,34 @@
-From 18d8410f33dbdfcf32e6c4687a6c85a50e6c1e82 Mon Sep 17 00:00:00 2001
+From 5cd23c92122d2716181bac8450f1a78a777e012e Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
-Date: Mon, 12 Dec 2022 13:48:01 +0530
+Date: Tue, 19 Sep 2023 13:13:42 +0530
 Subject: [PATCH 15/32] Browser: Remove bromite auto updater
 
+This reverts commit 392e7ac096e36124b7fc26558a296aa5ec5787d8.
 ---
  .../java/templates/BuildConfig.template       |   2 -
  build/config/android/rules.gni                |   3 -
  chrome/android/chrome_java_sources.gni        |   3 -
- .../android/java/res/layout/fre_tosanduma.xml |   9 -
  .../java/res/xml/about_chrome_preferences.xml |   5 -
  .../about_settings/AboutChromeSettings.java   |  28 +-
- .../firstrun/ToSAndUMAFirstRunFragment.java   |  25 --
  .../chrome/browser/omaha/OmahaBase.java       |  57 +---
- .../chrome/browser/omaha/UpdateConfigs.java   |  30 +--
+ .../chrome/browser/omaha/UpdateConfigs.java   |  30 +-
  .../browser/omaha/UpdateMenuItemHelper.java   |  82 +-----
- .../browser/omaha/UpdateStatusProvider.java   | 161 +++---------
+ .../browser/omaha/UpdateStatusProvider.java   | 161 +++--------
  .../browser/omaha/VersionNumberGetter.java    |   3 +-
- .../inline/BromiteInlineUpdateController.java | 243 ------------------
+ .../inline/BromiteInlineUpdateController.java | 272 ------------------
  .../omaha/inline/InlineUpdateController.java  |  51 ----
  .../inline/InlineUpdateControllerFactory.java |  21 --
  chrome/browser/endpoint_fetcher/BUILD.gn      |   2 -
- .../endpoint_fetcher_android.cc               |  52 +---
- .../endpoint_fetcher/EndpointFetcher.java     |  22 +-
- .../EndpointHeaderResponse.java               |  31 ---
+ .../endpoint_fetcher_android.cc               |  50 ----
+ .../endpoint_fetcher/EndpointFetcher.java     |  26 +-
+ .../EndpointHeaderResponse.java               |  31 --
  .../flags/android/chrome_feature_list.cc      |   5 -
  .../flags/android/chrome_feature_list.h       |   1 -
  .../browser/flags/ChromeFeatureList.java      |   1 -
  .../strings/android_chrome_strings.grd        |  23 +-
- .../endpoint_fetcher/endpoint_fetcher.cc      | 102 +-------
- .../endpoint_fetcher/endpoint_fetcher.h       |  22 +-
- 25 files changed, 53 insertions(+), 931 deletions(-)
+ .../endpoint_fetcher/endpoint_fetcher.cc      | 103 +------
+ .../endpoint_fetcher/endpoint_fetcher.h       |  23 +-
+ 23 files changed, 50 insertions(+), 933 deletions(-)
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
  delete mode 100644 chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
@@ -47,10 +46,10 @@ index f6521f42246d4..cfecb6fefdcba 100644
 -    public static MAYBE_FINAL String BUILD_TARGET_CPU = _BUILD_TARGET_CPU;
  }
 diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
-index 662d086624d69..d73d84522abb5 100644
+index 44532c8ab78fe..1455522ebc4aa 100644
 --- a/build/config/android/rules.gni
 +++ b/build/config/android/rules.gni
-@@ -2242,9 +2242,6 @@ if (enable_java_templates) {
+@@ -2151,9 +2151,6 @@ if (enable_java_templates && is_android) {
        if (defined(testonly) && testonly) {
          defines += [ "_IS_FOR_TEST" ]
        }
@@ -61,10 +60,10 @@ index 662d086624d69..d73d84522abb5 100644
    }
  
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 25263cb9510f0..e76d977623624 100644
+index 52f6b49bb5c8d..465355763484f 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -813,9 +813,6 @@ chrome_java_sources = [
+@@ -852,9 +852,6 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java",
@@ -74,32 +73,12 @@ index 25263cb9510f0..e76d977623624 100644
    "java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/HistogramUtils.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/TrackingProvider.java",
-diff --git a/chrome/android/java/res/layout/fre_tosanduma.xml b/chrome/android/java/res/layout/fre_tosanduma.xml
-index df7bd184a098f..90890fbf367f4 100644
---- a/chrome/android/java/res/layout/fre_tosanduma.xml
-+++ b/chrome/android/java/res/layout/fre_tosanduma.xml
-@@ -84,15 +84,6 @@ found in the LICENSE file.
-                         android:layout_marginBottom="@dimen/fre_tos_bottom_margin"
-                         android:lineSpacingMultiplier="1.4"
-                         android:textAppearance="@style/TextAppearance.TextMedium.Primary" />
--
--                    <CheckBox
--                        android:id="@+id/auto_updater_checkbox"
--                        android:layout_width="wrap_content"
--                        android:layout_height="wrap_content"
--                        android:lineSpacingMultiplier="1.4"
--                        android:text="@string/auto_updater_check"
--                        android:paddingStart="@dimen/fre_tos_checkbox_padding"
--                        android:textAppearance="@style/TextAppearance.TextMedium.Primary" />
-                 </LinearLayout>
- 
-                 <include
 diff --git a/chrome/android/java/res/xml/about_chrome_preferences.xml b/chrome/android/java/res/xml/about_chrome_preferences.xml
-index 61d465d136527..54b604b2636e4 100644
+index f055e0e91e4bd..fb1dfed23052b 100644
 --- a/chrome/android/java/res/xml/about_chrome_preferences.xml
 +++ b/chrome/android/java/res/xml/about_chrome_preferences.xml
 @@ -9,11 +9,6 @@ found in the LICENSE file.
-     <Preference
+     <org.chromium.chrome.browser.about_settings.LongClickCopySummaryPreference
          android:key="application_version"
          android:title="@string/application_version_title" />
 -    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
@@ -168,100 +147,11 @@ index 5da0608895710..f59f62fdf971b 100644
 -        return true;
 -    }
  }
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-index 9de332c99045a..2da39d602db41 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
-@@ -64,8 +64,6 @@ public class ToSAndUMAFirstRunFragment
-     private boolean mUserInteractedWithUmaCheckbox;
- 
-     private Button mAcceptButton;
--    private CheckBox mAutoUpdaterCheckBox;
--    private boolean mAutoUpdaterChecked;
-     private TextView mTosAndPrivacy;
-     private View mTitle;
-     private View mProgressSpinner;
-@@ -92,15 +90,10 @@ public class ToSAndUMAFirstRunFragment
-         mProgressSpinner = view.findViewById(R.id.progress_spinner);
-         mProgressSpinner.setVisibility(View.GONE);
-         mAcceptButton = (Button) view.findViewById(R.id.terms_accept);
--        mAutoUpdaterCheckBox = (CheckBox) view.findViewById(R.id.auto_updater_checkbox);
-         mTosAndPrivacy = (TextView) view.findViewById(R.id.tos_and_privacy);
- 
-         // Register event listeners.
-         mAcceptButton.setOnClickListener((v) -> onTosButtonClicked());
--        mAutoUpdaterCheckBox.setOnCheckedChangeListener(
--                ((compoundButton, isChecked) -> {
--            mAutoUpdaterChecked = isChecked;
--        }));
- 
-         // Make TextView links clickable.
-         mTosAndPrivacy.setMovementMethod(LinkMovementMethod.getInstance());
-@@ -140,11 +133,6 @@ public class ToSAndUMAFirstRunFragment
-         if (!isVisibleToUser) {
-             // Restore original enabled & visibility states, in case the user returns to the page.
-             setSpinnerVisible(false);
--        } else {
--            // On certain versions of Android, the checkbox will appear unchecked upon revisiting
--            // the page.  Force it to the end state of the drawable animation as a work around.
--            // crbug.com/666258
--            mAutoUpdaterCheckBox.jumpDrawablesToCurrentState();
-         }
-     }
- 
-@@ -171,7 +159,6 @@ public class ToSAndUMAFirstRunFragment
-         assert !isWaitingForNativeAndPolicyInit();
- 
-         setSpinnerVisible(false);
--        mAutoUpdaterCheckBox.setChecked(true);
-     }
- 
-     private void updateView() {
-@@ -181,8 +168,6 @@ public class ToSAndUMAFirstRunFragment
-         }
- 
-         updateTosText();
--
--        updateReportCheckbox();
-     }
- 
-     private SpanInfo buildPrivacyPolicyLink(String suffix, int url) {
-@@ -211,10 +196,6 @@ public class ToSAndUMAFirstRunFragment
-         mTosAndPrivacy.setText(SpanApplier.applySpans(tosString, spans.toArray(new SpanInfo[0])));
-     }
- 
--    private void updateReportCheckbox() {
--        mAutoUpdaterCheckBox.setChecked(true);
--    }
--
-     private void onPolicyServiceInitialized(boolean onDevicePolicyFound) {
-         assert !mPolicyServiceInitialized;
- 
-@@ -240,11 +221,6 @@ public class ToSAndUMAFirstRunFragment
-         mTosButtonClicked = true;
-         mTosAcceptedTime = SystemClock.elapsedRealtime();
- 
--        // save updater configuration only on button click
--        SharedPreferences.Editor sharedPreferenceEditor = OmahaBase.getSharedPreferences().edit();
--        sharedPreferenceEditor.putBoolean(OmahaBase.PREF_ALLOW_INLINE_UPDATE, mAutoUpdaterChecked);
--        sharedPreferenceEditor.apply();
--
-         tryMarkTermsAccepted(true);
-     }
- 
-@@ -310,7 +286,6 @@ public class ToSAndUMAFirstRunFragment
- 
-         mAcceptButton.setVisibility(visibility);
-         mTosAndPrivacy.setVisibility(visibility);
--        mAutoUpdaterCheckBox.setVisibility(visibility);
-     }
- 
-     protected View getToSAndPrivacyText() {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
-index af264b69a1ff0..4f80654a7db5a 100644
+index fb45ee0431982..81108fdc4f5e9 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
-@@ -33,8 +33,6 @@ import java.net.HttpURLConnection;
+@@ -32,8 +32,6 @@ import java.net.HttpURLConnection;
  import java.net.URL;
  import java.util.Date;
  
@@ -270,7 +160,7 @@ index af264b69a1ff0..4f80654a7db5a 100644
  /**
   * Keeps tabs on the current state of Chrome, tracking if and when a request should be sent to the
   * Omaha Server.
-@@ -101,10 +99,7 @@ public class OmahaBase {
+@@ -100,10 +98,7 @@ public class OmahaBase {
      static final String PREF_TIMESTAMP_FOR_NEW_REQUEST = "timestampForNewRequest";
      static final String PREF_TIMESTAMP_FOR_NEXT_POST_ATTEMPT = "timestampForNextPostAttempt";
      static final String PREF_TIMESTAMP_OF_INSTALL = "timestampOfInstall";
@@ -280,9 +170,9 @@ index af264b69a1ff0..4f80654a7db5a 100644
 -    public static final String PREF_ALLOW_INLINE_UPDATE = "allowInlineUpdate";
 +    static final String PREF_TIMESTAMP_OF_REQUEST = "timestampOfRequest";
  
-     static final int MIN_API_JOB_SCHEDULER = Build.VERSION_CODES.M;
+     private static final int UNKNOWN_DATE = -2;
  
-@@ -165,8 +160,7 @@ public class OmahaBase {
+@@ -162,8 +157,7 @@ public class OmahaBase {
  
      /** See {@link #sIsDisabled}. */
      static boolean isDisabled() {
@@ -292,7 +182,7 @@ index af264b69a1ff0..4f80654a7db5a 100644
      }
  
      /**
-@@ -590,10 +584,6 @@ public class OmahaBase {
+@@ -573,10 +567,6 @@ public class OmahaBase {
      /** Sends the request to the server and returns the response. */
      static String sendRequestToServer(HttpURLConnection urlConnection, String request)
              throws RequestFailureException {
@@ -303,7 +193,7 @@ index af264b69a1ff0..4f80654a7db5a 100644
          try {
              OutputStream out = new BufferedOutputStream(urlConnection.getOutputStream());
              OutputStreamWriter writer = new OutputStreamWriter(out);
-@@ -664,47 +654,4 @@ public class OmahaBase {
+@@ -647,47 +637,4 @@ public class OmahaBase {
                  // updateStatus is only used for the on-demand check.
                  null);
      }
@@ -352,7 +242,7 @@ index af264b69a1ff0..4f80654a7db5a 100644
 -    }
  }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
-index 4d99f5f9aad92..f8d646b8c3a6c 100644
+index dd7d998373355..b7296bac5b9e3 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
 @@ -11,7 +11,6 @@ import androidx.annotation.IntDef;
@@ -363,7 +253,7 @@ index 4d99f5f9aad92..f8d646b8c3a6c 100644
  import org.chromium.chrome.browser.flags.ChromeSwitches;
  import org.chromium.chrome.browser.omaha.UpdateStatusProvider.UpdateState;
  import org.chromium.components.variations.VariationsAssociatedData;
-@@ -38,12 +37,10 @@ public class UpdateConfigs {
+@@ -37,12 +36,10 @@ public class UpdateConfigs {
      private static final String UPDATE_AVAILABLE_SWITCH_VALUE = "update_available";
      private static final String UNSUPPORTED_OS_VERSION_SWITCH_VALUE = "unsupported_os_version";
  
@@ -377,7 +267,7 @@ index 4d99f5f9aad92..f8d646b8c3a6c 100644
      @Retention(RetentionPolicy.SOURCE)
      public @interface UpdateFlowConfiguration {
          /** Turns off all update indicators. */
-@@ -53,12 +50,6 @@ public class UpdateConfigs {
+@@ -52,12 +49,6 @@ public class UpdateConfigs {
           * Requires Omaha to say an update is available, and only ever Intents out to Play Store.
           */
          int INTENT_ONLY = 2;
@@ -390,7 +280,7 @@ index 4d99f5f9aad92..f8d646b8c3a6c 100644
      }
  
      /**
-@@ -133,13 +124,6 @@ public class UpdateConfigs {
+@@ -132,13 +123,6 @@ public class UpdateConfigs {
          return DEFAULT_UPDATE_ATTRIBUTION_WINDOW_MS;
      }
  
@@ -404,7 +294,7 @@ index 4d99f5f9aad92..f8d646b8c3a6c 100644
      /**
       * Gets a String VariationsAssociatedData parameter. Also checks for a command-line switch
       * with the same name, for easy local testing.
-@@ -155,14 +139,4 @@ public class UpdateConfigs {
+@@ -153,14 +137,4 @@ public class UpdateConfigs {
          }
          return value;
      }
@@ -422,10 +312,10 @@ index 4d99f5f9aad92..f8d646b8c3a6c 100644
 +}
 \ No newline at end of file
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
-index 2bac5cb782595..f5fa401e62225 100644
+index 9bb5651c8eb77..53af1fb7c202f 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
-@@ -11,7 +11,6 @@ import android.text.TextUtils;
+@@ -12,7 +12,6 @@ import android.view.Choreographer;
  
  import androidx.annotation.NonNull;
  import androidx.annotation.Nullable;
@@ -433,8 +323,8 @@ index 2bac5cb782595..f5fa401e62225 100644
  import androidx.annotation.VisibleForTesting;
  
  import org.chromium.base.BuildInfo;
-@@ -166,21 +165,8 @@ public class UpdateMenuItemHelper {
-                     recordItemClickedHistogram(ITEM_CLICKED_INTENT_FAILED);
+@@ -138,21 +137,8 @@ public class UpdateMenuItemHelper {
+                     Log.e(TAG, "Failed to launch Activity for: %s", mStatus.updateUrl);
                  }
                  break;
 -            case UpdateState.VULNERABLE_VERSION:
@@ -455,7 +345,7 @@ index 2bac5cb782595..f5fa401e62225 100644
              default:
                  return;
          }
-@@ -229,7 +215,7 @@ public class UpdateMenuItemHelper {
+@@ -198,7 +184,7 @@ public class UpdateMenuItemHelper {
  
          mMenuUiState = new MenuUiState();
          switch (mStatus.updateState) {
@@ -464,7 +354,7 @@ index 2bac5cb782595..f5fa401e62225 100644
                  // The badge is hidden if the update menu item has been clicked until there is an
                  // even newer version of Chrome available.
                  showBadge |= !TextUtils.equals(
-@@ -284,72 +270,6 @@ public class UpdateMenuItemHelper {
+@@ -253,72 +239,6 @@ public class UpdateMenuItemHelper {
                  mMenuUiState.itemState.icon = R.drawable.ic_error_24dp_filled;
                  mMenuUiState.itemState.enabled = false;
                  break;
@@ -538,7 +428,7 @@ index 2bac5cb782595..f5fa401e62225 100644
              // Intentional fall through.
              default:
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
-index 4b778cbc4a0e0..0d5546613e285 100644
+index 27c75c368a446..10f69e965845d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
 @@ -4,7 +4,6 @@
@@ -549,7 +439,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
  import android.content.ActivityNotFoundException;
  import android.content.Context;
  import android.content.Intent;
-@@ -17,11 +16,7 @@ import android.text.TextUtils;
+@@ -16,11 +15,7 @@ import android.text.TextUtils;
  import androidx.annotation.IntDef;
  import androidx.annotation.NonNull;
  import androidx.annotation.Nullable;
@@ -560,11 +450,11 @@ index 4b778cbc4a0e0..0d5546613e285 100644
 -import org.chromium.base.ApplicationStatus.ActivityStateListener;
  import org.chromium.base.BuildInfo;
  import org.chromium.base.Callback;
- import org.chromium.base.ContextUtils;
-@@ -31,10 +26,6 @@ import org.chromium.base.metrics.RecordHistogram;
- import org.chromium.base.task.AsyncTask;
+ import org.chromium.base.ObserverList;
+@@ -30,10 +25,6 @@ import org.chromium.base.task.AsyncTask;
  import org.chromium.base.task.AsyncTask.Status;
  import org.chromium.base.task.PostTask;
+ import org.chromium.base.task.TaskTraits;
 -import org.chromium.chrome.browser.app.ChromeActivity;
 -import org.chromium.chrome.browser.omaha.inline.BromiteInlineUpdateController;
 -import org.chromium.chrome.browser.omaha.inline.InlineUpdateController;
@@ -572,7 +462,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
  import org.chromium.chrome.browser.omaha.metrics.UpdateSuccessMetrics;
  import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
  import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
-@@ -45,37 +36,30 @@ import java.io.File;
+@@ -43,37 +34,30 @@ import java.io.File;
  import java.lang.annotation.Retention;
  import java.lang.annotation.RetentionPolicy;
  
@@ -618,7 +508,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
      }
  
      /** A set of properties that represent the current update state for Chrome. */
-@@ -109,12 +93,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -107,12 +91,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
           */
          private boolean mIsSimulated;
  
@@ -631,7 +521,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
          public UpdateStatus() {}
  
          UpdateStatus(UpdateStatus other) {
-@@ -123,13 +101,11 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -121,13 +99,11 @@ public class UpdateStatusProvider implements ActivityStateListener {
              latestVersion = other.latestVersion;
              latestUnsupportedVersion = other.latestUnsupportedVersion;
              mIsSimulated = other.mIsSimulated;
@@ -645,7 +535,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
      private final UpdateQuery mOmahaQuery;
      private final UpdateSuccessMetrics mMetrics;
      private @Nullable UpdateStatus mStatus;
-@@ -197,30 +173,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -195,30 +171,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
          pingObservers();
      }
  
@@ -676,7 +566,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
      /**
       * Starts the intent update process, if possible
       * @param context An {@link Context} that will be used to fire off the update intent.
-@@ -228,11 +180,12 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -226,11 +178,12 @@ public class UpdateStatusProvider implements ActivityStateListener {
       * @return        Whether or not the update intent was sent and had a valid handler.
       */
      public boolean startIntentUpdate(Context context, boolean newTask) {
@@ -690,7 +580,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(mStatus.updateUrl));
              if (newTask) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
              context.startActivity(intent);
-@@ -243,29 +196,9 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -241,29 +194,9 @@ public class UpdateStatusProvider implements ActivityStateListener {
          return true;
      }
  
@@ -720,7 +610,7 @@ index 4b778cbc4a0e0..0d5546613e285 100644
      }
  
      private void pingObservers() {
-@@ -273,38 +206,21 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -271,36 +204,19 @@ public class UpdateStatusProvider implements ActivityStateListener {
      }
  
      private void resolveStatus() {
@@ -757,30 +647,28 @@ index 4b778cbc4a0e0..0d5546613e285 100644
          }
  
          if (!mRecordedInitialStatus) {
-             RecordHistogram.recordEnumeratedHistogram(
-                     "GoogleUpdate.StartUp.State", mStatus.updateState, UpdateState.NUM_ENTRIES);
 +            mMetrics.analyzeFirstStatus();
              mRecordedInitialStatus = true;
          }
  
-@@ -316,7 +232,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -312,7 +228,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
      }
  
      private static final class UpdateQuery extends AsyncTask<UpdateStatus> {
 -        static final String TAG = "UpdateStatusProvider";
-         private final Context mContext = ContextUtils.getApplicationContext();
          private final Runnable mCallback;
  
-@@ -334,7 +249,7 @@ public class UpdateStatusProvider implements ActivityStateListener {
+         private @Nullable UpdateStatus mStatus;
+@@ -329,7 +244,7 @@ public class UpdateStatusProvider implements ActivityStateListener {
          protected UpdateStatus doInBackground() {
              UpdateStatus testStatus = getTestStatus();
              if (testStatus != null) return testStatus;
--            return getActualStatus(mContext);
-+            return getRealStatus(mContext);
+-            return getActualStatus();
++            return getRealStatus();
          }
  
          @Override
-@@ -353,8 +268,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -348,8 +263,6 @@ public class UpdateStatusProvider implements ActivityStateListener {
              status.mIsSimulated = true;
              status.updateState = forcedUpdateState;
  
@@ -789,12 +677,12 @@ index 4b778cbc4a0e0..0d5546613e285 100644
              // Push custom configurations for certain update states.
              switch (forcedUpdateState) {
                  case UpdateState.UPDATE_AVAILABLE:
-@@ -371,33 +284,27 @@ public class UpdateStatusProvider implements ActivityStateListener {
+@@ -366,33 +279,27 @@ public class UpdateStatusProvider implements ActivityStateListener {
              return status;
          }
  
--        private UpdateStatus getActualStatus(Context context) {
-+        private UpdateStatus getRealStatus(Context context) {
+-        private UpdateStatus getActualStatus() {
++        private UpdateStatus getRealStatus() {
              UpdateStatus status = new UpdateStatus();
  
 -            SharedPreferences preferences = OmahaBase.getSharedPreferences();
@@ -821,13 +709,13 @@ index 4b778cbc4a0e0..0d5546613e285 100644
 -                       return status;
 -                   }
 -                }
-+            if (VersionNumberGetter.isNewerVersionAvailable(context)) {
++            if (VersionNumberGetter.isNewerVersionAvailable()) {
 +                status.updateUrl = MarketURLGetter.getMarketUrl();
-+                status.latestVersion =
-+                        VersionNumberGetter.getInstance().getLatestKnownVersion(context);
++                status.latestVersion = VersionNumberGetter.getInstance().getLatestKnownVersion();
 +
-+                boolean allowedToUpdate =
-+                        checkForSufficientStorage() && isGooglePlayStoreAvailable(context);
++                boolean allowedToUpdate = checkForSufficientStorage()
++                        && PackageUtils.isPackageInstalled(
++                                GooglePlayServicesUtil.GOOGLE_PLAY_STORE_PACKAGE);
 +                status.updateState =
 +                        allowedToUpdate ? UpdateState.UPDATE_AVAILABLE : UpdateState.NONE;
 +
@@ -843,10 +731,10 @@ index 4b778cbc4a0e0..0d5546613e285 100644
  
              return status;
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
-index 9a6c9e8acd0f1..01eb29216e367 100644
+index 0ab9e9662a627..bf9c4eef05cf0 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
-@@ -48,8 +48,7 @@ public class VersionNumberGetter {
+@@ -51,8 +51,7 @@ public class VersionNumberGetter {
      private static VersionNumberGetter sInstanceForTests;
  
      /** If false, OmahaClient will never report that a newer version is available. */
@@ -858,10 +746,10 @@ index 9a6c9e8acd0f1..01eb29216e367 100644
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 deleted file mode 100644
-index 593e2e243c21a..0000000000000
+index 90692d394ebe9..0000000000000
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 +++ /dev/null
-@@ -1,243 +0,0 @@
+@@ -1,272 +0,0 @@
 -// Copyright 2021 The Ungoogled Chromium Authors. All rights reserved.
 -//
 -// This file is part of Ungoogled Chromium Android.
@@ -896,6 +784,7 @@ index 593e2e243c21a..0000000000000
 -import org.chromium.base.Log;
 -import org.chromium.base.task.AsyncTask;
 -import org.chromium.base.task.PostTask;
+-import org.chromium.base.task.TaskTraits;
 -import org.chromium.chrome.browser.app.ChromeActivity;
 -import org.chromium.chrome.browser.omaha.OmahaBase;
 -import org.chromium.chrome.browser.omaha.UpdateConfigs;
@@ -904,8 +793,8 @@ index 593e2e243c21a..0000000000000
 -import org.chromium.chrome.browser.tab.TabLaunchType;
 -import org.chromium.chrome.browser.tabmodel.TabCreator;
 -import org.chromium.content_public.browser.LoadUrlParams;
--import org.chromium.content_public.browser.UiThreadTaskTraits;
 -import org.chromium.ui.base.PageTransition;
+-import org.chromium.net.NetworkTrafficAnnotationTag;
 -
 -import java.io.BufferedReader;
 -import java.io.IOException;
@@ -931,6 +820,34 @@ index 593e2e243c21a..0000000000000
 -    public static String getDownloadUrl() {
 -        return UPDATE_VERSION_URL + BuildConfig.BUILD_TARGET_CPU + "_ChromePublic.apk";
 -    }
+-
+-    private static final NetworkTrafficAnnotationTag TRAFFIC_ANNOTATION =
+-            NetworkTrafficAnnotationTag.createComplete("bromite_inline_update_controller",
+-                    "semantics {"
+-                        + "  sender: 'Bromite Inline Update (Android)'"
+-                        + "  description:"
+-                        + "      'Check for update'"
+-                        + "  trigger: 'This request is made once, on first run'"
+-                        + "  data: 'None.'"
+-                        + "  destination: OTHER"
+-                        + "  internal {"
+-                        + "    contacts {"
+-                        + "      email: 'uazo@users.noreply.github.com'"
+-                        + "    }"
+-                        + "    contacts {"
+-                        + "      email: 'uazo@users.noreply.github.com'"
+-                        + "    }"
+-                        + "  }"
+-                        + "  user_data {"
+-                        + "    type: NONE"
+-                        + "  }"
+-                        + "  last_reviewed: '2023-01-01'"
+-                        + "}"
+-                        + "policy {"
+-                        + "  cookies_allowed: NO"
+-                        + "  setting: 'Can be disabled in Settings.'"
+-                        + "  policy_exception_justification: 'Not implemented.'"
+-                        + "}");
 -
 -    private boolean mEnabled = true;
 -    private Runnable mCallback;
@@ -1070,7 +987,7 @@ index 593e2e243c21a..0000000000000
 -                    callback.onResult(null);
 -                },
 -                Profile.getLastUsedRegularProfile(),
--                urlToCheck, /*timeout*/5000, /*follow_redirect*/true);
+-                urlToCheck, /*timeout*/5000, /*follow_redirect*/true, TRAFFIC_ANNOTATION);
 -    }
 -
 -    private void checkLatestUpstreamVersion(final Callback<VersionNumber> callback) {
@@ -1096,13 +1013,13 @@ index 593e2e243c21a..0000000000000
 -                    callback.onResult(null);
 -                },
 -                Profile.getLastUsedRegularProfile(),
--                UPSTREAM_VERSION_URL, /*timeout*/5000, /*follow_redirect*/false);
+-                UPSTREAM_VERSION_URL, /*timeout*/5000, /*follow_redirect*/false, TRAFFIC_ANNOTATION);
 -    }
 -
 -    private void postStatus(@UpdateStatusProvider.UpdateState int status, String updateUrl) {
 -        mUpdateState = status;
 -        mUpdateUrl = updateUrl;
--        PostTask.postTask(UiThreadTaskTraits.DEFAULT, mCallback);
+-        PostTask.postTask(TaskTraits.UI_DEFAULT, mCallback);
 -    }
 -}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
@@ -1190,17 +1107,17 @@ index de41882343e21..0000000000000
 -    }
 -}
 diff --git a/chrome/browser/endpoint_fetcher/BUILD.gn b/chrome/browser/endpoint_fetcher/BUILD.gn
-index a0e69e1586dcf..5196e2fc99b63 100644
+index 03707c32d2e91..f263a5c38edc5 100644
 --- a/chrome/browser/endpoint_fetcher/BUILD.gn
 +++ b/chrome/browser/endpoint_fetcher/BUILD.gn
-@@ -17,7 +17,6 @@ android_library("java") {
+@@ -18,7 +18,6 @@ android_library("java") {
    sources = [
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java",
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointResponse.java",
 -    "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointHeaderResponse.java",
    ]
-   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
  }
+ 
 @@ -26,6 +25,5 @@ generate_jni("jni_headers") {
    sources = [
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java",
@@ -1209,7 +1126,7 @@ index a0e69e1586dcf..5196e2fc99b63 100644
    ]
  }
 diff --git a/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc b/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
-index 2eb501408349c..19f5ed7d4d9ce 100644
+index cc5b76803029f..19f5ed7d4d9ce 100644
 --- a/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
 +++ b/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
 @@ -9,7 +9,6 @@
@@ -1245,28 +1162,25 @@ index 2eb501408349c..19f5ed7d4d9ce 100644
  }  // namespace
  
  // TODO(crbug.com/1077537) Create a KeyProvider so
-@@ -128,17 +109,15 @@ static void JNI_EndpointFetcher_NativeFetchWithNoAuth(
+@@ -128,7 +109,6 @@ static void JNI_EndpointFetcher_NativeFetchWithNoAuth(
      JNIEnv* env,
      const base::android::JavaParamRef<jobject>& jprofile,
      const base::android::JavaParamRef<jstring>& jurl,
 -    jlong jtimeout, jboolean intercept_redirect,
-+    jint jannotation_hash_code,
+     jint jannotation_hash_code,
      const base::android::JavaParamRef<jobject>& jcallback) {
    auto endpoint_fetcher = std::make_unique<EndpointFetcher>(
-       ProfileAndroid::FromProfileAndroid(jprofile)
+@@ -136,9 +116,6 @@ static void JNI_EndpointFetcher_NativeFetchWithNoAuth(
            ->GetDefaultStoragePartition()
            ->GetURLLoaderFactoryForBrowserProcess(),
        GURL(base::android::ConvertJavaStringToUTF8(env, jurl)),
 -      "GET",
 -      jtimeout,
 -      intercept_redirect,
--      NO_TRAFFIC_ANNOTATION_YET);
-+      net::NetworkTrafficAnnotationTag::FromJavaAnnotation(
-+          jannotation_hash_code));
+       net::NetworkTrafficAnnotationTag::FromJavaAnnotation(
+           jannotation_hash_code));
    auto* const endpoint_fetcher_ptr = endpoint_fetcher.get();
-   endpoint_fetcher_ptr->PerformRequest(
-       base::BindOnce(&OnEndpointFetcherComplete,
-@@ -148,28 +127,3 @@ static void JNI_EndpointFetcher_NativeFetchWithNoAuth(
+@@ -150,30 +127,3 @@ static void JNI_EndpointFetcher_NativeFetchWithNoAuth(
                       std::move(endpoint_fetcher)),
        nullptr);
  }
@@ -1276,6 +1190,7 @@ index 2eb501408349c..19f5ed7d4d9ce 100644
 -    const base::android::JavaParamRef<jobject>& jprofile,
 -    const base::android::JavaParamRef<jstring>& jurl,
 -    jlong jtimeout, jboolean intercept_redirect,
+-    jint jannotation_hash_code,
 -    const base::android::JavaParamRef<jobject>& jcallback) {
 -  auto endpoint_fetcher = std::make_unique<EndpointFetcher>(
 -      ProfileAndroid::FromProfileAndroid(jprofile)
@@ -1285,7 +1200,8 @@ index 2eb501408349c..19f5ed7d4d9ce 100644
 -      "HEAD",
 -      jtimeout,
 -      intercept_redirect,
--      NO_TRAFFIC_ANNOTATION_YET);
+-      net::NetworkTrafficAnnotationTag::FromJavaAnnotation(
+-          jannotation_hash_code));
 -  auto* const endpoint_fetcher_ptr = endpoint_fetcher.get();
 -  endpoint_fetcher_ptr->PerformRequest(
 -      base::BindOnce(&OnEndpointFetcherHeadComplete,
@@ -1296,42 +1212,46 @@ index 2eb501408349c..19f5ed7d4d9ce 100644
 -      nullptr);
 -}
 diff --git a/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
-index cb25609ef10e7..c28fc4d9793b4 100644
+index 435ecf26fd1be..c28fc4d9793b4 100644
 --- a/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
 +++ b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
-@@ -70,22 +70,6 @@ public final class EndpointFetcher {
+@@ -70,24 +70,6 @@ public final class EndpointFetcher {
                  postData, timeout, headers, annotation.getHashCode(), callback);
      }
  
 -    @MainThread
 -    public static void nativeHeadWithNoAuth(
 -            Callback<EndpointHeaderResponse> callback, Profile profile,
--            String url, long timeout, boolean allow_redirect) {
+-            String url, long timeout, boolean allow_redirect,
+-            NetworkTrafficAnnotationTag annotation) {
 -        EndpointFetcherJni.get().nativeHeadWithNoAuth(
--                profile, url, timeout, allow_redirect, callback);
+-                profile, url, timeout, allow_redirect, annotation.getHashCode(), callback);
 -    }
 -
 -    @MainThread
 -    public static void nativeFetchWithNoAuth(
 -            Callback<EndpointResponse> callback, Profile profile,
--            String url, long timeout, boolean allow_redirect) {
+-            String url, long timeout, boolean allow_redirect,
+-            NetworkTrafficAnnotationTag annotation) {
 -        EndpointFetcherJni.get().nativeFetchWithNoAuth(
--                profile, url, timeout, allow_redirect, callback);
+-                profile, url, timeout, allow_redirect, annotation.getHashCode(), callback);
 -    }
 -
      @NativeMethods
      public interface Natives {
          void nativeFetchOAuth(Profile profile, String oathConsumerName, String url,
-@@ -94,11 +78,7 @@ public final class EndpointFetcher {
+@@ -96,13 +78,7 @@ public final class EndpointFetcher {
          void nativeFetchChromeAPIKey(Profile profile, String url, String httpsMethod,
                  String contentType, String postData, long timeout, String[] headers,
                  int annotationHashCode, Callback<EndpointResponse> callback);
 -        void nativeFetchWithNoAuth(
 -                Profile profile, String url, long timeout, boolean allow_redirect,
+-                int annotationHashCode,
 +        void nativeFetchWithNoAuth(Profile profile, String url, int annotationHashCode,
                  Callback<EndpointResponse> callback);
 -        void nativeHeadWithNoAuth(
 -                Profile profile, String url, long timeout, boolean allow_redirect,
+-                int annotationHashCode,
 -                Callback<EndpointHeaderResponse> callback);
      }
  }
@@ -1373,18 +1293,18 @@ index a7bd35381ccd1..0000000000000
 -    }
 -}
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index 9e77e3cf4e67c..37d886546c10d 100644
+index 1159b67bb8244..40179a04fa4b2 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -258,7 +258,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
-     &kNotificationPermissionVariant,
+@@ -254,7 +254,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kOfflineIndicatorV2,
      &kPageAnnotationsService,
+     &kPreconnectOnTabCreation,
 -    &kInlineUpdateFlow,
      &kBookmarksImprovedSaveFlow,
      &kBookmarksRefresh,
-     &kBackGestureRefactorAndroid,
-@@ -710,10 +709,6 @@ BASE_FEATURE(kContextMenuTranslateWithGoogleLens,
+     &kOmahaMinSdkVersionAndroid,
+@@ -690,10 +689,6 @@ BASE_FEATURE(kContextMenuTranslateWithGoogleLens,
               "ContextMenuTranslateWithGoogleLens",
               base::FEATURE_DISABLED_BY_DEFAULT);
  
@@ -1396,22 +1316,22 @@ index 9e77e3cf4e67c..37d886546c10d 100644
               "LensCameraAssistedSearch",
               base::FEATURE_ENABLED_BY_DEFAULT);
 diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
-index d477e6979c861..2ca0d0dd2f5f0 100644
+index 26e7e09270bd4..16fe30daa0c41 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.h
 +++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -94,7 +94,6 @@ BASE_DECLARE_FEATURE(kGridTabSwitcherForTablets);
- BASE_DECLARE_FEATURE(kHandleMediaIntents);
- BASE_DECLARE_FEATURE(kImmersiveUiMode);
+@@ -102,7 +102,6 @@ BASE_DECLARE_FEATURE(kFoldableJankFix);
+ BASE_DECLARE_FEATURE(kGridTabSwitcherForTablets);
+ BASE_DECLARE_FEATURE(kImprovedIncognitoScreenshot);
  BASE_DECLARE_FEATURE(kIncognitoReauthenticationForAndroid);
 -BASE_DECLARE_FEATURE(kInlineUpdateFlow);
  BASE_DECLARE_FEATURE(kIncognitoScreenshot);
  BASE_DECLARE_FEATURE(kInfobarScrollOptimization);
  BASE_DECLARE_FEATURE(kImprovedA2HS);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index 87ceec33c9b9b..3d3e7c6e47881 100644
+index ef770459444d1..d623cd418e41b 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -388,7 +388,6 @@ public abstract class ChromeFeatureList {
+@@ -288,7 +288,6 @@ public abstract class ChromeFeatureList {
              "IncognitoReauthenticationForAndroid";
      public static final String INCOGNITO_SCREENSHOT = "IncognitoScreenshot";
      public static final String INFOBAR_SCROLL_OPTIMIZATION = "InfobarScrollOptimization";
@@ -1420,10 +1340,10 @@ index 87ceec33c9b9b..3d3e7c6e47881 100644
      public static final String INSTALLABLE_AMBIENT_BADGE_MESSAGE = "InstallableAmbientBadgeMessage";
      public static final String INSTANCE_SWITCHER = "InstanceSwitcher";
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index d819b14b67a5e..d73a204b18ee8 100644
+index 9d2cd8345d32f..761fbe0a4b234 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1900,12 +1900,6 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -2157,12 +2157,6 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_DEPRECATION_WARNING" desc="Warning about Chrome updates no longer being supported">
          Chrome updates are no longer supported for this version of Android
        </message>
@@ -1436,7 +1356,7 @@ index d819b14b67a5e..d73a204b18ee8 100644
  
        <!-- Account management UI strings. -->
        <message name="IDS_ACCOUNT_MANAGEMENT_TITLE" desc="Header title for the account management screen. [CHAR_LIMIT=32]">
-@@ -3541,10 +3535,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3780,10 +3774,7 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
  
        <!-- Main menu items -->
        <message name="IDS_MENU_UPDATE" desc="Menu item for updating chrome. [CHAR_LIMIT=24]">
@@ -1448,7 +1368,7 @@ index d819b14b67a5e..d73a204b18ee8 100644
        </message>
        <message name="IDS_MENU_UPDATE_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that a newer version of Chrome is available. [CHAR_LIMIT=30]">
          Newer version is available
-@@ -3555,18 +3546,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3794,18 +3785,6 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
        <message name="IDS_MENU_UPDATE_UNSUPPORTED_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that the Android version on the device is unsupported. [CHAR_LIMIT=30]">
          Android version is unsupported
        </message>
@@ -1468,7 +1388,7 @@ index d819b14b67a5e..d73a204b18ee8 100644
          New window
        </message>
 diff --git a/components/endpoint_fetcher/endpoint_fetcher.cc b/components/endpoint_fetcher/endpoint_fetcher.cc
-index 0e8dd08ed2274..cc875a4c18ef8 100644
+index 13c84dcceb371..2402b5c929052 100644
 --- a/components/endpoint_fetcher/endpoint_fetcher.cc
 +++ b/components/endpoint_fetcher/endpoint_fetcher.cc
 @@ -17,11 +17,6 @@
@@ -1612,12 +1532,13 @@ index 0e8dd08ed2274..cc875a4c18ef8 100644
  }
  
  void EndpointFetcher::OnResponseFetched(
-@@ -371,37 +315,3 @@ void EndpointFetcher::OnSanitizationResult(
+@@ -381,38 +325,3 @@ void EndpointFetcher::OnSanitizationResult(
  std::string EndpointFetcher::GetUrlForTesting() {
    return url_.spec();
  }
 -
 -void EndpointFetcher::OnSimpleLoaderRedirect(
+-    const GURL& url_before_redirect,
 -    const net::RedirectInfo& redirect_info,
 -    const network::mojom::URLResponseHead& response_head,
 -    std::vector<std::string>* removed_headers) {
@@ -1651,7 +1572,7 @@ index 0e8dd08ed2274..cc875a4c18ef8 100644
 -  std::move(endpoint_fetcher_callback_).Run(std::move(response_));
 -}
 diff --git a/components/endpoint_fetcher/endpoint_fetcher.h b/components/endpoint_fetcher/endpoint_fetcher.h
-index b3d9a1804f6bf..6616c3d8a48b6 100644
+index 0bb24a689b820..215c6049aa6e2 100644
 --- a/components/endpoint_fetcher/endpoint_fetcher.h
 +++ b/components/endpoint_fetcher/endpoint_fetcher.h
 @@ -16,8 +16,6 @@
@@ -1687,18 +1608,19 @@ index b3d9a1804f6bf..6616c3d8a48b6 100644
    // Used for tests. Can be used if caller constructs their own
    // url_loader_factory and identity_manager.
    EndpointFetcher(
-@@ -156,10 +144,6 @@ class EndpointFetcher {
+@@ -156,11 +144,6 @@ class EndpointFetcher {
    void OnSanitizationResult(std::unique_ptr<EndpointResponse> response,
                              EndpointFetcherCallback endpoint_fetcher_callback,
                              data_decoder::JsonSanitizer::Result result);
 -  void OnURLLoadComplete(scoped_refptr<net::HttpResponseHeaders> headers);
--  void OnSimpleLoaderRedirect(const net::RedirectInfo& redirect_info,
+-  void OnSimpleLoaderRedirect(const GURL& url_before_redirect,
+-                              const net::RedirectInfo& redirect_info,
 -                              const network::mojom::URLResponseHead& response_head,
 -                              std::vector<std::string>* removed_headers);
  
    enum AuthType { CHROME_API_KEY, OAUTH, NO_AUTH };
    AuthType auth_type_;
-@@ -167,11 +151,10 @@ class EndpointFetcher {
+@@ -168,11 +151,10 @@ class EndpointFetcher {
    // Members set in constructor to be passed to network::ResourceRequest or
    // network::SimpleURLLoader.
    const std::string oauth_consumer_name_;
@@ -1711,7 +1633,7 @@ index b3d9a1804f6bf..6616c3d8a48b6 100644
    const std::string post_data_;
    const std::vector<std::string> headers_;
    const std::vector<std::string> cors_exempt_headers_;
-@@ -189,9 +172,6 @@ class EndpointFetcher {
+@@ -190,9 +172,6 @@ class EndpointFetcher {
        access_token_fetcher_;
    std::unique_ptr<network::SimpleURLLoader> simple_url_loader_;
  
@@ -1722,5 +1644,5 @@ index b3d9a1804f6bf..6616c3d8a48b6 100644
  };
  
 -- 
-2.25.1
+2.34.1
 
