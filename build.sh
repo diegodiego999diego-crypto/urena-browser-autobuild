@@ -126,13 +126,29 @@ patch() {
 sync() {
     echo ">> [$(date)] Syncing chromium $chromium_version"
     cd $chromium_dir
-    cp ${root_dir}/.config_gclient $chromium_dir/.gclient
+    gclient_config
     if [ $history -eq 1 ]; then
-        yes | gclient sync -D -R -r $chromium_version
+        gclient sync -D --nohooks -R -r $chromium_version
     else
-        yes | gclient sync --no-history -D -R -r $chromium_version
+        gclient sync --no-history -D --nohooks -R -r $chromium_version
     fi
+    gclient runhooks
     patch
+}
+
+gclient_config() {
+    cat <<EOF > "$chromium_dir/.gclient"
+solutions = [{
+    "url": "https://chromium.googlesource.com/chromium/src",
+    "managed": False,
+    "name": "src",
+    "custom_deps": {},
+    "custom_hooks": [],
+    "custom_vars": {}
+}]
+
+target_os = ["android"]
+EOF
 }
 
 init_repo(){
