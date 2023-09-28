@@ -202,11 +202,17 @@ if [ ! -d "$chromium_dir/src" ]; then
 fi
 
 if [ $gsync -eq 1 ]; then
-    if [ -d "$chromium_dir/src/.git/rebase-apply" ]; then
-        rm -fr "$chromium_dir/src/.git/rebase-apply"
+    cd $chromium_dir/src
+    # Check if a rebase is in progress
+    if [ -d "$(git rev-parse --git-dir)/rebase-apply" ] || [ -d "$(git rev-parse --git-dir)/rebase-merge" ]; then
+      git am --skip 2>/dev/null || true
+      git rebase --abort 2>/dev/null || true
+      echo ">> [$(date)] Rebase aborted."
     fi
-    find "$chromium_dir/src/.git" -name "*.lock" -delete
-    if [ ! -z $(find $chromium_dir/src/.git -name "*.lock") ]; then
+    find ".git" -name "*.lock" -delete
+    if [ ! -z $(find .git -name "*.lock") ]; then
+        echo ">> [$(date)] Re-init chromium."
+        cd ${root_dir}
         rm -fr $chromium_dir/src
         init_repo
     fi
