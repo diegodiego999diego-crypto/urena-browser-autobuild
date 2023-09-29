@@ -162,7 +162,7 @@ sync() {
 gclient_config() {
     cat <<EOF > "$chromium_dir/.gclient"
 solutions = [{
-    "url": "https://chromium.googlesource.com/chromium/src",
+    "url": "https://github.com/chromium/chromium",
     "managed": False,
     "name": "src",
     "custom_deps": {},
