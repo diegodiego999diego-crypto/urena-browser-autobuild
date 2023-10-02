@@ -7,7 +7,6 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-date_time=$(date '+%Y%m%d%H%M%S')
 chromium_version="116.0.5845.163"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
@@ -33,6 +32,7 @@ build() {
     apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
+    apk_arch=${1}
     code=$chromium_code
     if [ $1 '==' "arm" ]; then
         code+=00
@@ -41,6 +41,7 @@ build() {
     elif [ $1 '==' "x86" ]; then
         code+=10
     elif [ $1 '==' "x64" ]; then
+        apk_arch="x86_64"
         code+=60
     fi
     build_args+=' android_default_version_name="'$chromium_version'"'
@@ -64,32 +65,9 @@ build() {
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
-            echo ">> [$(date)] Moving $apk for ${1} to output folder"
-            if [[ "$apk.apk" == ChromePublic.apk ]]; then
-                if [ "$1" = "x64" ]; then
-                    mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/x86_64/ChromePublic.apk"
-                else
-                    mv "out/${1}/apks/ChromePublic.apk" "${root_dir}/apks/$date_time/${1}/ChromePublic.apk"
-                fi
-            elif [[ "$apk.apk" == SystemWebView.apk ]]; then
-                if [ "$1" = "x64" ]; then
-                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/x86_64/SystemWebView.apk"
-                else
-                    mv "out/${1}/apks/SystemWebView.apk" "${root_dir}/apks/$date_time/${1}/SystemWebView.apk"
-                fi
-            elif [[ "$apk.apk" == *6432.apk ]]; then
-                if [ "$1" = "x64" ]; then
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/x86_64/${apk::-4}.apk"
-                elif [ "$1" = "arm64" ]; then
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/arm64/${apk::-4}.apk"
-                fi
-            else
-                if [ "$1" = "x64" ]; then
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/x86/${apk::-2}.apk"
-                elif [ "$1" = "arm64" ]; then
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/$date_time/arm/${apk::-2}.apk"
-                fi
-            fi
+            echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
+            mkdir -p "${root_dir}/apks/${apk_arch}"
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
         fi
     done
 }
@@ -242,8 +220,6 @@ if [ $gsync -eq 1 ]; then
     sync
 fi
 
-mkdir -p "${root_dir}/apks/$date_time/x86_64" "${root_dir}/apks/$date_time/arm64" "${root_dir}/apks/$date_time/x86" "${root_dir}/apks/$date_time/arm"
-
 cd $chromium_dir/src
 . build/android/envsetup.sh
 setup_ccache
@@ -255,8 +231,4 @@ else
     build arm64
     build x86
     build x64
-fi
-
-if [ -d "${root_dir}/apks" ]; then
-    find "${root_dir}/apks" -empty -type d -delete
 fi
