@@ -1,4 +1,4 @@
-From 211ea58f8bc31cbbf0f3a44aea47d79bb0be52db Mon Sep 17 00:00:00 2001
+From 51d8cd9c6f81b5bc866fd0908255837d5e3c3b4b Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Tue, 28 Jul 2020 12:28:58 +0200
 Subject: [PATCH 109/192] Block gateway attacks via websockets
@@ -15,17 +15,18 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../core/loader/frame_fetch_context.h         |  1 +
  .../core/loader/worker_fetch_context.cc       | 21 +++++++++++++
  .../core/loader/worker_fetch_context.h        |  1 +
+ .../core/workers/installed_scripts_manager.cc |  4 +--
  .../background_fetch_manager.cc               | 31 +++++++++++++++++++
  .../websockets/websocket_channel_impl.cc      |  5 +++
- .../modules/websockets/websocket_common.cc    | 29 +++++++++++++++++
+ .../modules/websockets/websocket_common.cc    | 30 ++++++++++++++++++
  .../modules/websockets/websocket_common.h     |  4 +++
- 11 files changed, 130 insertions(+)
+ 12 files changed, 133 insertions(+), 2 deletions(-)
 
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.cc b/third_party/blink/renderer/core/execution_context/execution_context.cc
-index b8bdbf17dedc9..8ac8f56ce0369 100644
+index 1bc4805ab9da9..8f50f8feef79f 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.cc
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.cc
-@@ -744,4 +744,20 @@ void ExecutionContext::WriteIntoTrace(
+@@ -736,4 +736,20 @@ void ExecutionContext::WriteIntoTrace(
    proto->set_world_type(GetWorldType(*this));
  }
  
@@ -35,8 +36,8 @@ index b8bdbf17dedc9..8ac8f56ce0369 100644
 +    case network::mojom::IPAddressSpace::kUnknown:
 +      return "public";
 +
-+    case network::mojom::IPAddressSpace::kLoopback:
-+      return "loopback";
++    case network::mojom::IPAddressSpace::kPrivate:
++      return "private";
 +
 +    case network::mojom::IPAddressSpace::kLocal:
 +      return "local";
@@ -47,7 +48,7 @@ index b8bdbf17dedc9..8ac8f56ce0369 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
-index bdfd5122a8a59..f338be316a7d7 100644
+index 180cda4e10fc4..8d38f4c1b5f3b 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.h
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.h
 @@ -398,6 +398,7 @@ class CORE_EXPORT ExecutionContext : public Supplementable<ExecutionContext>,
@@ -71,10 +72,10 @@ index 1479573dbc605..0bcf66f467af2 100644
    CreateWebSocketHandshakeThrottle() = 0;
  
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.cc b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-index 9f6c1d98e7a8c..15e3ce9f1bb17 100644
+index 7d3adaa1f95fa..4168b49e6ac32 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-@@ -578,6 +578,26 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
+@@ -591,6 +591,26 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
    return should_block_request;
  }
  
@@ -87,9 +88,9 @@ index 9f6c1d98e7a8c..15e3ce9f1bb17 100644
 +  network::mojom::IPAddressSpace target_space =
 +      network::mojom::IPAddressSpace::kPublic;
 +  if (network_utils::IsReservedIPAddress(request_url.Host()))
-+    target_space = network::mojom::IPAddressSpace::kLocal;
++    target_space = network::mojom::IPAddressSpace::kPrivate;
 +  if (SecurityOrigin::Create(request_url)->IsLocalhost())
-+    target_space = network::mojom::IPAddressSpace::kLoopback;
++    target_space = network::mojom::IPAddressSpace::kLocal;
 +
 +  bool is_external_request = requestor_space > target_space;
 +  if (is_external_request)
@@ -102,10 +103,10 @@ index 9f6c1d98e7a8c..15e3ce9f1bb17 100644
      const ResourceRequest& resource_request,
      const ResourceLoaderOptions& options,
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.h b/third_party/blink/renderer/core/loader/frame_fetch_context.h
-index da5f6f6ecab79..65165ec8b5676 100644
+index 6bf0e35ad2a1d..d211d25696602 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.h
-@@ -173,6 +173,7 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
+@@ -175,6 +175,7 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
    bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const override;
    std::unique_ptr<WebSocketHandshakeThrottle> CreateWebSocketHandshakeThrottle()
        override;
@@ -114,7 +115,7 @@ index da5f6f6ecab79..65165ec8b5676 100644
        mojom::blink::RequestContextType request_context,
        network::mojom::blink::IPAddressSpace target_address_space,
 diff --git a/third_party/blink/renderer/core/loader/worker_fetch_context.cc b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
-index 1f2ae8311b78a..0308157c38f58 100644
+index 1f2ae8311b78a..06b92a8b1118d 100644
 --- a/third_party/blink/renderer/core/loader/worker_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
 @@ -25,6 +25,7 @@
@@ -138,9 +139,9 @@ index 1f2ae8311b78a..0308157c38f58 100644
 +  network::mojom::IPAddressSpace target_space =
 +      network::mojom::IPAddressSpace::kPublic;
 +  if (network_utils::IsReservedIPAddress(request_url.Host()))
-+    target_space = network::mojom::IPAddressSpace::kLocal;
++    target_space = network::mojom::IPAddressSpace::kPrivate;
 +  if (SecurityOrigin::Create(request_url)->IsLocalhost())
-+    target_space = network::mojom::IPAddressSpace::kLoopback;
++    target_space = network::mojom::IPAddressSpace::kLocal;
 +
 +  bool is_external_request = requestor_space > target_space;
 +  if (is_external_request)
@@ -164,11 +165,27 @@ index 098cd9c783ec6..e4031b1005fbe 100644
    bool ShouldBlockFetchByMixedContentCheck(
        mojom::blink::RequestContextType request_context,
        network::mojom::blink::IPAddressSpace target_address_space,
+diff --git a/third_party/blink/renderer/core/workers/installed_scripts_manager.cc b/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
+index 2a978cb476740..fe67745d54ccd 100644
+--- a/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
++++ b/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
+@@ -33,9 +33,9 @@ InstalledScriptsManager::ScriptData::ScriptData(
+   // place so that this is shareable out of worker code.
+   response_address_space_ = network::mojom::IPAddressSpace::kPublic;
+   if (network_utils::IsReservedIPAddress(script_url_.Host()))
+-    response_address_space_ = network::mojom::IPAddressSpace::kLocal;
++    response_address_space_ = network::mojom::IPAddressSpace::kPrivate;
+   if (SecurityOrigin::Create(script_url_)->IsLocalhost())
+-    response_address_space_ = network::mojom::IPAddressSpace::kLoopback;
++    response_address_space_ = network::mojom::IPAddressSpace::kLocal;
+ }
+ 
+ ContentSecurityPolicyResponseHeaders
 diff --git a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
-index 028870553f8b0..7905596922c41 100644
+index b8aff17d259ca..c25135fcb18b5 100644
 --- a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
 +++ b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
-@@ -102,6 +102,30 @@ bool ShouldBlockDanglingMarkup(const KURL& request_url) {
+@@ -101,6 +101,30 @@ bool ShouldBlockDanglingMarkup(const KURL& request_url) {
           request_url.ProtocolIsInHTTPFamily();
  }
  
@@ -185,9 +202,9 @@ index 028870553f8b0..7905596922c41 100644
 +    network::mojom::IPAddressSpace target_space =
 +        network::mojom::IPAddressSpace::kPublic;
 +    if (network_utils::IsReservedIPAddress(request_url.Host()))
-+      target_space = network::mojom::IPAddressSpace::kLocal;
++      target_space = network::mojom::IPAddressSpace::kPrivate;
 +    if (SecurityOrigin::Create(request_url)->IsLocalhost())
-+      target_space = network::mojom::IPAddressSpace::kLoopback;
++      target_space = network::mojom::IPAddressSpace::kLocal;
 +
 +    bool is_external_request = requestor_space > target_space;
 +    if (is_external_request)
@@ -199,7 +216,7 @@ index 028870553f8b0..7905596922c41 100644
  scoped_refptr<BlobDataHandle> ExtractBlobHandle(
      Request* request,
      ExceptionState& exception_state) {
-@@ -216,6 +240,13 @@ ScriptPromise BackgroundFetchManager::fetch(
+@@ -187,6 +211,13 @@ ScriptPromise BackgroundFetchManager::fetch(
                                   exception_state);
      }
  
@@ -210,9 +227,9 @@ index 028870553f8b0..7905596922c41 100644
 +                                 exception_state);
 +    }
 +
-     kurls.insert(request_url);
-   }
- 
+     if (ShouldBlockPort(request_url)) {
+       return RejectWithTypeError(script_state, request_url,
+                                  "that port is not allowed", exception_state);
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
 index 98a78f1a7b6a5..40b01a00c8904 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
@@ -230,10 +247,10 @@ index 98a78f1a7b6a5..40b01a00c8904 100644
      // Two features are registered here:
      // - `kWebSocket`: a non-sticky feature that will disable BFCache for any
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_common.cc b/third_party/blink/renderer/modules/websockets/websocket_common.cc
-index 9e543e41518ff..854b40e0b6938 100644
+index 9e543e41518ff..086628ea10ff5 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_common.cc
 +++ b/third_party/blink/renderer/modules/websockets/websocket_common.cc
-@@ -125,9 +125,38 @@ WebSocketCommon::ConnectResult WebSocketCommon::Connect(
+@@ -125,9 +125,39 @@ WebSocketCommon::ConnectResult WebSocketCommon::Connect(
      return ConnectResult::kException;
    }
  
@@ -242,7 +259,8 @@ index 9e543e41518ff..854b40e0b6938 100644
 +  if (ShouldBlockGateWayAttacks(requestor_space, url_)) {
 +    state_ = kClosed;
 +    exception_state.ThrowSecurityError(
-+        "Access to address of '" + url_.Host() + "' is not allowed from '" + execution_context->addressSpaceForBindings() + "' address space.");
++        "Access to address of '" + url_.Host() +
++        "' is not allowed from current address space.");
 +    return ConnectResult::kException;
 +  }
 +
@@ -258,9 +276,9 @@ index 9e543e41518ff..854b40e0b6938 100644
 +  network::mojom::IPAddressSpace target_space =
 +      network::mojom::IPAddressSpace::kPublic;
 +  if (network_utils::IsReservedIPAddress(request_url.Host()))
-+    target_space = network::mojom::IPAddressSpace::kLocal;
++    target_space = network::mojom::IPAddressSpace::kPrivate;
 +  if (SecurityOrigin::Create(request_url)->IsLocalhost())
-+    target_space = network::mojom::IPAddressSpace::kLoopback;
++    target_space = network::mojom::IPAddressSpace::kLocal;
 +
 +  bool is_external_request = requestor_space > target_space;
 +  if (is_external_request)

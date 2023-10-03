@@ -1,4 +1,4 @@
-From 6082f4860c3fec7ec9c4256a179eac5d752c0c41 Mon Sep 17 00:00:00 2001
+From fb6d29b07d5cc0df6567b68ee2f1ab7695a155eb Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 8 Jul 2018 18:16:34 +0200
 Subject: [PATCH 070/192] Disable fetching of all field trials
@@ -19,20 +19,20 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  components/variations/net/BUILD.gn            |  2 --
  .../variations/net/omnibox_http_headers.cc    |  4 +--
  .../variations/net/variations_http_headers.cc |  3 ++
- .../service/variations_field_trial_creator.cc |  4 ++-
+ .../variations_field_trial_creator_base.cc    |  8 ++---
  .../variations/service/variations_service.cc  | 15 ++-------
  .../browser/loader/url_loader_throttles.cc    |  7 ----
  .../origin_trials/origin_trials_utils.cc      |  2 +-
  content/public/common/content_features.cc     |  4 +--
  .../variations_render_thread_observer.cc      |  9 ------
  .../renderer/core/loader/document_loader.cc   |  7 ----
- 18 files changed, 29 insertions(+), 78 deletions(-)
+ 18 files changed, 29 insertions(+), 82 deletions(-)
 
 diff --git a/android_webview/common/aw_features.cc b/android_webview/common/aw_features.cc
-index c996d797aca09..63128e8b99311 100644
+index 55d6f5170f18f..df813f9f18ac9 100644
 --- a/android_webview/common/aw_features.cc
 +++ b/android_webview/common/aw_features.cc
-@@ -96,8 +96,8 @@ BASE_FEATURE(kWebViewJavaJsBridgeMojo,
+@@ -97,8 +97,8 @@ BASE_FEATURE(kWebViewMetricsFiltering,
  
  // Field trial feature for controlling support of Origin Trials on WebView.
  BASE_FEATURE(kWebViewOriginTrials,
@@ -44,10 +44,10 @@ index c996d797aca09..63128e8b99311 100644
  // Whether to record size of the embedding app's data directory to the UMA
  // histogram Android.WebView.AppDataDirectorySize.
 diff --git a/android_webview/nonembedded/BUILD.gn b/android_webview/nonembedded/BUILD.gn
-index ef04f4096cd2e..ff45c6402fb56 100644
+index 3f24e744aec72..24f6b2eb77a7c 100644
 --- a/android_webview/nonembedded/BUILD.gn
 +++ b/android_webview/nonembedded/BUILD.gn
-@@ -100,7 +100,6 @@ android_library("services_java") {
+@@ -103,7 +103,6 @@ android_library("services_java") {
    sources = [
      "java/src/org/chromium/android_webview/services/AwMinidumpUploadJobService.java",
      "java/src/org/chromium/android_webview/services/AwMinidumpUploaderDelegate.java",
@@ -55,7 +55,7 @@ index ef04f4096cd2e..ff45c6402fb56 100644
      "java/src/org/chromium/android_webview/services/ComponentUpdaterResetSafeModeAction.java",
      "java/src/org/chromium/android_webview/services/ComponentUpdaterSafeModeUtils.java",
      "java/src/org/chromium/android_webview/services/ComponentsProviderPathUtil.java",
-@@ -119,7 +118,6 @@ android_library("services_java") {
+@@ -122,7 +121,6 @@ android_library("services_java") {
      "java/src/org/chromium/android_webview/services/SafeModeService.java",
      "java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java",
      "java/src/org/chromium/android_webview/services/StartupFeatureMetadataHolder.java",
@@ -77,19 +77,19 @@ index 2403d7d5d9b7b..c45552ba6936e 100644
      };
  
 diff --git a/chrome/browser/metrics/chrome_browser_sampling_trials.cc b/chrome/browser/metrics/chrome_browser_sampling_trials.cc
-index a9c2c6ca68a68..9c3fab5be3b87 100644
+index 6291f4819ed21..f4615aff581ab 100644
 --- a/chrome/browser/metrics/chrome_browser_sampling_trials.cc
 +++ b/chrome/browser/metrics/chrome_browser_sampling_trials.cc
-@@ -54,6 +54,8 @@ void CreateFallbackSamplingTrial(
-     const std::string& feature_name,
+@@ -55,6 +55,8 @@ void CreateFallbackSamplingTrial(
      const int sampled_in_rate_per_mille,
+     const bool starts_active,
      base::FeatureList* feature_list) {
 +  if ((true))
 +    return;
    scoped_refptr<base::FieldTrial> trial(
        base::FieldTrialList::FactoryGetFieldTrial(
            trial_name, /*total_probability=*/1000, "Default", entropy_provider));
-@@ -93,6 +95,8 @@ void CreateFallbackUkmSamplingTrial(
+@@ -98,6 +100,8 @@ void CreateFallbackUkmSamplingTrial(
      const base::FieldTrial::EntropyProvider& entropy_provider,
      bool is_stable_channel,
      base::FeatureList* feature_list) {
@@ -99,10 +99,10 @@ index a9c2c6ca68a68..9c3fab5be3b87 100644
    static const char kSampledGroup_Other[] = "Sampled_NoSeed_Other";
    const char* sampled_group = kSampledGroup_Other;
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
-index 5ab6515b16029..665ba62717a82 100644
+index 08550e6c776b5..e2d13207087d4 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -721,7 +721,6 @@ void SystemNetworkContextManager::AddSSLConfigToNetworkContextParams(
+@@ -771,7 +771,6 @@ void SystemNetworkContextManager::AddSSLConfigToNetworkContextParams(
  
  void SystemNetworkContextManager::ConfigureDefaultNetworkContextParams(
      network::mojom::NetworkContextParams* network_context_params) {
@@ -111,7 +111,7 @@ index 5ab6515b16029..665ba62717a82 100644
    network_context_params->enable_brotli = true;
  
 diff --git a/components/ukm/ukm_recorder_impl.cc b/components/ukm/ukm_recorder_impl.cc
-index d1fff74ca6ce4..77521a563c857 100644
+index b1e5d0ae0019a..53c6eac9a31fd 100644
 --- a/components/ukm/ukm_recorder_impl.cc
 +++ b/components/ukm/ukm_recorder_impl.cc
 @@ -166,6 +166,9 @@ bool HasUnknownMetrics(const builders::DecodeMap& decode_map,
@@ -138,10 +138,10 @@ index 2a09a78a0ebbb..50dd0ea424486 100644
                  .edit()
                  .remove(VARIATIONS_FIRST_RUN_SEED_BASE64)
 diff --git a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
-index 4a2afc8aeaf24..176110e257cb4 100644
+index 1a1173f338a72..231c763c73b72 100644
 --- a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
 +++ b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
-@@ -451,35 +451,13 @@ public class VariationsSeedFetcher {
+@@ -453,35 +453,13 @@ public class VariationsSeedFetcher {
       */
      public void fetchSeed(String restrictMode, String milestone, String channel) {
          assert !ThreadUtils.runningOnUiThread();
@@ -181,7 +181,7 @@ index 4a2afc8aeaf24..176110e257cb4 100644
      }
  
      private void recordFetchResultOrCode(int resultOrCode) {
-@@ -523,7 +501,7 @@ public class VariationsSeedFetcher {
+@@ -525,7 +503,7 @@ public class VariationsSeedFetcher {
       * @param curSeedInfo optional currently saved seed info to set the `If-None-Match` header.
       * @return the object holds the request result and seed data with its related header fields.
       */
@@ -232,30 +232,48 @@ index 2818ede04d78a..7a9718c86f750 100644
      AppendOmniboxOnDeviceSuggestionsHeaderIfNeeded(url, resource_request_);
  
      // Note the criteria for attaching client experiment headers:
-diff --git a/components/variations/service/variations_field_trial_creator.cc b/components/variations/service/variations_field_trial_creator.cc
-index bfddf3a8eb07d..471caac8c7247 100644
---- a/components/variations/service/variations_field_trial_creator.cc
-+++ b/components/variations/service/variations_field_trial_creator.cc
-@@ -142,7 +142,8 @@ Study::CpuArchitecture GetCurrentCpuArchitecture() {
- // "--variations-server-url" switches are passed. It is however possible to
- // apply the testing config as well as specify additional field trials (using
- // "--force-fieldtrials") by using the "--enable-field-trial-config" switch.
--bool ShouldUseFieldTrialTestingConfig(const base::CommandLine* command_line) {
-+bool ShouldUseFieldTrialTestingConfig(const base::CommandLine* command_line) { // disabled in Bromite
-+  if ((true)) return false;
- #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-   return command_line->HasSwitch(switches::kEnableFieldTrialTestingConfig);
- #else
-@@ -530,6 +531,7 @@ Study::FormFactor VariationsFieldTrialCreator::GetCurrentFormFactor() {
+diff --git a/components/variations/service/variations_field_trial_creator_base.cc b/components/variations/service/variations_field_trial_creator_base.cc
+index 1684ca313ab4b..58d5743d4fa2a 100644
+--- a/components/variations/service/variations_field_trial_creator_base.cc
++++ b/components/variations/service/variations_field_trial_creator_base.cc
+@@ -118,6 +118,7 @@ Study::CpuArchitecture GetCurrentCpuArchitecture() {
  }
  
  #if BUILDFLAG(FIELDTRIAL_TESTING_ENABLED)
 +#error FIELDTRIAL_TESTING_ENABLED should be disabled.
- void VariationsFieldTrialCreator::ApplyFieldTrialTestingConfig(
-     base::FeatureList* feature_list) {
-   VLOG(1) << "Applying FieldTrialTestingConfig";
+ // Determines whether the field trial testing config defined in
+ // testing/variations/fieldtrial_testing_config.json should be applied. If the
+ // "disable_fieldtrial_testing_config" GN flag is set to true, then the testing
+@@ -302,11 +303,6 @@ bool VariationsFieldTrialCreatorBase::SetUpFieldTrials(
+                                      safe_seed_manager);
+   }
+ 
+-  platform_field_trials->SetUpClientSideFieldTrials(
+-      used_seed, *entropy_providers, feature_list.get());
+-
+-  platform_field_trials->RegisterFeatureOverrides(feature_list.get());
+-
+   base::FeatureList::SetInstance(std::move(feature_list));
+ 
+   // For testing Variations Safe Mode, maybe crash here.
+@@ -585,6 +581,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
+     const EntropyProviders& entropy_providers,
+     base::FeatureList* feature_list,
+     SafeSeedManagerInterface* safe_seed_manager) {
++  if ((true)) return false;
+   // This histogram name uses "VariationsFieldTrialCreator" rather than
+   // "VariationsFieldTrialCreatorBase" for consistency with historical data
+   TRACE_EVENT0("startup", "VariationsFieldTrialCreator::CreateTrialsFromSeed");
+@@ -678,6 +675,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
+ 
+ void VariationsFieldTrialCreatorBase::LoadSeedFromJsonFile(
+     const base::FilePath& json_seed_path) {
++  if ((true)) return;
+   VLOG(1) << "Loading seed from JSON file:" << json_seed_path;
+   JSONFileValueDeserializer file_deserializer(json_seed_path);
+   int error_code;
 diff --git a/components/variations/service/variations_service.cc b/components/variations/service/variations_service.cc
-index c7afae315af9b..b97e4d3936325 100644
+index 81018bfe6da0e..1f4fe87b53fc5 100644
 --- a/components/variations/service/variations_service.cc
 +++ b/components/variations/service/variations_service.cc
 @@ -220,17 +220,8 @@ bool GetInstanceManipulations(const net::HttpResponseHeaders* headers,
@@ -326,10 +344,10 @@ index 8811a163777c4..2db95d00dd2e3 100644
    }
    size_t iter = 0;
 diff --git a/content/public/common/content_features.cc b/content/public/common/content_features.cc
-index 40f469c7129f1..dfce060a70d49 100644
+index d078a75e81d22..906c06cca4f34 100644
 --- a/content/public/common/content_features.cc
 +++ b/content/public/common/content_features.cc
-@@ -791,8 +791,8 @@ BASE_FEATURE(kPepperCrossOriginRedirectRestriction,
+@@ -753,8 +753,8 @@ BASE_FEATURE(kPepperCrossOriginRedirectRestriction,
  // things before receiving the response, for instance it can affect the next
  // navigation's network request.
  BASE_FEATURE(kPersistentOriginTrials,
@@ -361,10 +379,10 @@ index 661dd436c023f..eaecf81365909 100644
  
  void VariationsRenderThreadObserver::RegisterMojoInterfaces(
 diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
-index 0062a38167824..ea4b2695762b6 100644
+index 0adc2775842a1..39407a0bee521 100644
 --- a/third_party/blink/renderer/core/loader/document_loader.cc
 +++ b/third_party/blink/renderer/core/loader/document_loader.cc
-@@ -188,13 +188,6 @@ Vector<OriginTrialFeature> CopyInitiatorOriginTrials(
+@@ -191,13 +191,6 @@ Vector<OriginTrialFeature> CopyInitiatorOriginTrials(
  WebVector<int> CopyInitiatorOriginTrials(
      const Vector<OriginTrialFeature>& initiator_origin_trial_features) {
    WebVector<int> result;

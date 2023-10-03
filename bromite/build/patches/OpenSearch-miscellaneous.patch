@@ -1,4 +1,4 @@
-From 1238d0754e82452887124e0fc7b4786539f32301 Mon Sep 17 00:00:00 2001
+From 1de48ac3eacf2b89b6a8231b06cf4534b385dfe9 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 6 Mar 2022 18:55:58 +0100
 Subject: [PATCH 158/192] OpenSearch: miscellaneous
@@ -21,10 +21,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  6 files changed, 67 insertions(+), 24 deletions(-)
 
 diff --git a/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java b/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
-index 11aae72d279fb..a2a47f13434d9 100644
+index b567c1415134f..9255bd0b49c71 100644
 --- a/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
 +++ b/chrome/browser/search_engines/android/java/src/org/chromium/chrome/browser/search_engines/settings/SearchEngineAdapter.java
-@@ -249,7 +249,9 @@ public class SearchEngineAdapter extends BaseAdapter
+@@ -245,7 +245,9 @@ public class SearchEngineAdapter extends BaseAdapter
                  continue;
              }
              if (recentEngineNum < MAX_RECENT_ENGINE_NUM
@@ -181,7 +181,7 @@ index 8fd09baf04eaf..d6747f6a6a849 100644
      return;
  
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
-index cc639b5dab4cb..78fd25db24176 100644
+index 2a1b86e599a02..60d8a9c5636ee 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
 @@ -14,6 +14,7 @@
@@ -192,7 +192,7 @@ index cc639b5dab4cb..78fd25db24176 100644
  #include "base/metrics/histogram_macros.h"
  #include "base/no_destructor.h"
  #include "base/strings/string_number_conversions.h"
-@@ -260,6 +261,7 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+@@ -258,6 +259,7 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
  
    GURL osdd_url = frame->GetDocument().OpenSearchDescriptionURL();
    if (!osdd_url.is_empty()) {
@@ -243,23 +243,23 @@ index 0032d89f702f8..9ce17529ad129 100644
        this, keyword, osdd_url, favicon_url, initiator, url_loader_factory,
        render_frame_id, request_id));
 diff --git a/components/search_engines/template_url_parser.cc b/components/search_engines/template_url_parser.cc
-index 76e281653818c..b7f2328ed439a 100644
+index a6a5779d1e280..c429a616a6562 100644
 --- a/components/search_engines/template_url_parser.cc
 +++ b/components/search_engines/template_url_parser.cc
-@@ -171,7 +171,7 @@ void SafeTemplateURLParser::OnXmlParseComplete(
-     data_decoder::DataDecoder::ValueOrError value_or_error) {
+@@ -173,7 +173,7 @@ void SafeTemplateURLParser::OnXmlParseComplete(
    std::move(callback_).Run([&]() -> std::unique_ptr<TemplateURL> {
-     if (!value_or_error.has_value()) {
--      DLOG(ERROR) << "Failed to parse XML: " << value_or_error.error();
-+      LOG(ERROR) << "Failed to parse XML: " << value_or_error.error();
-       return nullptr;
-     }
-     const base::Value& root = *value_or_error;
+     ASSIGN_OR_RETURN(const base::Value root, std::move(value_or_error),
+                      [](std::string error) -> std::unique_ptr<TemplateURL> {
+-                       DLOG(ERROR)
++                       LOG(ERROR)
+                            << "Failed to parse XML: " << std::move(error);
+                        return nullptr;
+                      });
 diff --git a/components/search_engines/template_url_service.h b/components/search_engines/template_url_service.h
-index f143f6d65d3f4..160fba00b3f74 100644
+index c493680066e83..9cb7c0be2ac52 100644
 --- a/components/search_engines/template_url_service.h
 +++ b/components/search_engines/template_url_service.h
-@@ -264,7 +264,10 @@ class TemplateURLService : public WebDataServiceConsumer,
+@@ -271,7 +271,10 @@ class TemplateURLService : public WebDataServiceConsumer,
    void UpdateProviderFavicons(const GURL& potential_search_url,
                                const GURL& favicon_url);
  
@@ -271,7 +271,7 @@ index f143f6d65d3f4..160fba00b3f74 100644
    // regardless of |url| if the default search provider is managed by policy or
    // controlled by an extension.
    bool CanMakeDefault(const TemplateURL* url) const;
-@@ -626,9 +629,6 @@ class TemplateURLService : public WebDataServiceConsumer,
+@@ -633,9 +636,6 @@ class TemplateURLService : public WebDataServiceConsumer,
    // SetKeywordSearchTermsForURL is invoked.
    void UpdateKeywordSearchTermsForURL(const URLVisitedDetails& details);
  

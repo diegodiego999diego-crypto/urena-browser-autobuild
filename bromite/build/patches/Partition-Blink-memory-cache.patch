@@ -1,4 +1,4 @@
-From 6c2e118fa67b9cf40031c6421702e9ba3ce7170e Mon Sep 17 00:00:00 2001
+From 230cf9e2dae9e5e069e79ae6adb42f1b32359e10 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Wed, 13 Jul 2022 14:51:09 +0000
 Subject: [PATCH 178/192] Partition Blink memory cache
@@ -55,10 +55,10 @@ index 1767d68d92f66..a85f146634c7a 100644
        return i;
    }
 diff --git a/third_party/blink/renderer/core/inspector/inspector_network_agent.cc b/third_party/blink/renderer/core/inspector/inspector_network_agent.cc
-index 3efc742c175e2..3829d9e1b2ab6 100644
+index fb7a567f9f5f5..0cddb8ea6d13e 100644
 --- a/third_party/blink/renderer/core/inspector/inspector_network_agent.cc
 +++ b/third_party/blink/renderer/core/inspector/inspector_network_agent.cc
-@@ -2296,7 +2296,7 @@ bool InspectorNetworkAgent::FetchResourceContent(Document* document,
+@@ -2315,7 +2315,7 @@ bool InspectorNetworkAgent::FetchResourceContent(Document* document,
    Resource* cached_resource = document->Fetcher()->CachedResource(url);
    if (!cached_resource) {
      cached_resource = MemoryCache::Get()->ResourceForURL(
@@ -68,7 +68,7 @@ index 3efc742c175e2..3829d9e1b2ab6 100644
    if (cached_resource && InspectorPageAgent::CachedResourceContent(
                               cached_resource, content, base64_encoded)) {
 diff --git a/third_party/blink/renderer/core/inspector/inspector_page_agent.cc b/third_party/blink/renderer/core/inspector/inspector_page_agent.cc
-index 8f4b06c584a0d..531f81e623bab 100644
+index 7d78ae5354ebd..dc552dc20071c 100644
 --- a/third_party/blink/renderer/core/inspector/inspector_page_agent.cc
 +++ b/third_party/blink/renderer/core/inspector/inspector_page_agent.cc
 @@ -165,9 +165,9 @@ Resource* CachedResource(LocalFrame* frame,
@@ -183,10 +183,10 @@ index 90a61b2932d9a..366bd0c41855d 100644
      // Automatically decide how much to prune.
      kAutomaticPrune,
 diff --git a/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.cc b/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.cc
-index d08736c4a3cb0..67e8734ed111f 100644
+index a0299c597190c..0ac30bd70ec3b 100644
 --- a/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.cc
 +++ b/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.cc
-@@ -808,7 +808,8 @@ Resource* ResourceFetcher::CreateResourceForStaticData(
+@@ -839,7 +839,8 @@ Resource* ResourceFetcher::CreateResourceForStaticData(
    if (!archive_ && factory.GetType() == ResourceType::kRaw)
      return nullptr;
  
@@ -196,7 +196,7 @@ index d08736c4a3cb0..67e8734ed111f 100644
    // Most off-main-thread resource fetches use Resource::kRaw and don't reach
    // this point, but off-main-thread module fetches might.
    if (IsMainThread()) {
-@@ -1294,7 +1295,9 @@ Resource* ResourceFetcher::RequestResource(FetchParameters& params,
+@@ -1326,7 +1327,9 @@ Resource* ResourceFetcher::RequestResource(FetchParameters& params,
          resource = nullptr;
        } else {
          resource = MemoryCache::Get()->ResourceForURL(
@@ -207,7 +207,7 @@ index d08736c4a3cb0..67e8734ed111f 100644
        }
        if (resource) {
          policy = DetermineRevalidationPolicy(resource_type, params, *resource,
-@@ -1408,6 +1411,8 @@ Resource* ResourceFetcher::RequestResource(FetchParameters& params,
+@@ -1440,6 +1443,8 @@ Resource* ResourceFetcher::RequestResource(FetchParameters& params,
      if (resource_cache_remote_.is_bound()) {
        resource_cache_remote_->Contains(
            params.Url(),
@@ -216,7 +216,7 @@ index d08736c4a3cb0..67e8734ed111f 100644
            WTF::BindOnce(&ResourceFetcher::OnResourceCacheContainsFinished,
                          WrapWeakPersistent(this), base::TimeTicks::Now(),
                          resource_request.GetRequestDestination()));
-@@ -1549,7 +1554,8 @@ Resource* ResourceFetcher::CreateResourceForLoading(
+@@ -1581,7 +1586,8 @@ Resource* ResourceFetcher::CreateResourceForLoading(
      const FetchParameters& params,
      const ResourceFactory& factory) {
    const String cache_identifier =
@@ -226,7 +226,7 @@ index d08736c4a3cb0..67e8734ed111f 100644
    if (!base::FeatureList::IsEnabled(
            blink::features::kScopeMemoryCachePerContext)) {
      DCHECK(!IsMainThread() || params.IsStaleRevalidation() ||
-@@ -2563,10 +2569,13 @@ void ResourceFetcher::UpdateAllImageResourcePriorities() {
+@@ -2582,10 +2588,13 @@ void ResourceFetcher::UpdateAllImageResourcePriorities() {
    to_be_removed.clear();
  }
  
@@ -242,7 +242,7 @@ index d08736c4a3cb0..67e8734ed111f 100644
    }
  
    // Requests that can be satisfied via `archive_` (i.e. MHTML) or
-@@ -2579,7 +2588,7 @@ String ResourceFetcher::GetCacheIdentifier(const KURL& url) const {
+@@ -2598,7 +2607,7 @@ String ResourceFetcher::GetCacheIdentifier(const KURL& url) const {
    if (bundle)
      return bundle->GetCacheIdentifier();
  
@@ -252,10 +252,10 @@ index d08736c4a3cb0..67e8734ed111f 100644
  
  absl::optional<base::UnguessableToken>
 diff --git a/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h b/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h
-index b6bf5f13f60f5..fc85c6fb84457 100644
+index 77cfe1e0e9893..784585358ba24 100644
 --- a/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h
 +++ b/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h
-@@ -258,7 +258,8 @@ class PLATFORM_EXPORT ResourceFetcher
+@@ -261,7 +261,8 @@ class PLATFORM_EXPORT ResourceFetcher
                           uint32_t inflight_keepalive_bytes);
    blink::mojom::ControllerServiceWorkerMode IsControlledByServiceWorker() const;
  

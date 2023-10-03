@@ -1,4 +1,4 @@
-From 0a5a71925090349b25fa364ff1113538d5d94107 Mon Sep 17 00:00:00 2001
+From f9b23220074e2b69ec65d7432e3f2bc07fa44a21 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Tue, 15 Jun 2021 11:49:43 +0000
 Subject: [PATCH 136/192] Logcat crash reports UI
@@ -11,12 +11,12 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../crash_upload_list_android.h               |   1 +
  chrome/browser/net/chrome_network_delegate.cc |   7 +
  chrome/browser/ui/BUILD.gn                    |   1 +
- chrome/browser/ui/webui/crashes_ui.cc         | 166 ++++++++++++++++--
+ chrome/browser/ui/webui/crashes_ui.cc         | 176 ++++++++++++++++--
  .../crash/core/browser/crashes_ui_util.cc     |   4 +
  .../crash/core/browser/crashes_ui_util.h      |   2 +
  .../crash/core/browser/resources/crashes.css  |  67 ++++++-
  .../crash/core/browser/resources/crashes.html |  17 ++
- .../crash/core/browser/resources/crashes.ts   |  94 ++++------
+ .../crash/core/browser/resources/crashes.ts   |  94 +++-------
  components/crash_strings.grdp                 |  22 ++-
  .../minidump_uploader/CrashFileManager.java   |   7 +-
  .../MinidumpUploadCallable.java               |  21 +--
@@ -24,7 +24,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../upload_list/text_log_upload_list.cc       |   1 +
  components/upload_list/upload_list.cc         |  14 ++
  components/upload_list/upload_list.h          |   9 +
- 18 files changed, 375 insertions(+), 134 deletions(-)
+ 18 files changed, 385 insertions(+), 134 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java
 index 03e9446c93261..7185568b7794d 100644
@@ -163,10 +163,10 @@ index 136bb81baa984..8998b3680e053 100644
    std::vector<base::FilePath> all_download_dirs =
        base::android::GetAllPrivateDownloadsDirectories();
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 1aeb7411a92d5..30d4d465ee354 100644
+index 4ce6bd61ca6f9..596b4e0d58b4b 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -751,6 +751,7 @@ static_library("ui") {
+@@ -658,6 +658,7 @@ static_library("ui") {
      "//third_party/re2",
      "//third_party/webrtc_overrides:webrtc_component",
      "//third_party/zlib",
@@ -175,10 +175,10 @@ index 1aeb7411a92d5..30d4d465ee354 100644
      "//ui/base",
      "//ui/base:data_exchange",
 diff --git a/chrome/browser/ui/webui/crashes_ui.cc b/chrome/browser/ui/webui/crashes_ui.cc
-index d555af6b7d22c..5aa1fc7b4558c 100644
+index d555af6b7d22c..6f0e451ceeec5 100644
 --- a/chrome/browser/ui/webui/crashes_ui.cc
 +++ b/chrome/browser/ui/webui/crashes_ui.cc
-@@ -37,6 +37,17 @@
+@@ -37,6 +37,19 @@
  #include "google_apis/gaia/gaia_auth_util.h"
  #include "ui/base/resource/resource_bundle.h"
  
@@ -189,14 +189,16 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +#include "base/files/scoped_temp_dir.h"
 +#include "base/task/task_traits.h"
 +#include "base/task/thread_pool.h"
++#if BUILDFLAG(IS_ANDROID)
 +#include "base/android/path_utils.h"
++#endif
 +#include "net/base/filename_util.h"
 +#include "third_party/zlib/google/zip.h"
 +
  #if BUILDFLAG(IS_CHROMEOS_ASH)
  #include "chromeos/ash/components/dbus/debug_daemon/debug_daemon_client.h"
  #endif
-@@ -72,6 +83,10 @@ void CreateAndAddCrashesUIHTMLSource(Profile* profile) {
+@@ -72,6 +85,10 @@ void CreateAndAddCrashesUIHTMLSource(Profile* profile) {
    source->SetDefaultResource(IDR_CRASH_CRASHES_HTML);
  }
  
@@ -207,7 +209,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
  ////////////////////////////////////////////////////////////////////////////////
  //
  // CrashesDOMHandler
-@@ -81,7 +96,7 @@ void CreateAndAddCrashesUIHTMLSource(Profile* profile) {
+@@ -81,7 +98,7 @@ void CreateAndAddCrashesUIHTMLSource(Profile* profile) {
  // The handler for Javascript messages for the chrome://crashes/ page.
  class CrashesDOMHandler : public WebUIMessageHandler {
   public:
@@ -216,7 +218,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
  
    CrashesDOMHandler(const CrashesDOMHandler&) = delete;
    CrashesDOMHandler& operator=(const CrashesDOMHandler&) = delete;
-@@ -97,6 +112,8 @@ class CrashesDOMHandler : public WebUIMessageHandler {
+@@ -97,6 +114,8 @@ class CrashesDOMHandler : public WebUIMessageHandler {
    // Asynchronously fetches the list of crashes. Called from JS.
    void HandleRequestCrashes(const base::Value::List& args);
  
@@ -225,7 +227,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
  #if BUILDFLAG(IS_CHROMEOS_ASH)
    // Asynchronously triggers crash uploading. Called from JS.
    void HandleRequestUploads(const base::Value::List& args);
-@@ -108,13 +125,26 @@ class CrashesDOMHandler : public WebUIMessageHandler {
+@@ -108,14 +127,30 @@ class CrashesDOMHandler : public WebUIMessageHandler {
    // Asynchronously requests a user triggered upload. Called from JS.
    void HandleRequestSingleCrashUpload(const base::Value::List& args);
  
@@ -252,9 +254,13 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +    : list_available_(false), first_load_(true),
 +      web_contents_(web_contents) {
    upload_list_ = CreateCrashUploadList();
++#if !BUILDFLAG(IS_ANDROID)
++  web_contents_ = nullptr;
++#endif
  }
  
-@@ -141,10 +171,24 @@ void CrashesDOMHandler::RegisterMessages() {
+ CrashesDOMHandler::~CrashesDOMHandler() {
+@@ -141,10 +176,24 @@ void CrashesDOMHandler::RegisterMessages() {
        crash_reporter::kCrashesUIRequestSingleCrashUpload,
        base::BindRepeating(&CrashesDOMHandler::HandleRequestSingleCrashUpload,
                            base::Unretained(this)));
@@ -279,7 +285,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
    if (first_load_) {
      first_load_ = false;
      if (list_available_)
-@@ -176,8 +220,7 @@ void CrashesDOMHandler::OnUploadListAvailable() {
+@@ -176,8 +225,7 @@ void CrashesDOMHandler::OnUploadListAvailable() {
  }
  
  void CrashesDOMHandler::UpdateUI() {
@@ -289,7 +295,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
  
    bool system_crash_reporter = false;
  #if BUILDFLAG(IS_CHROMEOS)
-@@ -225,14 +268,112 @@ void CrashesDOMHandler::UpdateUI() {
+@@ -225,14 +273,117 @@ void CrashesDOMHandler::UpdateUI() {
  
  void CrashesDOMHandler::HandleRequestSingleCrashUpload(
      const base::Value::List& args) {
@@ -305,6 +311,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +}
 +
 +std::string CrashesDOMHandler::RequestSingleUpload(const std::string& local_id) const {
++#if BUILDFLAG(IS_ANDROID)
 +  // get crash file path
 +  std::string info_file_path = upload_list_->GetFilePathByLocalId(local_id);
 +  if (info_file_path.empty()) {
@@ -354,13 +361,14 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +  if (result) {
 +    return zip_file_name.value();
 +  }
-+
++#endif
 +  LOG(ERROR) << "Crash report: cannot create zip content";
 +  return std::string();
 +}
 +
 +void CrashesDOMHandler::RequestSingleUploadCallback(const std::string& local_id,
 +                                                    const std::string& file_name) {
++#if BUILDFLAG(IS_ANDROID)
 +  if (!file_name.empty()) {
 +    upload_list_->RequestSingleUploadAsync(local_id);
 +
@@ -368,6 +376,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +    web_contents_->GetController().LoadURL(
 +        net::FilePathToFileURL(file_path), {}, {}, {});
 +  }
++#endif
 +}
 +
 +void CrashesDOMHandler::HandleRequestNewExtraction(
@@ -392,6 +401,7 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +}
 +
 +void CrashesDOMHandler::ClearAll() {
++#if BUILDFLAG(IS_ANDROID)
 +  // get android crash report dir
 +  base::FilePath cache_dir;
 +  base::android::GetCacheDirectory(&cache_dir);
@@ -405,10 +415,11 @@ index d555af6b7d22c..5aa1fc7b4558c 100644
 +    // remove all files, don't care for result
 +    base::DeleteFile(full_name);
 +   }
++#endif
  }
  
  }  // namespace
-@@ -244,7 +385,8 @@ void CrashesDOMHandler::HandleRequestSingleCrashUpload(
+@@ -244,7 +395,8 @@ void CrashesDOMHandler::HandleRequestSingleCrashUpload(
  ///////////////////////////////////////////////////////////////////////////////
  
  CrashesUI::CrashesUI(content::WebUI* web_ui) : WebUIController(web_ui) {

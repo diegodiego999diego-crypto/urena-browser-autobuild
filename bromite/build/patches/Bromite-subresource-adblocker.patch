@@ -1,4 +1,4 @@
-From a44ed75b9ea00ecc03c1fa5e162371e07a4f79cb Mon Sep 17 00:00:00 2001
+From 8d9da224cf38c33591926b916b43719df7801235 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 14 Sep 2019 10:20:08 +0200
 Subject: [PATCH 091/192] Bromite subresource adblocker
@@ -35,8 +35,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../net/system_network_context_manager.cc     |   3 +
  .../sessions/session_restore_android.cc       |   6 +-
  .../strings/android_chrome_strings.grd        |  14 +
- chrome/common/pref_names.cc                   |   3 +
- chrome/common/pref_names.h                    |   1 +
+ chrome/common/pref_names.h                    |   3 +
  .../strings/android/site_settings.grdp        |   4 +-
  components/component_updater/BUILD.gn         |   7 +
  .../adblock_updater_service.cc                | 268 ++++++++++++++++++
@@ -53,7 +52,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/subresource_filter_features.cc    | 116 +-------
  .../core/common/indexed_ruleset.cc            |   5 +-
  third_party/blink/common/features.cc          |  12 +-
- 40 files changed, 1189 insertions(+), 135 deletions(-)
+ 39 files changed, 1188 insertions(+), 135 deletions(-)
  create mode 100644 chrome/android/java/res/layout/adblock_editor.xml
  create mode 100644 chrome/android/java/res/xml/adblock_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
@@ -64,10 +63,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 components/component_updater/download_filters_task.h
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 3260936d6597d..b25a4bb15e7c9 100644
+index ff2fb13bb9395..04622b7bf6f1f 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -284,6 +284,7 @@ if (current_toolchain == default_toolchain) {
+@@ -288,6 +288,7 @@ if (current_toolchain == default_toolchain) {
        "//chrome/android/modules/image_editor/provider:java",
        "//chrome/android/modules/stack_unwinder/provider:java",
        "//chrome/android/webapk/libs/client:client_java",
@@ -76,10 +75,10 @@ index 3260936d6597d..b25a4bb15e7c9 100644
        "//chrome/android/webapk/libs/common:splash_java",
        "//chrome/android/webapk/libs/runtime_library:webapk_service_aidl_java",
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index 91c235e19f312..bda8cd3c07989 100644
+index 25dd9bddf366d..e47f8cb9f6ff6 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -459,6 +459,7 @@ chrome_java_resources = [
+@@ -460,6 +460,7 @@ chrome_java_resources = [
    "java/res/layout/account_chooser_dialog_title.xml",
    "java/res/layout/account_divider_preference.xml",
    "java/res/layout/account_management_account_row.xml",
@@ -87,7 +86,7 @@ index 91c235e19f312..bda8cd3c07989 100644
    "java/res/layout/auto_sign_in_first_run_dialog.xml",
    "java/res/layout/autofill_billing_address_dropdown.xml",
    "java/res/layout/autofill_card_name_and_number.xml",
-@@ -652,6 +653,7 @@ chrome_java_resources = [
+@@ -656,6 +657,7 @@ chrome_java_resources = [
    "java/res/xml/about_chrome_preferences.xml",
    "java/res/xml/account_management_preferences.xml",
    "java/res/xml/ad_services_config.xml",
@@ -96,10 +95,10 @@ index 91c235e19f312..bda8cd3c07989 100644
    "java/res/xml/clear_browsing_data_preferences_tab.xml",
    "java/res/xml/contextual_search_preferences.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 85f9499374984..9526da611c62f 100644
+index c7972b041e693..4f5cf7b9337c0 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -937,6 +937,8 @@ chrome_java_sources = [
+@@ -946,6 +946,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/permissions/PermissionSettingsBridge.java",
    "java/src/org/chromium/chrome/browser/permissions/PermissionUpdateRequester.java",
    "java/src/org/chromium/chrome/browser/photo_picker/DecoderServiceImpl.java",
@@ -182,7 +181,7 @@ index 0000000000000..aced0dbca5a2b
 +
 +</FrameLayout>
 diff --git a/chrome/android/java/res/values/styles.xml b/chrome/android/java/res/values/styles.xml
-index 66b605fd8ea6f..54fc892d92137 100644
+index d130751c57765..d189cd1fcfba5 100644
 --- a/chrome/android/java/res/values/styles.xml
 +++ b/chrome/android/java/res/values/styles.xml
 @@ -232,6 +232,24 @@ found in the LICENSE file.
@@ -255,12 +254,12 @@ index 0000000000000..36ea147ed2693
 +
 +</PreferenceScreen>
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
-index 231c5c00a8ce6..83a80a75332ec 100644
+index c14807c7e3cac..5a4a3480838d4 100644
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
-@@ -67,6 +67,11 @@ found in the LICENSE file.
+@@ -72,6 +72,11 @@ found in the LICENSE file.
          android:key="safety_check"
-         android:order="11"
+         android:order="12"
          android:title="@string/prefs_safety_check"/>
 +    <Preference
 +        android:fragment="org.chromium.chrome.browser.settings.AdBlockPreferences"
@@ -269,7 +268,7 @@ index 231c5c00a8ce6..83a80a75332ec 100644
 +        android:title="@string/prefs_adblock"/>
      <Preference
          android:key="notifications"
-         android:order="12"
+         android:order="13"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
 new file mode 100644
 index 0000000000000..bb70f2efdd399
@@ -435,10 +434,10 @@ index 0000000000000..b24689ee7964b
 +    }
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelImpl.java
-index 3f4ea872c5f79..d38ae00d08ed1 100644
+index 75874fb886177..82f077444b1d7 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelImpl.java
-@@ -778,7 +778,7 @@ public class TabModelImpl extends TabModelJniBridge {
+@@ -783,7 +783,7 @@ public class TabModelImpl extends TabModelJniBridge {
      protected boolean createTabWithWebContents(
              Tab parent, Profile profile, WebContents webContents) {
          return getTabCreator(profile.isOffTheRecord())
@@ -448,10 +447,10 @@ index 3f4ea872c5f79..d38ae00d08ed1 100644
  
      @Override
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
-index 857725bb43260..658d183f10026 100644
+index a60702c123b52..05f7856963802 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -13770,6 +13770,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
+@@ -14277,6 +14277,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
        Never show this again.
      </message>
  
@@ -491,7 +490,7 @@ index e87afbedf74ea..b8c1649070e68 100644
  
  // Observes the first visible page load and sets the startup complete
 diff --git a/chrome/browser/browser_process.h b/chrome/browser/browser_process.h
-index 9c5260579cf05..39ff9b0fb6d58 100644
+index 25a82353eace8..43252811e35e1 100644
 --- a/chrome/browser/browser_process.h
 +++ b/chrome/browser/browser_process.h
 @@ -21,6 +21,7 @@
@@ -502,7 +501,7 @@ index 9c5260579cf05..39ff9b0fb6d58 100644
  
  class BackgroundModeManager;
  class BrowserProcessPlatformPart;
-@@ -70,6 +71,10 @@ namespace component_updater {
+@@ -71,6 +72,10 @@ namespace component_updater {
  class ComponentUpdateService;
  }
  
@@ -513,7 +512,7 @@ index 9c5260579cf05..39ff9b0fb6d58 100644
  namespace extensions {
  class EventRouterForwarder;
  }
-@@ -240,6 +245,7 @@ class BrowserProcess {
+@@ -241,6 +246,7 @@ class BrowserProcess {
  #endif
  
    virtual component_updater::ComponentUpdateService* component_updater() = 0;
@@ -522,10 +521,10 @@ index 9c5260579cf05..39ff9b0fb6d58 100644
    virtual MediaFileSystemRegistry* media_file_system_registry() = 0;
  
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
-index 742b994c42c22..bc99b61594f18 100644
+index f9685a83129c0..4a60a351f6f60 100644
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -1107,6 +1107,26 @@ BrowserProcessImpl::component_updater() {
+@@ -1129,6 +1129,26 @@ BrowserProcessImpl::component_updater() {
    return component_updater_.get();
  }
  
@@ -553,10 +552,10 @@ index 742b994c42c22..bc99b61594f18 100644
    if (is_keeping_alive)
      Pin();
 diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
-index 701b6cc46045c..e69c39f6ad86c 100644
+index 43d7af86dbd67..8da01974b0f4c 100644
 --- a/chrome/browser/browser_process_impl.h
 +++ b/chrome/browser/browser_process_impl.h
-@@ -203,6 +203,7 @@ class BrowserProcessImpl : public BrowserProcess,
+@@ -204,6 +204,7 @@ class BrowserProcessImpl : public BrowserProcess,
  #endif
  
    component_updater::ComponentUpdateService* component_updater() override;
@@ -564,7 +563,7 @@ index 701b6cc46045c..e69c39f6ad86c 100644
    MediaFileSystemRegistry* media_file_system_registry() override;
    WebRtcLogUploader* webrtc_log_uploader() override;
    network_time::NetworkTimeTracker* network_time_tracker() override;
-@@ -390,6 +391,7 @@ class BrowserProcessImpl : public BrowserProcess,
+@@ -398,6 +399,7 @@ class BrowserProcessImpl : public BrowserProcess,
    // to concerns over integrity of data shared between profiles,
    // but some users of component updater only install per-user.
    std::unique_ptr<component_updater::ComponentUpdateService> component_updater_;
@@ -573,7 +572,7 @@ index 701b6cc46045c..e69c39f6ad86c 100644
  #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
    // Used to create a singleton instance of SodaInstallerImpl, which can be
 diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
-index c54e44c41861a..c0bde05a28cd8 100644
+index 0d6a6dda5d33f..652687f8f2f9f 100644
 --- a/chrome/browser/chrome_browser_main.cc
 +++ b/chrome/browser/chrome_browser_main.cc
 @@ -427,6 +427,9 @@ StartupProfileInfo CreateInitialProfile(
@@ -613,11 +612,11 @@ index 73ec2c9f75d65..0f41c49ec8e4f 100644
 +  g_browser_process->local_state()->SetString(prefs::kAdBlockFiltersURL, base::android::ConvertJavaStringToUTF8(env, url));
 +}
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
-index fa90724093a31..e6b13568d1027 100644
+index c972e808ad64a..8886877d08236 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CachedFeatureFlags.java
-@@ -98,6 +98,14 @@ public class CachedFeatureFlags {
-                 ChromeFeatureList.isEnabled(ChromeFeatureList.BACKGROUND_THREAD_POOL));
+@@ -101,6 +101,14 @@ public class CachedFeatureFlags {
+                 ChromeFeatureList.isEnabled(ChromeFeatureList.CACHE_ACTIVITY_TASKID));
      }
  
 +     public static void setAdBlockFiltersURL(String url) {
@@ -640,10 +639,10 @@ index fa90724093a31..e6b13568d1027 100644
      }
  }
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
-index 665ba62717a82..1c6249a2916c0 100644
+index e2d13207087d4..fa2add9bc913d 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -518,6 +518,9 @@ SystemNetworkContextManager::~SystemNetworkContextManager() {
+@@ -567,6 +567,9 @@ SystemNetworkContextManager::~SystemNetworkContextManager() {
  void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
    StubResolverConfigReader::RegisterPrefs(registry);
  
@@ -671,16 +670,16 @@ index b1b89688f342d..2ea285493c1f8 100644
    DCHECK(disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
           disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB);
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 2e6990a5ad26a..f06a4425f4e18 100644
+index 84e4f93b0c56f..578abb03eb258 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -212,6 +212,20 @@ CHAR_LIMIT guidelines:
+@@ -217,6 +217,20 @@ CHAR_LIMIT guidelines:
          Advanced
        </message>
  
 +      <!-- AdBlock settings -->
 +      <message name="IDS_PREFS_ADBLOCK" desc="Title of the AdBlock Settings screen. [CHAR-LIMIT=32]">
-+        AdBlock settings
++        Legacy Adblock settings
 +      </message>
 +      <message name="IDS_OPTIONS_ADBLOCK_EDIT_TITLE" desc="The title of the screen that allows users to change the URL that is used to fetch the ad blocker filters.">
 +        Edit filters URL
@@ -695,37 +694,25 @@ index 2e6990a5ad26a..f06a4425f4e18 100644
        <!-- Notification channels -->
        <message name="IDS_NOTIFICATION_CATEGORY_GROUP_GENERAL" desc='Subheading for "General" section of a list of notification categories. [CHAR_LIMIT=32]'>
          General
-diff --git a/chrome/common/pref_names.cc b/chrome/common/pref_names.cc
-index 66fb91dfe465a..a039d8f2d750b 100644
---- a/chrome/common/pref_names.cc
-+++ b/chrome/common/pref_names.cc
-@@ -2414,6 +2414,9 @@ const char kAudioCaptureAllowed[] = "hardware.audio_capture_enabled";
- // capture devices without prompt.
- const char kAudioCaptureAllowedUrls[] = "hardware.audio_capture_allowed_urls";
+diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
+index 9f29945d75551..03237079edc8d 100644
+--- a/chrome/common/pref_names.h
++++ b/chrome/common/pref_names.h
+@@ -2608,6 +2608,9 @@ inline constexpr char kAudioCaptureAllowed[] = "hardware.audio_capture_enabled";
+ inline constexpr char kAudioCaptureAllowedUrls[] =
+     "hardware.audio_capture_allowed_urls";
  
 +// Holds the URL to an indexed subresource filters file.
-+const char kAdBlockFiltersURL[] = "adblock.filters_url";
++inline constexpr char kAdBlockFiltersURL[] = "adblock.filters_url";
 +
  // A pref holding the value of the policy used to explicitly allow or deny
  // access to video capture devices.  When enabled or not set, the user is
  // prompted for device access.  When disabled, access to video capture devices
-diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
-index af04c2c14defc..9a2d5d20824ef 100644
---- a/chrome/common/pref_names.h
-+++ b/chrome/common/pref_names.h
-@@ -36,6 +36,7 @@ extern const char kDownloadDuplicateFilePromptEnabled[];
- extern const char kForceEphemeralProfiles[];
- extern const char kHomePageIsNewTabPage[];
- extern const char kHomePage[];
-+extern const char kAdBlockFiltersURL[];
- extern const char kHttpsOnlyModeEnabled[];
- extern const char kImportantSitesDialogHistory[];
- extern const char kProfileCreationTime[];
 diff --git a/components/browser_ui/strings/android/site_settings.grdp b/components/browser_ui/strings/android/site_settings.grdp
-index 9bdb92b02e2e1..0885a7aeada40 100644
+index e93c31f11fbe9..f8aa79038706c 100644
 --- a/components/browser_ui/strings/android/site_settings.grdp
 +++ b/components/browser_ui/strings/android/site_settings.grdp
-@@ -346,8 +346,8 @@
+@@ -362,8 +362,8 @@
    <message name="IDS_INTRUSIVE_ADS_INFORMATION" desc="The extra information at the top of the Site Details page when the site tends to show intrusive ads">
      This site shows intrusive or misleading ads
    </message>
@@ -1560,10 +1547,10 @@ index 564949a5829bc..3a1d3363927c7 100644
    }
  
 diff --git a/components/subresource_filter/content/browser/content_subresource_filter_throttle_manager.h b/components/subresource_filter/content/browser/content_subresource_filter_throttle_manager.h
-index b1d932fb58b03..9f3e78df71a27 100644
+index 3750e2565029b..c5f61a738f22c 100644
 --- a/components/subresource_filter/content/browser/content_subresource_filter_throttle_manager.h
 +++ b/components/subresource_filter/content/browser/content_subresource_filter_throttle_manager.h
-@@ -411,6 +411,8 @@ class ContentSubresourceFilterThrottleManager
+@@ -412,6 +412,8 @@ class ContentSubresourceFilterThrottleManager
  
    std::unique_ptr<ProfileInteractionManager> profile_interaction_manager_;
  
@@ -1573,7 +1560,7 @@ index b1d932fb58b03..9f3e78df71a27 100644
    // The throttle manager is held as user data first on NavigationHandle, then
    // transferred to Page once it is created. Once the Page is created and this
 diff --git a/components/subresource_filter/content/browser/ruleset_service.cc b/components/subresource_filter/content/browser/ruleset_service.cc
-index c0ebdf41e3f9f..60ca9d8f36c36 100644
+index c64086710dc23..375a9783dec65 100644
 --- a/components/subresource_filter/content/browser/ruleset_service.cc
 +++ b/components/subresource_filter/content/browser/ruleset_service.cc
 @@ -46,9 +46,7 @@ namespace {
@@ -1692,7 +1679,7 @@ index c0ebdf41e3f9f..60ca9d8f36c36 100644
  
    DCHECK(indexed_version.IsValid());
    return indexed_version;
-@@ -453,6 +475,7 @@ void RulesetService::IndexAndStoreRuleset(
+@@ -449,6 +471,7 @@ void RulesetService::IndexAndStoreRuleset(
  void RulesetService::OnWrittenRuleset(WriteRulesetCallback result_callback,
                                        const IndexedRulesetVersion& version) {
    DCHECK(!result_callback.is_null());
@@ -1700,7 +1687,7 @@ index c0ebdf41e3f9f..60ca9d8f36c36 100644
    if (!version.IsValid())
      return;
    version.SaveToPrefs(local_state_);
-@@ -465,7 +488,6 @@ void RulesetService::OpenAndPublishRuleset(
+@@ -461,7 +484,6 @@ void RulesetService::OpenAndPublishRuleset(
        IndexedRulesetLocator::GetRulesetDataFilePath(
            IndexedRulesetLocator::GetSubdirectoryPathForVersion(
                indexed_ruleset_base_dir_, version));
@@ -1968,10 +1955,10 @@ index a6e217d258817..a59f9de4ef73b 100644
                 ? VerifyStatus::kChecksumFailVerifierPass
                 : VerifyStatus::kChecksumFailVerifierFail;
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
-index 8d3a0cc7a08b2..1aad8689c7f1a 100644
+index fe7912e08aed7..6a5d3fe3a8ad0 100644
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -138,8 +138,8 @@ BASE_FEATURE(kAutofillSendUnidentifiedKeyAfterFill,
+@@ -144,8 +144,8 @@ BASE_FEATURE(kAutofillSendUnidentifiedKeyAfterFill,
  // Apply lazy-loading to ad frames which have embeds likely impacting Core Web
  // Vitals.
  BASE_FEATURE(kAutomaticLazyFrameLoadingToAds,
@@ -1982,7 +1969,7 @@ index 8d3a0cc7a08b2..1aad8689c7f1a 100644
  
  // The timeout value that forces loading iframes that are lazy loaded by
  // LazyAds. After this timeout, the frame loading is triggered even when the
-@@ -159,8 +159,8 @@ const base::FeatureParam<int> kSkipFrameCountForLazyAds(
+@@ -165,8 +165,8 @@ const base::FeatureParam<int> kSkipFrameCountForLazyAds(
  // Apply lazy-loading to frames which have embeds likely impacting Core Web
  // Vitals.
  BASE_FEATURE(kAutomaticLazyFrameLoadingToEmbeds,
@@ -1993,7 +1980,7 @@ index 8d3a0cc7a08b2..1aad8689c7f1a 100644
  
  // The timeout value that forces loading iframes that are lazy loaded by
  // LazyEmbeds. After this timeout, the frame loading is triggered even when the
-@@ -182,8 +182,8 @@ const base::FeatureParam<int> kSkipFrameCountForLazyEmbeds(
+@@ -188,8 +188,8 @@ const base::FeatureParam<int> kSkipFrameCountForLazyEmbeds(
  // to gather Blink.AutomaticLazyLoadFrame.LazyEmbedFrameCount UKM data even when
  // kAutomaticLazyFrameLoadingToEmbeds is disabled.
  BASE_FEATURE(kAutomaticLazyFrameLoadingToEmbedUrls,

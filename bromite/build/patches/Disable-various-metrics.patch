@@ -1,4 +1,4 @@
-From 2ee14eda673768b110b276c742dd0e974a715ef2 Mon Sep 17 00:00:00 2001
+From 53dd27ad7e8a3b523f20259afdbb2802e9e03190 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 25 Apr 2018 10:23:51 +0200
 Subject: [PATCH 083/192] Disable various metrics
@@ -15,23 +15,25 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/browser/browser_process_impl.cc          |  2 +-
  chrome/browser/chrome_content_browser_client.cc | 15 ---------------
  .../chrome_metrics_services_manager_client.cc   |  8 ++++----
+ .../browser/ui/search/ntp_user_data_logger.cc   |  4 ----
  components/ntp_tiles/BUILD.gn                   |  3 ---
+ .../ntp_tiles/custom_links_manager_impl.cc      |  1 -
  components/ntp_tiles/most_visited_sites.cc      |  2 --
  services/metrics/public/cpp/ukm_recorder.cc     |  2 +-
- 8 files changed, 7 insertions(+), 44 deletions(-)
+ 10 files changed, 7 insertions(+), 49 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
-index dba5e82eb6903..12540824348a1 100644
+index acff31fc619da..5998d035d5303 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
-@@ -56,7 +56,7 @@ public abstract class FirstRunActivityBase
+@@ -57,7 +57,7 @@ public abstract class FirstRunActivityBase
      static final String SHOW_SEARCH_ENGINE_PAGE = "ShowSearchEnginePage";
      static final String SHOW_SYNC_CONSENT_PAGE = "ShowSyncConsent";
  
 -    public static final boolean DEFAULT_METRICS_AND_CRASH_REPORTING = true;
 +    public static final boolean DEFAULT_METRICS_AND_CRASH_REPORTING = false;
  
-     private static PolicyLoadListenerFactory sPolicyLoadListenerFactory;
+     private static PolicyLoadListenerFactory sPolicyLoadListenerFactoryForTesting;
  
 diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/browser/android/ntp/most_visited_sites_bridge.cc
 index 9067505ec7b1d..7c43354d6db74 100644
@@ -90,10 +92,10 @@ index 9067505ec7b1d..7c43354d6db74 100644
  
  static jlong JNI_MostVisitedSitesBridge_Init(
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
-index 92f8eedd1aade..742b994c42c22 100644
+index 3b06387899b58..f9685a83129c0 100644
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -1020,7 +1020,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -1042,7 +1042,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
  #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  
    registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
@@ -103,10 +105,10 @@ index 92f8eedd1aade..742b994c42c22 100644
  }
  
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 37dab0611a399..0eb57812e41fa 100644
+index 31cfbab55ccf5..73a2196674c69 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -78,7 +78,6 @@
+@@ -79,7 +79,6 @@
  #include "chrome/browser/hid/chrome_hid_delegate.h"
  #include "chrome/browser/interstitials/enterprise_util.h"
  #include "chrome/browser/lifetime/browser_shutdown.h"
@@ -114,7 +116,7 @@ index 37dab0611a399..0eb57812e41fa 100644
  #include "chrome/browser/media/audio_service_util.h"
  #include "chrome/browser/media/router/media_router_feature.h"
  #include "chrome/browser/media/webrtc/audio_debug_recordings_handler.h"
-@@ -4895,16 +4894,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+@@ -4972,16 +4971,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
      content::NavigationHandle* handle) {
    std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
  
@@ -131,7 +133,7 @@ index 37dab0611a399..0eb57812e41fa 100644
  #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
    MaybeAddThrottle(
        SupervisedUserNavigationThrottle::MaybeCreateThrottleFor(handle),
-@@ -4983,10 +4972,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+@@ -5066,10 +5055,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
      throttle_manager->MaybeAppendNavigationThrottles(handle, &throttles);
    }
  
@@ -168,8 +170,32 @@ index 7f9ef976e28d6..60c970b24268a 100644
  #endif  // BUILDFLAG(IS_ANDROID)
  
  // Name of the variations param that defines the sampling rate.
+diff --git a/chrome/browser/ui/search/ntp_user_data_logger.cc b/chrome/browser/ui/search/ntp_user_data_logger.cc
+index 93ca3237b7fb0..7162898a48498 100644
+--- a/chrome/browser/ui/search/ntp_user_data_logger.cc
++++ b/chrome/browser/ui/search/ntp_user_data_logger.cc
+@@ -394,8 +394,6 @@ void NTPUserDataLogger::LogMostVisitedImpression(
+ 
+ void NTPUserDataLogger::LogMostVisitedNavigation(
+     const ntp_tiles::NTPTileImpression& impression) {
+-  ntp_tiles::metrics::RecordTileClick(impression);
+-
+   // Records the action. This will be available as a time-stamped stream
+   // server-side and can be used to compute time-to-long-dwell.
+   base::RecordAction(base::UserMetricsAction("MostVisited_Clicked"));
+@@ -424,10 +422,8 @@ void NTPUserDataLogger::EmitNtpStatistics(base::TimeDelta load_time,
+     if (!impression.has_value()) {
+       break;
+     }
+-    ntp_tiles::metrics::RecordTileImpression(*impression);
+     ++tiles_count;
+   }
+-  ntp_tiles::metrics::RecordPageImpression(tiles_count);
+ 
+   DVLOG(1) << "Emitting NTP load time: " << load_time << ", "
+            << "number of tiles: " << tiles_count;
 diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
-index 2820f7b039a1a..73a843f299b79 100644
+index 884831eeb40ff..12d1512f0862a 100644
 --- a/components/ntp_tiles/BUILD.gn
 +++ b/components/ntp_tiles/BUILD.gn
 @@ -23,8 +23,6 @@ static_library("ntp_tiles") {
@@ -181,7 +207,7 @@ index 2820f7b039a1a..73a843f299b79 100644
      "most_visited_sites.cc",
      "most_visited_sites.h",
      "ntp_tile.cc",
-@@ -93,7 +91,6 @@ source_set("unit_tests") {
+@@ -92,7 +90,6 @@ source_set("unit_tests") {
      "custom_links_manager_impl_unittest.cc",
      "custom_links_store_unittest.cc",
      "icon_cacher_impl_unittest.cc",
@@ -189,11 +215,23 @@ index 2820f7b039a1a..73a843f299b79 100644
      "most_visited_sites_unittest.cc",
      "popular_sites_impl_unittest.cc",
    ]
+diff --git a/components/ntp_tiles/custom_links_manager_impl.cc b/components/ntp_tiles/custom_links_manager_impl.cc
+index 3182efeacbcbd..420c9eef49b01 100644
+--- a/components/ntp_tiles/custom_links_manager_impl.cc
++++ b/components/ntp_tiles/custom_links_manager_impl.cc
+@@ -203,7 +203,6 @@ void CustomLinksManagerImpl::RemoveCustomLinksForPreinstalledApps() {
+       }
+     }
+     if (default_app_links_deleted) {
+-      metrics::RecordsMigratedDefaultAppDeleted(DeletedTileType::kCustomLink);
+       prefs_->SetBoolean(prefs::kCustomLinksForPreinstalledAppsRemoved, true);
+     }
+   }
 diff --git a/components/ntp_tiles/most_visited_sites.cc b/components/ntp_tiles/most_visited_sites.cc
-index 762e82011effb..9f0d15cbbc0a3 100644
+index 1b09a3421d6fa..cb42a6676a6bc 100644
 --- a/components/ntp_tiles/most_visited_sites.cc
 +++ b/components/ntp_tiles/most_visited_sites.cc
-@@ -703,8 +703,6 @@ void MostVisitedSites::SaveTilesAndNotify(
+@@ -702,8 +702,6 @@ void MostVisitedSites::SaveTilesAndNotify(
                                     : new_tiles;
  
    if (fixed_tiles.size() != new_tiles.size()) {

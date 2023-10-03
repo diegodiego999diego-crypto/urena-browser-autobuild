@@ -1,4 +1,4 @@
-From 7037029493665722ecc1bd11c6c9395331af24c4 Mon Sep 17 00:00:00 2001
+From 29987d607a6cc3d4d4ad1261524fbde4f5cf4808 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 25 Mar 2018 21:49:37 +0200
 Subject: [PATCH 056/192] AudioBuffer, AnalyserNode: fp mitigations
@@ -22,10 +22,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  12 files changed, 60 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index d14fa3430a685..133ef52e82e57 100644
+index 82741e95ba8a4..73d1dd5a999d9 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -3850,6 +3850,10 @@ const FeatureEntry kFeatureEntries[] = {
+@@ -3881,6 +3881,10 @@ const FeatureEntry kFeatureEntries[] = {
       flag_descriptions::kKioskEnableAppServiceDescription, kOsCrOS,
       FEATURE_VALUE_TYPE(features::kKioskEnableAppService)},
  #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -37,12 +37,12 @@ index d14fa3430a685..133ef52e82e57 100644
      {"enable-webrtc-remote-event-log",
       flag_descriptions::kWebRtcRemoteEventLogName,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index 0174cbb82392e..f7e52a6256d6e 100644
+index c631c713f425c..9b9d00359008a 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -3568,6 +3568,11 @@ const char kWebrtcUseMinMaxVEADimensionsDescription[] =
-     "When enabled, WebRTC will only use the Video Encode Accelerator for "
-     "video resolutions inside those published as supported.";
+@@ -3639,6 +3639,11 @@ const char kWebTransportDeveloperModeDescription[] =
+     "When enabled, removes the requirement that all certificates used for "
+     "WebTransport over HTTP/3 are issued by a known certificate root.";
  
 +const char kAudioContextShuffleEnabledName[] =
 +    "Enable Audio Context fingerprint deception";
@@ -53,24 +53,24 @@ index 0174cbb82392e..f7e52a6256d6e 100644
      "Automatic detection of WebUSB-compatible devices";
  const char kWebUsbDeviceDetectionDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index c32c8724b90dc..f984806374b68 100644
+index 302a8e99a898e..e6dc3d91746f3 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -2046,6 +2046,9 @@ extern const char kWebRtcRemoteEventLogDescription[];
+@@ -2095,6 +2095,9 @@ extern const char kWebRtcRemoteEventLogDescription[];
  extern const char kWebrtcUseMinMaxVEADimensionsName[];
  extern const char kWebrtcUseMinMaxVEADimensionsDescription[];
  
 +extern const char kAudioContextShuffleEnabledName[];
 +extern const char kAudioContextShuffleEnabledDescription[];
 +
- extern const char kWebUsbDeviceDetectionName[];
- extern const char kWebUsbDeviceDetectionDescription[];
+ extern const char kWebTransportDeveloperModeName[];
+ extern const char kWebTransportDeveloperModeDescription[];
  
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
-index 7209e4ebaad97..8d3a0cc7a08b2 100644
+index ae80cfe4aec94..fe7912e08aed7 100644
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -234,6 +234,10 @@ BASE_FEATURE(kBiddingAndScoringDebugReportingAPI,
+@@ -244,6 +244,10 @@ BASE_FEATURE(kBiddingAndScoringDebugReportingAPI,
               "BiddingAndScoringDebugReportingAPI",
               base::FEATURE_DISABLED_BY_DEFAULT);
  
@@ -82,10 +82,10 @@ index 7209e4ebaad97..8d3a0cc7a08b2 100644
  // Enables compaction of backing stores on Blink's heap.
  BASE_FEATURE(kBlinkHeapCompaction,
 diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
-index f9bb0a72907eb..0b65cc09007b4 100644
+index 6ece6ab12363f..0be0e4712487d 100644
 --- a/third_party/blink/public/common/features.h
 +++ b/third_party/blink/public/common/features.h
-@@ -142,6 +142,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapConcurrentSweeping);
+@@ -149,6 +149,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapConcurrentSweeping);
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapIncrementalMarking);
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapIncrementalMarkingStress);
  
@@ -133,7 +133,7 @@ index ce75d7ab3a290..b4c562a024749 100644
    static DOMFloat32Array* CreateFloat32ArrayOrNull(
        uint32_t length,
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_context.cc b/third_party/blink/renderer/modules/webaudio/audio_context.cc
-index 1f058580ccbd8..d58bf82b0ee95 100644
+index 4dedc0b91be74..46c31a4d55c5e 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/audio_context.cc
 @@ -11,6 +11,7 @@
@@ -156,7 +156,7 @@ index 1f058580ccbd8..d58bf82b0ee95 100644
  
  double AudioContext::outputLatency() const {
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
-index ee8d2b7d7dc46..5f3e493709f07 100644
+index c9fa2fd3953b4..f744265cc7224 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 @@ -29,6 +29,7 @@
@@ -186,7 +186,7 @@ index ee8d2b7d7dc46..5f3e493709f07 100644
    DCHECK(IsMainThread());
    GraphAutoLocker locker(this);
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-index e6dbfad24b619..fb09e9110e184 100644
+index b3a041474b308..152a0ae4881f8 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 @@ -338,6 +338,8 @@ class MODULES_EXPORT BaseAudioContext

@@ -1,4 +1,4 @@
-From 71c54faf56be6b32bdd19143771faff4c8d94454 Mon Sep 17 00:00:00 2001
+From bf180897cd89d7a91f6a5fb5cb4cd243c7c6ed69 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Wed, 21 Sep 2022 12:28:17 +0000
 Subject: [PATCH 186/192] Remove HTTP referrals in cross origin navigation
@@ -25,22 +25,21 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../strings/android_chrome_strings.grd        | 24 +++++
  chrome/browser/ui/prefs/pref_watcher.cc       |  2 +
  chrome/browser/ui/prefs/prefs_tab_helper.cc   |  2 +
- chrome/common/pref_names.cc                   |  3 +
- chrome/common/pref_names.h                    |  1 +
+ chrome/common/pref_names.h                    |  3 +
  .../renderer_host/navigation_request.cc       |  8 ++
  .../network/public/cpp/resource_request.h     |  2 +-
  .../renderer_preferences.h                    |  1 +
- 18 files changed, 307 insertions(+), 1 deletion(-)
+ 17 files changed, 306 insertions(+), 1 deletion(-)
  create mode 100644 chrome/android/java/res/layout/radio_button_group_referer_policy_preference.xml
  create mode 100644 chrome/android/java/res/xml/referer_policy_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/RadioButtonGroupRefererSettings.java
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/RefererSettingsFragment.java
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index 73e08ab076b1c..11d256db5de4f 100644
+index 2b040a373ab08..bbf7312af0f36 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -671,6 +671,8 @@ chrome_java_resources = [
+@@ -675,6 +675,8 @@ chrome_java_resources = [
    "java/res/xml/incognito_preferences.xml",
    "java/res/xml/privacy_preferences.xml",
    "java/res/xml/privacy_preferences_v2.xml",
@@ -50,10 +49,10 @@ index 73e08ab076b1c..11d256db5de4f 100644
    "java/res/xml/tracing_preferences.xml",
    "java/res/xml/useragent_preferences.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 4eb3c924374d5..52f6b49bb5c8d 100644
+index 83ca38110be4f..287492c47f95b 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -955,6 +955,8 @@ chrome_java_sources = [
+@@ -964,6 +964,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/privacy/settings/PrivacyPreferencesManagerImpl.java",
    "java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java",
    "java/src/org/chromium/chrome/browser/privacy/settings/IncognitoSettings.java",
@@ -168,7 +167,7 @@ index 0000000000000..6788bfe9c39c2
 +        app:allowDividerBelow="false" />
 +</PreferenceScreen>
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 3d299d1fae26c..4eed3556cb299 100644
+index 447224e584889..65d7d279c99e7 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 @@ -32,6 +32,7 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -187,7 +186,7 @@ index 3d299d1fae26c..4eed3556cb299 100644
      private static final String PREF_PRIVACY_SANDBOX = "privacy_sandbox";
      private static final String PREF_PROXY_OPTIONS = "proxy";
      private static final String PREF_PRIVACY_GUIDE = "privacy_guide";
-@@ -358,6 +360,10 @@ public class PrivacySettings extends PreferenceFragmentCompat
+@@ -354,6 +356,10 @@ public class PrivacySettings extends PreferenceFragmentCompat
                              : R.string.text_off);
          }
  
@@ -379,10 +378,10 @@ index 0000000000000..027ad1b136909
 +    }
 +}
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
-index a67a548f1c6ea..6cc9660971d48 100644
+index 38c2892fd1baf..5128172f66899 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -471,6 +471,9 @@ SystemNetworkContextManager::SystemNetworkContextManager(
+@@ -520,6 +520,9 @@ SystemNetworkContextManager::SystemNetworkContextManager(
        base::BindRepeating(&SystemNetworkContextManager::UpdateReferrersEnabled,
                            base::Unretained(this)));
  
@@ -392,7 +391,7 @@ index a67a548f1c6ea..6cc9660971d48 100644
    pref_change_registrar_.Add(
        prefs::kExplicitlyAllowedNetworkPorts,
        base::BindRepeating(
-@@ -562,6 +565,7 @@ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -611,6 +614,7 @@ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
    // the system NetworkContext, and the per-profile pref values are used for
    // the profile NetworkContexts.
    registry->RegisterBooleanPref(prefs::kEnableReferrers, true);
@@ -413,10 +412,10 @@ index 8a832415700e8..f29729ffb422b 100644
        pref_service->GetBoolean(prefs::kEnableDoNotTrack);
    prefs->enable_encrypted_media =
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 4f6ddd8ea5dcf..47f3b043ad702 100644
+index 7e9c8eb1477e7..980158fa070cd 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -969,6 +969,30 @@ CHAR_LIMIT guidelines:
+@@ -993,6 +993,30 @@ CHAR_LIMIT guidelines:
  
  For example, some websites may respond to this request by showing you ads that aren’t based on other websites you’ve visited. Many websites will still collect and use your browsing data — for example to improve security, to provide content, ads and recommendations, and to generate reporting statistics.
        </message>
@@ -473,37 +472,25 @@ index 0e9cfc24accbe..0dccc5b207596 100644
    registry->RegisterBooleanPref(prefs::kEnableEncryptedMedia, true);
    registry->RegisterBooleanPref(prefs::kScrollToTextFragmentEnabled, false);
  #if BUILDFLAG(IS_ANDROID)
-diff --git a/chrome/common/pref_names.cc b/chrome/common/pref_names.cc
-index 9de4b5dba8cd0..bc66dfb492ea3 100644
---- a/chrome/common/pref_names.cc
-+++ b/chrome/common/pref_names.cc
-@@ -1362,6 +1362,9 @@ const char kEnableHyperlinkAuditing[] = "enable_a_ping";
- // Whether to enable sending referrers.
- const char kEnableReferrers[] = "enable_referrers";
- 
-+// Set referrer policy.
-+const char kReferrersPolicy[] = "referrers_policy";
-+
- // Whether to send the DNT header.
- const char kEnableDoNotTrack[] = "enable_do_not_track";
- 
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
-index 3e09ba04a2eae..7ec4668c3deae 100644
+index a574a301fd07a..ed8d4886c830e 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -415,6 +415,7 @@ extern const char kPinnedTabs[];
- extern const char kDisable3DAPIs[];
- extern const char kEnableHyperlinkAuditing[];
- extern const char kEnableReferrers[];
-+extern const char kReferrersPolicy[];
- extern const char kEnableDoNotTrack[];
- extern const char kEnableEncryptedMedia[];
+@@ -1495,6 +1495,9 @@ inline constexpr char kEnableDoNotTrack[] = "enable_do_not_track";
+ inline constexpr char kEnableEncryptedMedia[] =
+     "webkit.webprefs.encrypted_media_enabled";
  
++// Set referrer policy.
++inline constexpr char kReferrersPolicy[] = "referrers_policy";
++
+ // Boolean that specifies whether to import the form data for autofill from the
+ // default browser on first run.
+ inline constexpr char kImportAutofillFormData[] = "import_autofill_form_data";
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index 31d669475b398..80401955598db 100644
+index 4a328d868a460..1611eaadeb746 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
-@@ -390,6 +390,14 @@ void AddAdditionalRequestHeaders(
+@@ -391,6 +391,14 @@ void AddAdditionalRequestHeaders(
          blink::mojom::Referrer(GURL(), network::mojom::ReferrerPolicy::kNever);
    }
  
@@ -519,10 +506,10 @@ index 31d669475b398..80401955598db 100644
    if (NeedsHTTPOrigin(headers, method)) {
      url::Origin origin_header_value = initiator_origin.value_or(url::Origin());
 diff --git a/services/network/public/cpp/resource_request.h b/services/network/public/cpp/resource_request.h
-index 185c4ba2dad84..f426bb22cb1c5 100644
+index bf16ec49862bd..f3aeef2726fa8 100644
 --- a/services/network/public/cpp/resource_request.h
 +++ b/services/network/public/cpp/resource_request.h
-@@ -135,7 +135,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_BASE) ResourceRequest {
+@@ -144,7 +144,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP_BASE) ResourceRequest {
    std::vector<GURL> navigation_redirect_chain;
  
    GURL referrer;

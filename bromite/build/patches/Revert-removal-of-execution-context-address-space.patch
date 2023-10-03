@@ -1,4 +1,4 @@
-From 253464ea1c7a1e23256385597290b7e34045fcb3 Mon Sep 17 00:00:00 2001
+From 825e1d8e5eb436af492799dd7a2dfe18cc4a82e5 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Fri, 24 Jun 2022 22:24:22 +0200
 Subject: [PATCH 108/192] Revert removal of execution context address space
@@ -57,10 +57,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  36 files changed, 189 insertions(+), 25 deletions(-)
 
 diff --git a/content/public/common/content_features.cc b/content/public/common/content_features.cc
-index 450b9445e0323..c10cfedbca13e 100644
+index fd732b1f573cb..8c354153db71c 100644
 --- a/content/public/common/content_features.cc
 +++ b/content/public/common/content_features.cc
-@@ -186,7 +186,7 @@ BASE_FEATURE(kBlockInsecurePrivateNetworkRequestsFromPrivate,
+@@ -197,7 +197,7 @@ BASE_FEATURE(kBlockInsecurePrivateNetworkRequestsFromPrivate,
  //  - kBlockInsecurePrivateNetworkRequests
  BASE_FEATURE(kBlockInsecurePrivateNetworkRequestsFromUnknown,
               "BlockInsecurePrivateNetworkRequestsFromUnknown",
@@ -70,10 +70,10 @@ index 450b9445e0323..c10cfedbca13e 100644
  // Enables use of the PrivateNetworkAccessNonSecureContextsAllowed deprecation
  // trial. This is a necessary yet insufficient condition: documents that wish to
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.cc b/third_party/blink/renderer/core/execution_context/execution_context.cc
-index a5de854f6c5ab..b8bdbf17dedc9 100644
+index 485ba73ada1f1..1bc4805ab9da9 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.cc
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.cc
-@@ -547,6 +547,15 @@ void ExecutionContext::SetReferrerPolicy(
+@@ -539,6 +539,15 @@ void ExecutionContext::SetReferrerPolicy(
    policy_container_->UpdateReferrerPolicy(referrer_policy);
  }
  
@@ -90,7 +90,7 @@ index a5de854f6c5ab..b8bdbf17dedc9 100644
      std::unique_ptr<PolicyContainer> container) {
    policy_container_ = std::move(container);
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
-index 337f2dc94f0ce..bdfd5122a8a59 100644
+index 71b10f5a48244..180cda4e10fc4 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.h
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.h
 @@ -33,6 +33,7 @@
@@ -180,10 +180,10 @@ index f876e8f95d911..11f638ae33fba 100644
    // the PolicyContainerHost.
    void AddContentSecurityPolicies(
 diff --git a/third_party/blink/renderer/core/frame/web_frame_test.cc b/third_party/blink/renderer/core/frame/web_frame_test.cc
-index 4a4af235dc2e8..df0729867921f 100644
+index 702f4235e4b0f..9bddc95913dca 100644
 --- a/third_party/blink/renderer/core/frame/web_frame_test.cc
 +++ b/third_party/blink/renderer/core/frame/web_frame_test.cc
-@@ -8063,6 +8063,40 @@ TEST_F(WebFrameTest, PushStateStartsAndStops) {
+@@ -8064,6 +8064,40 @@ TEST_F(WebFrameTest, PushStateStartsAndStops) {
    EXPECT_EQ(client.StopLoadingCount(), 2);
  }
  
@@ -238,10 +238,10 @@ index 754c0b87f100b..fc036d9675ace 100644
        base::UnguessableToken::Create(), nullptr /* worker_settings */,
        mojom::blink::V8CacheOptions::kDefault, module_responses_map,
 diff --git a/third_party/blink/renderer/core/loader/modulescript/installed_service_worker_module_script_fetcher.cc b/third_party/blink/renderer/core/loader/modulescript/installed_service_worker_module_script_fetcher.cc
-index c28be72dc6c60..fd62a57eb84be 100644
+index 0300cb283fcaf..24e2ad3ae8876 100644
 --- a/third_party/blink/renderer/core/loader/modulescript/installed_service_worker_module_script_fetcher.cc
 +++ b/third_party/blink/renderer/core/loader/modulescript/installed_service_worker_module_script_fetcher.cc
-@@ -67,6 +67,7 @@ void InstalledServiceWorkerModuleScriptFetcher::Fetch(
+@@ -69,6 +69,7 @@ void InstalledServiceWorkerModuleScriptFetcher::Fetch(
  
      global_scope_->Initialize(
          response_url, response_referrer_policy,
@@ -262,7 +262,7 @@ index 228487b3999f0..2aa5274c85588 100644
        nullptr /* worker_settings */, mojom::blink::V8CacheOptions::kDefault,
        MakeGarbageCollected<WorkletModuleResponsesMap>(),
 diff --git a/third_party/blink/renderer/core/loader/modulescript/worker_module_script_fetcher.cc b/third_party/blink/renderer/core/loader/modulescript/worker_module_script_fetcher.cc
-index 5e37d0b9434cd..b2e00c6e26ead 100644
+index c033618bf3bfb..69e4ae1840215 100644
 --- a/third_party/blink/renderer/core/loader/modulescript/worker_module_script_fetcher.cc
 +++ b/third_party/blink/renderer/core/loader/modulescript/worker_module_script_fetcher.cc
 @@ -6,6 +6,7 @@
@@ -273,7 +273,7 @@ index 5e37d0b9434cd..b2e00c6e26ead 100644
  #include "services/network/public/mojom/referrer_policy.mojom-blink.h"
  #include "third_party/blink/public/common/features.h"
  #include "third_party/blink/public/common/loader/network_utils.h"
-@@ -174,7 +175,7 @@ void WorkerModuleScriptFetcher::NotifyClient(
+@@ -175,7 +176,7 @@ void WorkerModuleScriptFetcher::NotifyClient(
  
      // Step 12.3-12.6 are implemented in Initialize().
      global_scope_->Initialize(
@@ -358,7 +358,7 @@ index c7a4b9f8d4ef8..3e86b84a9cc6b 100644
        parent_devtools_token, std::move(settings),
        mojom::blink::V8CacheOptions::kDefault,
 diff --git a/third_party/blink/renderer/core/workers/dedicated_worker.h b/third_party/blink/renderer/core/workers/dedicated_worker.h
-index fc47fbcca8919..5d7fbe651b7be 100644
+index 4916157bc62dd..eb2599b24a8b2 100644
 --- a/third_party/blink/renderer/core/workers/dedicated_worker.h
 +++ b/third_party/blink/renderer/core/workers/dedicated_worker.h
 @@ -137,6 +137,7 @@ class CORE_EXPORT DedicatedWorker final
@@ -428,7 +428,7 @@ index 882ac380d60b8..7ddbb4298c1b3 100644
                   ? mojo::Clone(classic_script_loader->GetContentSecurityPolicy()
                                     ->GetParsedPolicies())
 diff --git a/third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h b/third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h
-index 447592884ac15..067bd5a085c6e 100644
+index d58e89e205cfe..87cd50a49d7f1 100644
 --- a/third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h
 +++ b/third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h
 @@ -105,6 +105,7 @@ class CORE_EXPORT DedicatedWorkerGlobalScope final : public WorkerGlobalScope {
@@ -816,10 +816,10 @@ index f363e8bb32393..d1da449b99b12 100644
        // Generate the full code cache in the first execution of the script.
        mojom::blink::V8CacheOptions::kFullCodeWithoutHeatCheck,
 diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
-index fa2e63c090e7d..ceea95b953cb6 100644
+index 0ba37e65982cd..d6bb59d23384d 100644
 --- a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
 +++ b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
-@@ -454,6 +454,7 @@ void ServiceWorkerGlobalScope::DidFetchClassicScript(
+@@ -455,6 +455,7 @@ void ServiceWorkerGlobalScope::DidFetchClassicScript(
    // is set, and with the following callback steps given evaluationStatus:"
    RunClassicScript(
        classic_script_loader->ResponseURL(), referrer_policy,
@@ -827,7 +827,7 @@ index fa2e63c090e7d..ceea95b953cb6 100644
        classic_script_loader->GetContentSecurityPolicy()
            ? mojo::Clone(classic_script_loader->GetContentSecurityPolicy()
                              ->GetParsedPolicies())
-@@ -467,6 +468,7 @@ void ServiceWorkerGlobalScope::DidFetchClassicScript(
+@@ -468,6 +469,7 @@ void ServiceWorkerGlobalScope::DidFetchClassicScript(
  void ServiceWorkerGlobalScope::Initialize(
      const KURL& response_url,
      network::mojom::ReferrerPolicy response_referrer_policy,
@@ -835,7 +835,7 @@ index fa2e63c090e7d..ceea95b953cb6 100644
      Vector<network::mojom::blink::ContentSecurityPolicyPtr> response_csp,
      const Vector<String>* response_origin_trial_tokens) {
    // Step 4.5. "Set workerGlobalScope's url to serviceWorker's script url."
-@@ -480,6 +482,9 @@ void ServiceWorkerGlobalScope::Initialize(
+@@ -481,6 +483,9 @@ void ServiceWorkerGlobalScope::Initialize(
    // script resource's referrer policy."
    SetReferrerPolicy(response_referrer_policy);
  
@@ -845,7 +845,7 @@ index fa2e63c090e7d..ceea95b953cb6 100644
    // This is quoted from the "Content Security Policy" algorithm in the service
    // workers spec:
    // "Whenever a user agent invokes Run Service Worker algorithm with a service
-@@ -490,6 +495,9 @@ void ServiceWorkerGlobalScope::Initialize(
+@@ -491,6 +496,9 @@ void ServiceWorkerGlobalScope::Initialize(
    // - If serviceWorker's script resource was delivered with a
    //   Content-Security-Policy-Report-Only HTTP header containing the value
    //   policy, the user agent must monitor policy for serviceWorker."
@@ -855,7 +855,7 @@ index fa2e63c090e7d..ceea95b953cb6 100644
    InitContentSecurityPolicyFromVector(std::move(response_csp));
    BindContentSecurityPolicyToExecutionContext();
  
-@@ -530,26 +538,27 @@ void ServiceWorkerGlobalScope::LoadAndRunInstalledClassicScript(
+@@ -531,26 +539,27 @@ void ServiceWorkerGlobalScope::LoadAndRunInstalledClassicScript(
          kDoNotSupportReferrerPolicyLegacyKeywords, &referrer_policy);
    }
  

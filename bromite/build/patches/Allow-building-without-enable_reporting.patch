@@ -1,4 +1,4 @@
-From bd1df129056610fc8fa0116fe4fb8ca4f77b114f Mon Sep 17 00:00:00 2001
+From af7ded228141d30812c7766cff17f7630168051d Mon Sep 17 00:00:00 2001
 From: Zoraver Kang <Zoraver@users.noreply.github.com>
 Date: Fri, 22 May 2020 22:43:27 -0400
 Subject: [PATCH 140/192] Allow building without enable_reporting
@@ -40,10 +40,10 @@ index 44c6864687a21..d914ae08612ec 100644
    resource_request->url = report_uri;
    resource_request->method = "POST";
 diff --git a/content/browser/devtools/protocol/network_handler.cc b/content/browser/devtools/protocol/network_handler.cc
-index 042e2a91c5be2..30f6389787c10 100644
+index a5c43bbdf09c2..77a7304636853 100644
 --- a/content/browser/devtools/protocol/network_handler.cc
 +++ b/content/browser/devtools/protocol/network_handler.cc
-@@ -1306,6 +1306,7 @@ String BuildReportStatus(const net::ReportingReport::Status status) {
+@@ -1299,6 +1299,7 @@ String BuildReportStatus(const net::ReportingReport::Status status) {
    }
  }
  
@@ -51,7 +51,7 @@ index 042e2a91c5be2..30f6389787c10 100644
  std::vector<GURL> ComputeReportingURLs(RenderFrameHostImpl* frame_host) {
    std::vector<GURL> urls;
    frame_host->ForEachRenderFrameHostWithAction(
-@@ -1319,6 +1320,7 @@ std::vector<GURL> ComputeReportingURLs(RenderFrameHostImpl* frame_host) {
+@@ -1312,6 +1313,7 @@ std::vector<GURL> ComputeReportingURLs(RenderFrameHostImpl* frame_host) {
        });
    return urls;
  }
@@ -204,10 +204,10 @@ index 44a10ccda2cf6..cdabde61cb8ea 100644
  
    const int render_process_id_;
 diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
-index 23f8f5f1042cb..1686dd8c9dbdb 100644
+index 8525270e85ccb..2dc9bc023ba2a 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.cc
 +++ b/content/browser/renderer_host/render_frame_host_impl.cc
-@@ -13027,12 +13027,6 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
+@@ -13360,12 +13360,6 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
    base::Value::Dict body;
    if (!reason.empty())
      body.Set("reason", reason);
@@ -241,7 +241,7 @@ index 2da894ca9ccfa..b624edd47d71a 100644
  
  }  // namespace
 diff --git a/content/public/common/content_switch_dependent_feature_overrides.cc b/content/public/common/content_switch_dependent_feature_overrides.cc
-index 9e902dc0bcd92..a38eac855e09a 100644
+index 8a9b2ff57d197..d3e1fc11967c6 100644
 --- a/content/public/common/content_switch_dependent_feature_overrides.cc
 +++ b/content/public/common/content_switch_dependent_feature_overrides.cc
 @@ -7,6 +7,7 @@
@@ -253,10 +253,10 @@ index 9e902dc0bcd92..a38eac855e09a 100644
  #include "services/network/public/cpp/network_switches.h"
  #include "third_party/blink/public/common/features.h"
 diff --git a/net/base/features.cc b/net/base/features.cc
-index 9626014381d5c..68c4f33cc65a6 100644
+index 41dfa7bc63480..640f5b8f93f2b 100644
 --- a/net/base/features.cc
 +++ b/net/base/features.cc
-@@ -222,7 +222,7 @@ extern const base::FeatureParam<base::TimeDelta> kTimeoutTcpConnectAttemptMax(
+@@ -242,7 +242,7 @@ extern const base::FeatureParam<base::TimeDelta> kTimeoutTcpConnectAttemptMax(
  #if BUILDFLAG(ENABLE_REPORTING)
  BASE_FEATURE(kDocumentReporting,
               "DocumentReporting",
@@ -283,7 +283,7 @@ index 75ec4d24f3b6d..da1ce56867538 100644
      context_->cache()->AddReport(
          reporting_source, network_anonymization_key, sanitized_url, user_agent,
 diff --git a/services/network/network_context.h b/services/network/network_context.h
-index 6fe92667a7641..36490da7bdfde 100644
+index b2b848b38840b..3f50c687a95c7 100644
 --- a/services/network/network_context.h
 +++ b/services/network/network_context.h
 @@ -473,10 +473,10 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
@@ -300,7 +300,7 @@ index 6fe92667a7641..36490da7bdfde 100644
        const url::Origin& origin,
        const GURL& upload_url,
 diff --git a/services/network/public/cpp/features.cc b/services/network/public/cpp/features.cc
-index d4e06defce609..04c71eae29989 100644
+index a22ad71f7c32a..b9683742c4385 100644
 --- a/services/network/public/cpp/features.cc
 +++ b/services/network/public/cpp/features.cc
 @@ -14,10 +14,10 @@
@@ -318,10 +318,10 @@ index d4e06defce609..04c71eae29989 100644
  // Based on the field trial parameters, this feature will override the value of
  // the maximum number of delayable requests allowed in flight. The number of
 diff --git a/services/network/public/mojom/BUILD.gn b/services/network/public/mojom/BUILD.gn
-index c3e0684ba9950..d923c274f87df 100644
+index 311985f787a85..d6a4da7274b39 100644
 --- a/services/network/public/mojom/BUILD.gn
 +++ b/services/network/public/mojom/BUILD.gn
-@@ -1382,7 +1382,6 @@ mojom("mojom") {
+@@ -1431,7 +1431,6 @@ mojom("mojom") {
      export_define_blink = "BLINK_PLATFORM_IMPLEMENTATION=1"
      export_header_blink = "third_party/blink/public/platform/web_common.h"
      if (enable_reporting) {
@@ -330,10 +330,10 @@ index c3e0684ba9950..d923c274f87df 100644
    }
  
 diff --git a/services/network/public/mojom/network_context.mojom b/services/network/public/mojom/network_context.mojom
-index bff25abd86e9d..59dd9b51b8191 100644
+index e1385ffd42940..25cec7c08ce34 100644
 --- a/services/network/public/mojom/network_context.mojom
 +++ b/services/network/public/mojom/network_context.mojom
-@@ -1118,6 +1118,7 @@ interface NetworkContext {
+@@ -1169,6 +1169,7 @@ interface NetworkContext {
    // provided |network_isolation_key|.
    //
    // Spec: https://w3c.github.io/reporting/#concept-reports
@@ -341,7 +341,7 @@ index bff25abd86e9d..59dd9b51b8191 100644
    QueueReport(string type,
                string group,
                url.mojom.Url url,
-@@ -1131,6 +1132,7 @@ interface NetworkContext {
+@@ -1182,6 +1183,7 @@ interface NetworkContext {
    // Note that this queued report will never be delivered if no reporting
    // endpoint matching is registered for with the provided
    // |network_isolation_key|.
@@ -378,7 +378,7 @@ index a588d41ff283a..cae080360baf9 100644
    AuditsIssue audits_issue = AuditsIssue::CreateContentSecurityPolicyIssue(
        *violation_data, header_type == ContentSecurityPolicyType::kReport,
 diff --git a/third_party/blink/renderer/core/frame/local_frame.cc b/third_party/blink/renderer/core/frame/local_frame.cc
-index 0d679c340fff5..13f0204273d80 100644
+index 336215b71f630..f2ca47225e545 100644
 --- a/third_party/blink/renderer/core/frame/local_frame.cc
 +++ b/third_party/blink/renderer/core/frame/local_frame.cc
 @@ -42,6 +42,7 @@
@@ -389,7 +389,7 @@ index 0d679c340fff5..13f0204273d80 100644
  #include "services/network/public/cpp/features.h"
  #include "services/network/public/mojom/content_security_policy.mojom-blink.h"
  #include "services/network/public/mojom/source_location.mojom-blink.h"
-@@ -2510,9 +2511,11 @@ void LocalFrame::MainFrameInteractive() {
+@@ -2504,9 +2505,11 @@ void LocalFrame::MainFrameInteractive() {
    }
  }
  
@@ -402,7 +402,7 @@ index 0d679c340fff5..13f0204273d80 100644
  // static
  void LocalFrame::NotifyUserActivation(
 diff --git a/third_party/blink/renderer/core/frame/local_frame.h b/third_party/blink/renderer/core/frame/local_frame.h
-index bc24bbc46d829..471352500c236 100644
+index eb4ce179cb09e..35f542133787f 100644
 --- a/third_party/blink/renderer/core/frame/local_frame.h
 +++ b/third_party/blink/renderer/core/frame/local_frame.h
 @@ -35,9 +35,9 @@
@@ -416,7 +416,7 @@ index bc24bbc46d829..471352500c236 100644
  #include "services/device/public/mojom/device_posture_provider.mojom-blink-forward.h"
  #include "services/metrics/public/cpp/ukm_source_id.h"
  #include "services/network/public/mojom/fetch_api.mojom-blink-forward.h"
-@@ -630,9 +630,9 @@ class CORE_EXPORT LocalFrame final
+@@ -629,9 +629,9 @@ class CORE_EXPORT LocalFrame final
    void FinishedScrollSequence();
  
    SmoothScrollSequencer* GetSmoothScrollSequencer() const;
