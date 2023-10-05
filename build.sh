@@ -66,8 +66,18 @@ build() {
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
-            mkdir -p "${root_dir}/apks/${apk_arch}"
-            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
+            if [[ "$apk.apk" == ChromePublic.apk ]] || [[ "$apk.apk" == SystemWebView.apk ]] || [[ "$apk.apk" == *6432.apk ]]; then
+                mkdir -p "${root_dir}/apks/${apk_arch}"
+                mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
+            else
+                if [ "$1" = "x64" ]; then
+                    mkdir -p "${root_dir}/apks/x86"
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86/$(echo "$apk" | sed 's/[0-9]*//g').apk"
+                elif [ "$1" = "arm64" ]; then
+                    mkdir -p "${root_dir}/apks/arm"
+                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm/$(echo "$apk" | sed 's/[0-9]*//g').apk"
+                fi
+            fi
         fi
     done
 }
