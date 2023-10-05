@@ -29,7 +29,7 @@ usage() {
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="ChromePublic SystemWebView TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
+    apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
     apk_arch=${1}
@@ -55,11 +55,12 @@ build() {
 
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
-    ninja -C out/$1 chrome_public_apk system_webview_apk
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
-        ninja -C out/$1 trichrome_webview_64_32_apk trichrome_chrome_64_32_apk
+        ninja -C out/$1 trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
+                trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk \
+                chrome_public_apk system_webview_apk
     elif [ $1 '==' "x86" ] || [ $1 '==' "arm" ]; then
-        ninja -C out/$1 trichrome_webview_apk trichrome_chrome_apk
+        ninja -C out/$1 chrome_public_apk system_webview_apk
     fi
 
     for apk in $apks; do
