@@ -1,0 +1,106 @@
+From e9efa24945b062aac79acc7a10ef77300c9476bc Mon Sep 17 00:00:00 2001
+From: fgei <fgei@gmail.com>
+Date: Fri, 15 Oct 2021 13:49:33 +0000
+Subject: [PATCH 3/3] Browser: Remove some preferences from UI
+
+---
+ chrome/android/java/res/xml/privacy_preferences.xml         | 5 -----
+ chrome/android/java/res/xml/privacy_preferences_v2.xml      | 5 -----
+ .../chrome/browser/privacy/settings/PrivacySettings.java    | 6 ++++++
+ .../org/chromium/chrome/browser/settings/MainSettings.java  | 3 +++
+ .../options/RadioButtonGroupThirdPartyPreference.java       | 2 +-
+ 5 files changed, 10 insertions(+), 11 deletions(-)
+
+diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+index 77aedc4c61273..9bdbe90b3cb64 100644
+--- a/chrome/android/java/res/xml/privacy_preferences.xml
++++ b/chrome/android/java/res/xml/privacy_preferences.xml
+@@ -92,11 +92,6 @@ found in the LICENSE file.
+         android:key="privacy_sandbox"
+         android:title="@string/prefs_privacy_sandbox"
+         android:fragment="org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxSettingsFragmentV3"/>
+-    <Preference
+-        android:key="phone_as_a_security_key"
+-        android:title="@string/cablev2_paask_title"
+-        android:summary="@string/cablev2_paask_body"
+-        android:fragment="org.chromium.chrome.browser.webauthn.PrivacySettingsFragment"/>
+     <org.chromium.components.browser_ui.settings.TextMessagePreference
+         android:key="sync_and_services_link"
+         android:summary="@string/privacy_sync_and_services_link_legacy"
+diff --git a/chrome/android/java/res/xml/privacy_preferences_v2.xml b/chrome/android/java/res/xml/privacy_preferences_v2.xml
+index 832d89291ccc9..e9ed3d4529e11 100644
+--- a/chrome/android/java/res/xml/privacy_preferences_v2.xml
++++ b/chrome/android/java/res/xml/privacy_preferences_v2.xml
+@@ -61,11 +61,6 @@ found in the LICENSE file.
+         android:key="secure_dns"
+         android:title="@string/settings_secure_dns_title"
+         android:fragment="org.chromium.chrome.browser.privacy.secure_dns.SecureDnsSettings" />
+-    <Preference
+-        android:key="phone_as_a_security_key"
+-        android:title="@string/cablev2_paask_title"
+-        android:summary="@string/cablev2_paask_body"
+-        android:fragment="org.chromium.chrome.browser.webauthn.PrivacySettingsFragment" />
+     <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
+         android:key="can_make_payment"
+         android:title="@string/can_make_payment_title"
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+index 89f109da09734..50b76bde55038 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+@@ -151,6 +151,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+         mIncognitoLockSettings = new IncognitoLockSettings(incognitoReauthPreference);
+         mIncognitoLockSettings.setUpIncognitoReauthPreference(getActivity());
+ 
++        getPreferenceScreen().removePreference(findPreference(PREF_PRIVACY_SANDBOX));
++
+         Preference safeBrowsingPreference = findPreference(PREF_SAFE_BROWSING);
+         safeBrowsingPreference.setSummary(
+                 SafeBrowsingSettingsFragment.getSafeBrowsingSummaryString(getContext()));
+@@ -160,6 +162,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+             return false;
+         });
+ 
++        getPreferenceScreen().removePreference(findPreference(PREF_SAFE_BROWSING));
++
+         setHasOptionsMenu(true);
+ 
+         ChromeSwitchPreference canMakePaymentPref =
+@@ -198,6 +202,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+         Preference syncAndServicesLink = findPreference(PREF_SYNC_AND_SERVICES_LINK);
+         syncAndServicesLink.setSummary(buildSyncAndServicesLink());
+ 
++        getPreferenceScreen().removePreference(findPreference(PREF_SYNC_AND_SERVICES_LINK));
++
+         // set up history expire days threshold preference
+         List<TimeFrequencySpinnerOption> options = new ArrayList<>();
+         options.add(new TimeFrequencySpinnerOption(0,
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index ee4bd26f4fc5a..59e785ae11ecc 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -266,6 +266,9 @@ public class MainSettings extends PreferenceFragmentCompat
+         } else {
+             removePreferenceIfPresent(PREF_DEVELOPER);
+         }
++
++        removePreferenceIfPresent(PREF_AUTOFILL_OPTIONS);
++        removePreferenceIfPresent(PREF_DEVELOPER);
+     }
+ 
+     private Preference addPreferenceIfAbsent(String key) {
+diff --git a/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/options/RadioButtonGroupThirdPartyPreference.java b/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/options/RadioButtonGroupThirdPartyPreference.java
+index 99b0e21ea331b..55d54506560a8 100644
+--- a/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/options/RadioButtonGroupThirdPartyPreference.java
++++ b/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/options/RadioButtonGroupThirdPartyPreference.java
+@@ -40,7 +40,7 @@ public final class RadioButtonGroupThirdPartyPreference extends Preference {
+ 
+     private @Nullable RadioButtonWithDescription mDefaultOption;
+     private @Nullable RadioButtonWithDescription mOptInOption;
+-    private @ThirdPartyOption int mSelectedOption = getPersistedInt(ThirdPartyOption.DEFAULT);
++    private @ThirdPartyOption int mSelectedOption = getPersistedInt(ThirdPartyOption.USE_OTHER_PROVIDER);
+ 
+     public RadioButtonGroupThirdPartyPreference(Context context, AttributeSet attrs) {
+         super(context, attrs);
+-- 
+2.34.1
+
