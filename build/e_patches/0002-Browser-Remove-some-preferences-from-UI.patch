@@ -1,17 +1,17 @@
-From b4c6143fa33d9842a18276796b7ab808255045f8 Mon Sep 17 00:00:00 2001
-From: fgei <fgei@gmail.com>
-Date: Fri, 15 Oct 2021 13:49:33 +0000
-Subject: [PATCH 3/3] Browser: Remove some preferences from UI
+From 10b257327256fa936aef04dc7e7bc5b8e22bcb65 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Mon, 9 Oct 2023 12:41:18 +0530
+Subject: [PATCH 2/2] Browser: Remove some preferences from UI
 
 ---
  .../android/java/res/xml/main_preferences.xml   | 10 ----------
- .../java/res/xml/privacy_preferences.xml        |  5 -----
+ .../java/res/xml/privacy_preferences.xml        |  9 ---------
  .../java/res/xml/privacy_preferences_v2.xml     |  5 -----
- .../privacy/settings/PrivacySettings.java       |  6 ++++++
+ .../privacy/settings/PrivacySettings.java       | 17 ++++++-----------
  .../chrome/browser/settings/MainSettings.java   | 17 -----------------
  ...adio_button_group_third_party_preference.xml |  2 +-
  .../RadioButtonGroupThirdPartyPreference.java   |  2 +-
- 7 files changed, 8 insertions(+), 39 deletions(-)
+ 7 files changed, 8 insertions(+), 54 deletions(-)
 
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
 index d5625671095b6..e8cd2d4ab7393 100644
@@ -42,13 +42,18 @@ index d5625671095b6..e8cd2d4ab7393 100644
          android:fragment="org.chromium.chrome.browser.about_settings.AboutChromeSettings"
          android:key="about_chrome"
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
-index 77aedc4c61273..9bdbe90b3cb64 100644
+index 16b037f14068c..a2662d209ab11 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -92,11 +92,6 @@ found in the LICENSE file.
-         android:key="privacy_sandbox"
-         android:title="@string/prefs_privacy_sandbox"
-         android:fragment="org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxSettingsFragmentV3"/>
+@@ -100,16 +100,7 @@ found in the LICENSE file.
+           android:title="@string/improve_search_suggestions_title"
+           android:summary="@string/improve_search_suggestions_summary"
+           android:persistent="false"/>
+-      <org.chromium.components.browser_ui.settings.ChromeBasePreference
+-          android:key="contextual_search"
+-          android:title="@string/contextual_search_title"
+-          android:fragment="org.chromium.chrome.browser.contextualsearch.ContextualSearchPreferenceFragment"/>
+     </PreferenceCategory>
 -    <Preference
 -        android:key="phone_as_a_security_key"
 -        android:title="@string/cablev2_paask_title"
@@ -74,10 +79,30 @@ index 832d89291ccc9..e9ed3d4529e11 100644
          android:key="can_make_payment"
          android:title="@string/can_make_payment_title"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 89f109da09734..50b76bde55038 100644
+index 65d7d279c99e7..69b29d7ed2c45 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -151,6 +151,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+@@ -62,9 +62,6 @@ import org.chromium.components.user_prefs.UserPrefs;
+ import org.chromium.ui.text.NoUnderlineClickableSpan;
+ import org.chromium.ui.text.SpanApplier;
+ 
+-import androidx.annotation.Nullable;
+-import androidx.preference.PreferenceCategory;
+-import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
+ import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+ import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
+ import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
+@@ -96,9 +93,7 @@ public class PrivacySettings extends PreferenceFragmentCompat
+     // moved from SyncAndServicesSettings.java
+     private static final String PREF_SERVICES_CATEGORY = "services_category";
+     private static final String PREF_SEARCH_SUGGESTIONS = "search_suggestions";
+-    private static final String PREF_CONTEXTUAL_SEARCH = "contextual_search";
+     private ChromeSwitchPreference mSearchSuggestions;
+-    private @Nullable Preference mContextualSearch;
+     private final SharedPreferencesManager mSharedPreferencesManager =
+             SharedPreferencesManager.getInstance();
+ 
+@@ -165,6 +160,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
          mIncognitoLockSettings = new IncognitoLockSettings(incognitoReauthPreference);
          mIncognitoLockSettings.setUpIncognitoReauthPreference(getActivity());
  
@@ -86,7 +111,7 @@ index 89f109da09734..50b76bde55038 100644
          Preference safeBrowsingPreference = findPreference(PREF_SAFE_BROWSING);
          safeBrowsingPreference.setSummary(
                  SafeBrowsingSettingsFragment.getSafeBrowsingSummaryString(getContext()));
-@@ -160,6 +162,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+@@ -174,18 +171,14 @@ public class PrivacySettings extends PreferenceFragmentCompat
              return false;
          });
  
@@ -94,8 +119,20 @@ index 89f109da09734..50b76bde55038 100644
 +
          setHasOptionsMenu(true);
  
+         mSearchSuggestions = (ChromeSwitchPreference) findPreference(PREF_SEARCH_SUGGESTIONS);
+         mSearchSuggestions.setOnPreferenceChangeListener(this);
+         mSearchSuggestions.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
+ 
+-        mContextualSearch = findPreference(PREF_CONTEXTUAL_SEARCH);
+-        boolean isContextualSearchEnabled =
+-                !ContextualSearchManager.isContextualSearchDisabled();
+-        mContextualSearch.setSummary(
+-                isContextualSearchEnabled ? R.string.text_on : R.string.text_off);
+-
          ChromeSwitchPreference canMakePaymentPref =
-@@ -198,6 +202,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
+                 (ChromeSwitchPreference) findPreference(PREF_CAN_MAKE_PAYMENT);
+         canMakePaymentPref.setOnPreferenceChangeListener(this);
+@@ -222,6 +215,8 @@ public class PrivacySettings extends PreferenceFragmentCompat
          Preference syncAndServicesLink = findPreference(PREF_SYNC_AND_SERVICES_LINK);
          syncAndServicesLink.setSummary(buildSyncAndServicesLink());
  
