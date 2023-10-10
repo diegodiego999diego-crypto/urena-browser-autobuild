@@ -119,8 +119,8 @@ rename() {
     for dir in $dirs; do
         grdp_files=$(ls $dir/*.grdp 2> /dev/null | wc -l)
         if [ "$grdp_files" != "0" ]; then
-	    sed -i 's/Chrome browser/Browser/g' $dir/*.grdp
-	    sed -i 's/Chrome/Browser/g' $dir/*.grdp
+	    sed -i 's/Chrome browser/Browser/g' $dir/*.grd*
+	    sed -i 's/Chrome/Browser/g' $dir/*.grd*
         fi
         xtb_files=$(ls $dir/*.xtb 2> /dev/null | wc -l)
         if [ "$xtb_files" != "0" ]; then
