@@ -1,0 +1,124 @@
+From a9815704bb9e3a02c74a5268fdb68167aab9176b Mon Sep 17 00:00:00 2001
+From: fgei <fgei@gmail.com>
+Date: Sun, 29 Aug 2021 19:31:00 +0000
+Subject: [PATCH 01/17] disable browser sign in feature by default
+
+---
+ .../android/java/res/xml/main_preferences.xml | 24 -------------------
+ .../settings/PasswordSettings.java            |  4 ++++
+ .../chrome/browser/settings/MainSettings.java |  8 ++-----
+ .../sync/settings/SignInPreference.java       |  1 +
+ .../account_consistency_mode_manager.cc       |  2 +-
+ 5 files changed, 8 insertions(+), 31 deletions(-)
+
+diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
+index 49b562b49eebc..99e231e3f0bc6 100644
+--- a/chrome/android/java/res/xml/main_preferences.xml
++++ b/chrome/android/java/res/xml/main_preferences.xml
+@@ -9,30 +9,6 @@ found in the LICENSE file.
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     android:orderingFromXml="false">
+ 
+-    <org.chromium.chrome.browser.sync.settings.SyncPromoPreference
+-        android:key="sync_promo"
+-        android:order="0"/>
+-    <PreferenceCategory
+-        android:key="account_and_google_services_section"
+-        android:order="1"
+-        android:title="@string/prefs_section_account_and_google_services"/>
+-    <org.chromium.chrome.browser.sync.settings.SignInPreference
+-        android:key="sign_in"
+-        android:order="2"
+-        android:title="@string/sign_in_to_chrome"/>
+-    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+-        android:key="manage_sync"
+-        android:order="3"
+-        android:layout="@layout/account_management_account_row"
+-        android:title="@string/sync_category_title"/>
+-    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+-        android:key="google_services"
+-        android:order="4"
+-        android:layout="@layout/account_management_account_row"
+-        android:title="@string/prefs_google_services"
+-        android:icon="@drawable/ic_google_services_48dp"
+-        android:fragment="org.chromium.chrome.browser.sync.settings.GoogleServicesSettings"/>
+-
+     <PreferenceCategory
+         android:key="basics_section"
+         android:order="5"
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
+index c74b0cf4e4f53..ba5f2a527923b 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
+@@ -40,6 +40,7 @@ import org.chromium.chrome.browser.password_manager.PasswordCheckReferrer;
+ import org.chromium.chrome.browser.password_manager.PasswordManagerHelper;
+ import org.chromium.chrome.browser.preferences.Pref;
+ import org.chromium.chrome.browser.profiles.Profile;
++import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
+ import org.chromium.chrome.browser.settings.ChromeManagedPreferenceDelegate;
+ import org.chromium.chrome.browser.settings.ProfileDependentSetting;
+ import org.chromium.chrome.browser.settings.SettingsLauncherImpl;
+@@ -694,6 +695,9 @@ public class PasswordSettings extends PreferenceFragmentCompat
+         if (mSearchQuery != null && !mNoPasswords) {
+             return; // Don't add the Manage Account link if there is a search going on.
+         }
++        if (!IdentityServicesProvider.get().getSigninManager(mProfile).isSigninSupported(false)) {
++            return;
++        }
+         if (getPreferenceScreen().findPreference(PREF_KEY_MANAGE_ACCOUNT_LINK) != null) {
+             return; // Don't add the Manage Account link if it's present.
+         }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index 8d35eeda1ba21..1dd32e4bb001b 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -229,12 +229,7 @@ public class MainSettings extends PreferenceFragmentCompat
+     }
+ 
+     private void updatePreferences() {
+-        if (IdentityServicesProvider.get().getSigninManager(mProfile).isSigninSupported(
+-                    /*requireUpdatedPlayServices=*/false)) {
+-            addPreferenceIfAbsent(PREF_SIGN_IN);
+-        } else {
+-            removePreferenceIfPresent(PREF_SIGN_IN);
+-        }
++        removePreferenceIfPresent(PREF_SIGN_IN);
+ 
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                 && ChromeFeatureList.isEnabled(
+@@ -279,6 +274,7 @@ public class MainSettings extends PreferenceFragmentCompat
+     }
+ 
+     private void updateManageSyncPreference() {
++        if (true) return;
+         String primaryAccountName = CoreAccountInfo.getEmailFrom(
+                 IdentityServicesProvider.get().getIdentityManager(mProfile).getPrimaryAccountInfo(
+                         ConsentLevel.SIGNIN));
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/SignInPreference.java b/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/SignInPreference.java
+index a8d1bedd9134a..e8cb49d0b6e40 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/SignInPreference.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/SignInPreference.java
+@@ -148,6 +148,7 @@ public class SignInPreference
+     }
+ 
+     private void setupSigninDisallowed() {
++        setViewEnabled(false);
+         mWasGenericSigninPromoDisplayed = false;
+     }
+ 
+diff --git a/chrome/browser/signin/account_consistency_mode_manager.cc b/chrome/browser/signin/account_consistency_mode_manager.cc
+index c495783de021a..430eac0cf5da8 100644
+--- a/chrome/browser/signin/account_consistency_mode_manager.cc
++++ b/chrome/browser/signin/account_consistency_mode_manager.cc
+@@ -119,7 +119,7 @@ AccountConsistencyModeManager::~AccountConsistencyModeManager() {}
+ // static
+ void AccountConsistencyModeManager::RegisterProfilePrefs(
+     user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterBooleanPref(prefs::kSigninAllowedOnNextStartup, true);
++  registry->RegisterBooleanPref(prefs::kSigninAllowedOnNextStartup, false);
+ }
+ 
+ // static
+-- 
+2.34.1
+

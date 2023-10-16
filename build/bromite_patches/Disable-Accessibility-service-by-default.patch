@@ -1,0 +1,80 @@
+From 9a30c712627894ae82e0de05b127ffc5fbe54672 Mon Sep 17 00:00:00 2001
+From: uazo <uazo@users.noreply.github.com>
+Date: Mon, 8 Nov 2021 09:47:23 +0000
+Subject: [PATCH 146/192] Disable Accessibility service by default
+
+Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ .../browser/ui/android/strings/android_chrome_strings.grd   | 6 ++++++
+ .../android/java/res/xml/accessibility_preferences.xml      | 5 +++++
+ .../browser_ui/accessibility/AccessibilitySettings.java     | 3 +++
+ .../browser/accessibility/WebContentsAccessibilityImpl.java | 5 +++++
+ 4 files changed, 19 insertions(+)
+
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index 2d4640dd3b79b..8b4b9dd0d71a7 100644
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -1763,6 +1763,12 @@ Your Google account may have other forms of browsing history like searches and a
+       <message name="IDS_SAFETY_CHECK_BUTTON" desc="Text for the button to start Safety check.">
+         Check now
+       </message>
++      <message name="IDS_ENABLE_ACCESSIBILITY_TITLE" desc="Title of enable accessibility settings, which allows the user to enable service. [CHAR_LIMIT=32]">
++        Enable Accessibility Service
++      </message>
++      <message name="IDS_ENABLE_ACCESSIBILITY_SUMMARY" desc="Summary of enable accessibility settings.">
++        Activates or deactivates the communication of all user activities in ui to the Accessibility provider
++      </message>
+       <message name="IDS_SAFETY_CHECK_ERROR" desc="A generic error state.">
+         An error occurred.
+       </message>
+diff --git a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
+index 2fc5bcc4e2976..6758a46475034 100644
+--- a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
++++ b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
+@@ -7,6 +7,11 @@ found in the LICENSE file.
+ 
+ <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+ 
++    <org.chromium.components.browser_ui.settings.ChromeBaseCheckBoxPreference
++        android:key="enable_accessibility"
++        android:summary="@string/enable_accessibility_summary"
++        android:title="@string/enable_accessibility_title" />
++
+     <org.chromium.components.browser_ui.accessibility.TextScalePreference
+         android:key="text_scale"
+         android:title="@string/font_size"
+diff --git a/components/browser_ui/accessibility/android/java/src/org/chromium/components/browser_ui/accessibility/AccessibilitySettings.java b/components/browser_ui/accessibility/android/java/src/org/chromium/components/browser_ui/accessibility/AccessibilitySettings.java
+index 2e582921f433d..b603b4ed77374 100644
+--- a/components/browser_ui/accessibility/android/java/src/org/chromium/components/browser_ui/accessibility/AccessibilitySettings.java
++++ b/components/browser_ui/accessibility/android/java/src/org/chromium/components/browser_ui/accessibility/AccessibilitySettings.java
+@@ -18,6 +18,9 @@ import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
+ import org.chromium.components.browser_ui.settings.CustomDividerFragment;
+ import org.chromium.components.browser_ui.settings.SettingsUtils;
+ 
++import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
++import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
++
+ /**
+  * Fragment to keep track of all the accessibility related preferences.
+  */
+diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
+index 94f718a619cea..f7740f3073e57 100644
+--- a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
++++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
+@@ -1024,6 +1024,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+             structure.setChildCount(0);
+             return;
+         }
++        // Do not collect accessibility tree if disabled
++        if (!ContextUtils.getAppSharedPreferences().getBoolean("enable_accessibility", false)) {
++            structure.setChildCount(0);
++            return;
++        }
+         structure.setChildCount(1);
+         final ViewStructure viewRoot = structure.asyncNewChild(0);
+         viewRoot.setClassName("");
+-- 
+2.34.1
+

@@ -1,0 +1,55 @@
+From 353c093677f4ad06238c4a7ea91e25a91cb81bd0 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Thu, 28 Sep 2023 21:11:16 +0530
+Subject: [PATCH 12/17] fixup Enable native Android autofill
+
+---
+ android_webview/browser/aw_autofill_client.cc                  | 3 ++-
+ android_webview/browser/aw_contents.cc                         | 3 +--
+ .../chromium/components/embedder_support/view/ContentView.java | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/android_webview/browser/aw_autofill_client.cc b/android_webview/browser/aw_autofill_client.cc
+index 4f084381d3001..d432e755db426 100644
+--- a/android_webview/browser/aw_autofill_client.cc
++++ b/android_webview/browser/aw_autofill_client.cc
+@@ -408,7 +408,8 @@ AwAutofillClient::AwAutofillClient(WebContents* contents,
+               ? base::BindRepeating(&autofill::AndroidDriverInitHook, this)
+               : base::BindRepeating(&autofill::BrowserDriverInitHook,
+                                     this,
+-                                    base::android::GetDefaultLocaleString()))
++                                    base::android::GetDefaultLocaleString(),
++                                    /*enable_secondary_autofill_manager*/ false))
+ #if DCHECK_IS_ON()
+       ,
+       use_android_autofill_manager_(use_android_autofill_manager)
+diff --git a/android_webview/browser/aw_contents.cc b/android_webview/browser/aw_contents.cc
+index 9ae7dc6c17032..1324713845cbe 100644
+--- a/android_webview/browser/aw_contents.cc
++++ b/android_webview/browser/aw_contents.cc
+@@ -214,8 +214,7 @@ AwBrowserPermissionRequestDelegate* AwBrowserPermissionRequestDelegate::FromID(
+ AwSafeBrowsingUIManager::UIManagerClient*
+ AwSafeBrowsingUIManager::UIManagerClient::FromWebContents(
+     WebContents* web_contents) {
+-  return AwContents::FromWebContents(web_contents,
+-                                /*enable_secondary_autofill_manager*/ false);
++  return AwContents::FromWebContents(web_contents);
+ }
+ 
+ // static
+diff --git a/components/embedder_support/android/java/src/org/chromium/components/embedder_support/view/ContentView.java b/components/embedder_support/android/java/src/org/chromium/components/embedder_support/view/ContentView.java
+index d42234d302efb..dfeeb225a790d 100644
+--- a/components/embedder_support/android/java/src/org/chromium/components/embedder_support/view/ContentView.java
++++ b/components/embedder_support/android/java/src/org/chromium/components/embedder_support/view/ContentView.java
+@@ -628,7 +628,7 @@ public class ContentView extends FrameLayout
+     /**
+     * API level 26 implementation that includes autofill.
+     */
+-    public static class ContentViewWithAutofill extends ContentView {
++    private static class ContentViewWithAutofill extends ContentView {
+         private ViewAndroidDelegate viewAndroidDelegate;
+ 
+         private ContentViewWithAutofill(Context context, EventOffsetHandler eventOffsetHandler, WebContents webContents) {
+-- 
+2.34.1
+
