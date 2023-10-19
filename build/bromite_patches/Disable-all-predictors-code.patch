@@ -1,4 +1,4 @@
-From 4797902ca7b82286cf20dbd3818da9eecc47cfb1 Mon Sep 17 00:00:00 2001
+From a259ba575a32475dea3e799085469dabc492debc Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Tue, 25 Jan 2022 12:22:52 +0000
 Subject: [PATCH 157/192] Disable all predictors code
@@ -6,27 +6,49 @@ Subject: [PATCH 157/192] Disable all predictors code
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/browser_features.cc            | 16 +++----
+ chrome/browser/BUILD.gn                       |  8 +--
+ chrome/browser/browser_features.cc            | 16 ++---
+ .../preloading_model_keyed_service.cc         |  8 ---
+ .../preloading_model_keyed_service_factory.cc |  4 +-
  .../ranking/history_clusters_module_ranker.cc |  3 +-
  .../chrome_hints_manager.cc                   |  1 +
  .../optimization_guide_keyed_service.cc       |  1 -
  .../browser/predictors/loading_predictor.cc   |  4 +-
  .../predictors/loading_predictor_config.cc    |  4 +-
- .../browser/predictors/predictors_features.cc | 14 ++----
- chrome/common/chrome_features.cc              | 10 ++--
+ .../browser/predictors/predictors_features.cc | 14 +---
+ chrome/common/chrome_features.cc              | 10 +--
  .../optimization_guide/core/hints_fetcher.cc  |  1 +
  .../optimization_guide/core/hints_manager.cc  |  5 ++
- .../core/optimization_guide_features.cc       | 46 +++++++++----------
- .../core/prediction_model_download_manager.cc |  6 ++-
+ .../core/optimization_guide_features.cc       | 72 +++++++------------
+ .../core/prediction_model_download_manager.cc |  6 +-
  .../core/prediction_model_fetcher_impl.cc     |  1 +
  components/optimization_guide/features.gni    |  3 +-
- components/permissions/features.cc            |  8 ++--
- third_party/blink/common/features.cc          |  8 +---
+ components/permissions/features.cc            |  8 +--
+ third_party/blink/common/features.cc          | 12 ++--
  .../platform/runtime_enabled_features.json5   |  2 +-
- 17 files changed, 63 insertions(+), 70 deletions(-)
+ 20 files changed, 76 insertions(+), 107 deletions(-)
 
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index d70324962d057..e0a46e6d119c5 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -869,10 +869,10 @@ static_library("browser") {
+     "navigation_predictor/navigation_predictor_metrics_document_data.h",
+     "navigation_predictor/navigation_predictor_preconnect_client.cc",
+     "navigation_predictor/navigation_predictor_preconnect_client.h",
+-    "navigation_predictor/preloading_model_executor.cc",
+-    "navigation_predictor/preloading_model_executor.h",
+-    "navigation_predictor/preloading_model_handler.cc",
+-    "navigation_predictor/preloading_model_handler.h",
++    # "navigation_predictor/preloading_model_executor.cc",
++    # "navigation_predictor/preloading_model_executor.h",
++    # "navigation_predictor/preloading_model_handler.cc",
++    # "navigation_predictor/preloading_model_handler.h",
+     "navigation_predictor/preloading_model_keyed_service.cc",
+     "navigation_predictor/preloading_model_keyed_service.h",
+     "navigation_predictor/preloading_model_keyed_service_factory.cc",
 diff --git a/chrome/browser/browser_features.cc b/chrome/browser/browser_features.cc
-index 41ed7f27c4c01..218655a1f83bd 100644
+index 9e1101c79758d..01f3bdfbd231b 100644
 --- a/chrome/browser/browser_features.cc
 +++ b/chrome/browser/browser_features.cc
 @@ -239,22 +239,22 @@ BASE_FEATURE(kIncomingCallNotifications,
@@ -60,6 +82,38 @@ index 41ed7f27c4c01..218655a1f83bd 100644
  const base::FeatureParam<SearchSuggestionPrerenderImplementationType>::Option
      search_suggestion_implementation_types[] = {
          {SearchSuggestionPrerenderImplementationType::kUsePrefetch,
+diff --git a/chrome/browser/navigation_predictor/preloading_model_keyed_service.cc b/chrome/browser/navigation_predictor/preloading_model_keyed_service.cc
+index 363fe163c2263..692f94a367a83 100644
+--- a/chrome/browser/navigation_predictor/preloading_model_keyed_service.cc
++++ b/chrome/browser/navigation_predictor/preloading_model_keyed_service.cc
+@@ -10,14 +10,6 @@ PreloadingModelKeyedService::Inputs::Inputs() = default;
+ 
+ PreloadingModelKeyedService::PreloadingModelKeyedService(
+     OptimizationGuideKeyedService* optimization_guide_keyed_service) {
+-  auto* model_provider =
+-      static_cast<optimization_guide::OptimizationGuideModelProvider*>(
+-          optimization_guide_keyed_service);
+-
+-  if (model_provider) {
+-    preloading_model_handler_ =
+-        std::make_unique<PreloadingModelHandler>(model_provider);
+-  }
+ }
+ 
+ PreloadingModelKeyedService::~PreloadingModelKeyedService() = default;
+diff --git a/chrome/browser/navigation_predictor/preloading_model_keyed_service_factory.cc b/chrome/browser/navigation_predictor/preloading_model_keyed_service_factory.cc
+index b0b4088a403f6..b9754f83525b9 100644
+--- a/chrome/browser/navigation_predictor/preloading_model_keyed_service_factory.cc
++++ b/chrome/browser/navigation_predictor/preloading_model_keyed_service_factory.cc
+@@ -42,7 +42,5 @@ std::unique_ptr<KeyedService>
+           blink::features::kPreloadingHeuristicsMLModel)) {
+     return nullptr;
+   }
+-  auto* profile = Profile::FromBrowserContext(context);
+-  return std::make_unique<PreloadingModelKeyedService>(
+-      OptimizationGuideKeyedServiceFactory::GetForProfile(profile));
++  return nullptr;
+ }
 diff --git a/chrome/browser/new_tab_page/modules/history_clusters/ranking/history_clusters_module_ranker.cc b/chrome/browser/new_tab_page/modules/history_clusters/ranking/history_clusters_module_ranker.cc
 index 60f3742a67320..8fc7354896a2c 100644
 --- a/chrome/browser/new_tab_page/modules/history_clusters/ranking/history_clusters_module_ranker.cc
@@ -77,10 +131,10 @@ index 60f3742a67320..8fc7354896a2c 100644
      model_handler_->ExecuteBatch(
          ranking_signals_ptr,
 diff --git a/chrome/browser/optimization_guide/chrome_hints_manager.cc b/chrome/browser/optimization_guide/chrome_hints_manager.cc
-index 98344c633c0ce..4ac74f6c858ef 100644
+index feee32d57ba72..37fa5f4c0cc45 100644
 --- a/chrome/browser/optimization_guide/chrome_hints_manager.cc
 +++ b/chrome/browser/optimization_guide/chrome_hints_manager.cc
-@@ -26,6 +26,7 @@ bool IsAllowedToFetchForNavigationPrediction(
+@@ -27,6 +27,7 @@ bool IsAllowedToFetchForNavigationPrediction(
      const absl::optional<NavigationPredictorKeyedService::Prediction>
          prediction) {
    DCHECK(prediction);
@@ -89,10 +143,10 @@ index 98344c633c0ce..4ac74f6c858ef 100644
    if (prediction->prediction_source() !=
        NavigationPredictorKeyedService::PredictionSource::
 diff --git a/chrome/browser/optimization_guide/optimization_guide_keyed_service.cc b/chrome/browser/optimization_guide/optimization_guide_keyed_service.cc
-index 9833842067c97..2a4cbed1e4d63 100644
+index 9f7d14e0a5257..7587282cf4746 100644
 --- a/chrome/browser/optimization_guide/optimization_guide_keyed_service.cc
 +++ b/chrome/browser/optimization_guide/optimization_guide_keyed_service.cc
-@@ -331,7 +331,6 @@ void OptimizationGuideKeyedService::RemoveObserverForOptimizationTargetModel(
+@@ -333,7 +333,6 @@ void OptimizationGuideKeyedService::RemoveObserverForOptimizationTargetModel(
  void OptimizationGuideKeyedService::RegisterOptimizationTypes(
      const std::vector<optimization_guide::proto::OptimizationType>&
          optimization_types) {
@@ -178,10 +232,10 @@ index 3c111e603dd30..58464c18f989f 100644
  // Modifies loading predictor so that it does prefetches of subresources instead
  // of preconnects.
 diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
-index bbc36d38466f0..0c8bf807c0c72 100644
+index 4370c0590b7cf..58d9d4345edf7 100644
 --- a/chrome/common/chrome_features.cc
 +++ b/chrome/common/chrome_features.cc
-@@ -958,8 +958,8 @@ BASE_FEATURE(kPermissionAuditing,
+@@ -1008,8 +1008,8 @@ BASE_FEATURE(kPermissionAuditing,
  // Enables using the prediction service for permission prompts. We will keep
  // this feature in order to allow us to update the holdback chance via finch.
  BASE_FEATURE(kPermissionPredictions,
@@ -192,7 +246,7 @@ index bbc36d38466f0..0c8bf807c0c72 100644
  
  // The holdback chance is 30% but it can also be configured/updated
  // through finch if needed.
-@@ -970,8 +970,8 @@ const base::FeatureParam<double> kPermissionPredictionsHoldbackChance(
+@@ -1020,8 +1020,8 @@ const base::FeatureParam<double> kPermissionPredictionsHoldbackChance(
  
  // Enables using the prediction service for geolocation permission prompts.
  BASE_FEATURE(kPermissionGeolocationPredictions,
@@ -203,7 +257,7 @@ index bbc36d38466f0..0c8bf807c0c72 100644
  
  const base::FeatureParam<double>
      kPermissionGeolocationPredictionsHoldbackChance(
-@@ -987,7 +987,7 @@ BASE_FEATURE(kPluginVm, "PluginVm", base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -1037,7 +1037,7 @@ BASE_FEATURE(kPluginVm, "PluginVm", base::FEATURE_DISABLED_BY_DEFAULT);
  // Allows Chrome to do preconnect when prerender fails.
  BASE_FEATURE(kPrerenderFallbackToPreconnect,
               "PrerenderFallbackToPreconnect",
@@ -213,11 +267,11 @@ index bbc36d38466f0..0c8bf807c0c72 100644
  #if BUILDFLAG(IS_CHROMEOS)
  // Enable improved printer state and error state messaging for Print Preview.
 diff --git a/components/optimization_guide/core/hints_fetcher.cc b/components/optimization_guide/core/hints_fetcher.cc
-index 5d924924a1ffd..d2fd1a0e93536 100644
+index d4660d6d5ffb5..757a56c3efb03 100644
 --- a/components/optimization_guide/core/hints_fetcher.cc
 +++ b/components/optimization_guide/core/hints_fetcher.cc
-@@ -181,6 +181,7 @@ bool HintsFetcher::FetchOptimizationGuideServiceHints(
-     absl::optional<std::string> access_token,
+@@ -185,6 +185,7 @@ bool HintsFetcher::FetchOptimizationGuideServiceHints(
+     const std::string& access_token,
      bool skip_cache,
      HintsFetchedCallback hints_fetched_callback) {
 +  if ((true)) return false;
@@ -225,10 +279,10 @@ index 5d924924a1ffd..d2fd1a0e93536 100644
    DCHECK_GT(optimization_types.size(), 0u);
    request_context_ = request_context;
 diff --git a/components/optimization_guide/core/hints_manager.cc b/components/optimization_guide/core/hints_manager.cc
-index 2aefa81dfc121..2125ac32fd7d0 100644
+index 700138f34fd08..f1101653fb8c3 100644
 --- a/components/optimization_guide/core/hints_manager.cc
 +++ b/components/optimization_guide/core/hints_manager.cc
-@@ -383,6 +383,7 @@ void HintsManager::Shutdown() {
+@@ -389,6 +389,7 @@ void HintsManager::Shutdown() {
  OptimizationGuideDecision
  HintsManager::GetOptimizationGuideDecisionFromOptimizationTypeDecision(
      OptimizationTypeDecision optimization_type_decision) {
@@ -236,7 +290,7 @@ index 2aefa81dfc121..2125ac32fd7d0 100644
    switch (optimization_type_decision) {
      case OptimizationTypeDecision::kAllowedByOptimizationFilter:
      case OptimizationTypeDecision::kAllowedByHint:
-@@ -1091,6 +1092,7 @@ void HintsManager::CanApplyOptimizationOnDemand(
+@@ -1097,6 +1098,7 @@ void HintsManager::CanApplyOptimizationOnDemand(
      proto::RequestContext request_context,
      OnDemandOptimizationGuideDecisionRepeatingCallback callback) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -244,7 +298,7 @@ index 2aefa81dfc121..2125ac32fd7d0 100644
  
    InsertionOrderedSet<GURL> urls_to_fetch;
    InsertionOrderedSet<std::string> hosts_to_fetch;
-@@ -1363,6 +1365,9 @@ OptimizationTypeDecision HintsManager::CanApplyOptimization(
+@@ -1387,6 +1389,9 @@ OptimizationTypeDecision HintsManager::CanApplyOptimization(
      bool skip_cache,
      OptimizationMetadata* optimization_metadata) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -255,10 +309,38 @@ index 2aefa81dfc121..2125ac32fd7d0 100644
    ScopedCanApplyOptimizationLogger scoped_logger(
        optimization_type, navigation_url, optimization_guide_logger_);
 diff --git a/components/optimization_guide/core/optimization_guide_features.cc b/components/optimization_guide/core/optimization_guide_features.cc
-index 77d50ef41859e..dec8dc8f50b65 100644
+index 3e650cab52ed8..c6a1067cf1e07 100644
 --- a/components/optimization_guide/core/optimization_guide_features.cc
 +++ b/components/optimization_guide/core/optimization_guide_features.cc
-@@ -90,17 +90,17 @@ bool IsSupportedLocaleForFeature(
+@@ -33,13 +33,6 @@ namespace features {
+ 
+ namespace {
+ 
+-constexpr auto enabled_by_default_desktop_only =
+-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+-    base::FEATURE_DISABLED_BY_DEFAULT;
+-#else
+-    base::FEATURE_ENABLED_BY_DEFAULT;
+-#endif
+-
+ constexpr auto enabled_by_default_mobile_only =
+ #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+     true;
+@@ -47,13 +40,6 @@ constexpr auto enabled_by_default_mobile_only =
+     false;
+ #endif
+ 
+-constexpr auto enabled_by_default_ios_only =
+-#if BUILDFLAG(IS_IOS)
+-    base::FEATURE_ENABLED_BY_DEFAULT;
+-#else
+-    base::FEATURE_DISABLED_BY_DEFAULT;
+-#endif
+-
+ // Returns whether |locale| is a supported locale for |feature|.
+ //
+ // This matches |locale| with the "supported_locales" feature param value in
+@@ -99,17 +85,17 @@ bool IsSupportedLocaleForFeature(
  // Enables the syncing of the Optimization Hints component, which provides
  // hints for what optimizations can be applied on a page load.
  BASE_FEATURE(kOptimizationHints,
@@ -282,7 +364,7 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  
  // Enables performance info in the context menu and fetching from a remote
  // Optimization Guide Service.
-@@ -110,17 +110,13 @@ BASE_FEATURE(kContextMenuPerformanceInfoAndRemoteHintFetching,
+@@ -119,33 +105,29 @@ BASE_FEATURE(kContextMenuPerformanceInfoAndRemoteHintFetching,
  
  // Enables the prediction of optimization targets.
  BASE_FEATURE(kOptimizationTargetPrediction,
@@ -304,7 +386,11 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  );
  
  // Enables page content to be annotated.
-@@ -130,8 +126,8 @@ BASE_FEATURE(kPageContentAnnotations,
+ BASE_FEATURE(kPageContentAnnotations,
+-             "PageContentAnnotations",
+-             enabled_by_default_desktop_only);
++             "PageContentAnnotations",            // disabled
++             base::FEATURE_DISABLED_BY_DEFAULT);  // by default
  
  // Enables fetching page metadata from the remote Optimization Guide service.
  BASE_FEATURE(kRemotePageMetadata,
@@ -315,18 +401,25 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  
  // Enables the page entities model to be annotated on every page load.
  BASE_FEATURE(kPageEntitiesPageContentAnnotations,
-@@ -155,8 +151,8 @@ BASE_FEATURE(kPageEntitiesModelResetOnShutdown,
+-             "PageEntitiesPageContentAnnotations",
+-             enabled_by_default_desktop_only);
++             "PageEntitiesPageContentAnnotations", // disabled
++             base::FEATURE_DISABLED_BY_DEFAULT);   // by default
+ // Enables the page visibility model to be annotated on every page load.
+ BASE_FEATURE(kPageVisibilityPageContentAnnotations,
+              "PageVisibilityPageContentAnnotations",
+@@ -168,8 +150,8 @@ BASE_FEATURE(kPageEntitiesModelResetOnShutdown,
  
  // Enables push notification of hints.
  BASE_FEATURE(kPushNotifications,
 -             "OptimizationGuidePushNotifications",
--             base::FEATURE_DISABLED_BY_DEFAULT);
+-             enabled_by_default_ios_only);
 +             "OptimizationGuidePushNotifications",    // disabled by default
 +             base::FEATURE_DISABLED_BY_DEFAULT);      // in Bromite
  
  // This feature flag does not turn off any behavior, it is only used for
  // experiment parameters.
-@@ -169,9 +165,9 @@ BASE_FEATURE(kOptimizationGuideMetadataValidation,
+@@ -182,21 +164,21 @@ BASE_FEATURE(kOptimizationGuideMetadataValidation,
               "OptimizationGuideMetadataValidation",
               base::FEATURE_DISABLED_BY_DEFAULT);
  
@@ -339,7 +432,13 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  
  BASE_FEATURE(kTextEmbeddingBatchAnnotations,
               "TextEmbeddingBatchAnnotations",
-@@ -183,7 +179,7 @@ BASE_FEATURE(kPageContentAnnotationsValidation,
+              base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE(kPageContentAnnotationsValidation,
+-             "PageContentAnnotationsValidation",
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             "PageContentAnnotationsValidation",  // disabled
++             base::FEATURE_DISABLED_BY_DEFAULT);  // by default
  
  BASE_FEATURE(kPreventLongRunningPredictionModels,
               "PreventLongRunningPredictionModels",
@@ -348,7 +447,7 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  
  BASE_FEATURE(kOptimizationGuideUseContinueOnShutdownForPageContentAnnotations,
               "OptimizationGuideUseContinueOnShutdownForPageContentAnnotations",
-@@ -218,8 +214,8 @@ BASE_FEATURE(kPageContentAnnotationsPersistSalientImageMetadata,
+@@ -231,8 +213,8 @@ BASE_FEATURE(kPageContentAnnotationsPersistSalientImageMetadata,
  // Killswitch for fetching on search results from a remote Optimization Guide
  // Service.
  BASE_FEATURE(kOptimizationGuideFetchingForSRP,
@@ -359,7 +458,7 @@ index 77d50ef41859e..dec8dc8f50b65 100644
  
  // Enables the model store to save relative paths computed from the base model
  // store dir. Storing as relative path in the model store is needed for IOS,
-@@ -468,7 +464,7 @@ size_t MaxURLKeyedHintCacheSize() {
+@@ -511,7 +493,7 @@ size_t MaxURLKeyedHintCacheSize() {
  
  bool ShouldPersistHintsToDisk() {
    return GetFieldTrialParamByFeatureAsBool(kOptimizationHints,
@@ -367,7 +466,7 @@ index 77d50ef41859e..dec8dc8f50b65 100644
 +                                           "persist_hints_to_disk", false);
  }
  
- bool EnabledPersonalizedMetadata(proto::RequestContext request_context) {
+ bool ShouldEnablePersonalizedMetadata(proto::RequestContext request_context) {
 diff --git a/components/optimization_guide/core/prediction_model_download_manager.cc b/components/optimization_guide/core/prediction_model_download_manager.cc
 index 229fdcec284b7..31e4e34a480fc 100644
 --- a/components/optimization_guide/core/prediction_model_download_manager.cc
@@ -433,7 +532,7 @@ index d1b9b5eaf3d13..b682756c8f7f3 100644
  
  declare_args() {
 diff --git a/components/permissions/features.cc b/components/permissions/features.cc
-index 10131fd18865a..83dade37d5fd4 100644
+index d6a039e94eef3..1fbaea386b17f 100644
 --- a/components/permissions/features.cc
 +++ b/components/permissions/features.cc
 @@ -92,12 +92,12 @@ BASE_FEATURE(kFailFastQuietChip,
@@ -454,10 +553,10 @@ index 10131fd18865a..83dade37d5fd4 100644
  BASE_FEATURE(kPermissionOnDeviceGeolocationPredictions,
               "PermissionOnDeviceGeolocationPredictions",
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
-index 60b2d25f35ab1..d1412f4e4a300 100644
+index 843badbdd76ce..9a9ede013ae7b 100644
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -1179,12 +1179,8 @@ BASE_FEATURE(kMemoryCacheStrongReferenceSingleUnload,
+@@ -1185,12 +1185,8 @@ BASE_FEATURE(kMemoryCacheStrongReferenceSingleUnload,
  // in the first viewport after the page load and the metrics of the clicked
  // anchor element will be extracted and recorded.
  BASE_FEATURE(kNavigationPredictor,
@@ -472,11 +571,22 @@ index 60b2d25f35ab1..d1412f4e4a300 100644
  );
  
  BASE_FEATURE(kNewBaseUrlInheritanceBehavior,
+@@ -1327,8 +1323,8 @@ BASE_FEATURE(kPrefetchPrivacyChanges,
+              base::FEATURE_ENABLED_BY_DEFAULT);   // in Bromite
+ 
+ BASE_FEATURE(kPreloadingHeuristicsMLModel,
+-             "PreloadingHeuristicsMLModel",
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             "PreloadingHeuristicsMLModel",       // must be disabled
++             base::FEATURE_DISABLED_BY_DEFAULT);  // in cromite
+ 
+ BASE_FEATURE(kPrerender2InNewTab,
+              "Prerender2InNewTab",
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-index b60686fa4fed6..7d2c6e2587f45 100644
+index dac64df60a376..b1ee5e0ff78e0 100644
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -2831,7 +2831,7 @@
+@@ -2954,7 +2954,7 @@
      {
        // https://crbug.com/1126305
        name: "Prerender2",
@@ -486,5 +596,5 @@ index b60686fa4fed6..7d2c6e2587f45 100644
      {
        name: "Presentation",
 -- 
-2.34.1
+2.25.1
 

@@ -1,4 +1,4 @@
-From b4f05e2c0dea7f0e9b3d8e89c35c92fbfd83c524 Mon Sep 17 00:00:00 2001
+From 58ef3f8ea8c52700953fcc7a4665482041a62bc5 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 20 Nov 2021 15:36:54 +0000
 Subject: [PATCH 118/192] Add option to use home page as NTP
@@ -22,7 +22,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  12 files changed, 63 insertions(+), 3 deletions(-)
 
 diff --git a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGridDialogMediator.java b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGridDialogMediator.java
-index 5f12387c05368..f29c86612efb8 100644
+index 8626a0cd50fdf..661f60b541993 100644
 --- a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGridDialogMediator.java
 +++ b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGridDialogMediator.java
 @@ -18,6 +18,7 @@ import org.chromium.base.Callback;
@@ -33,7 +33,7 @@ index 5f12387c05368..f29c86612efb8 100644
  import org.chromium.chrome.browser.tab.Tab;
  import org.chromium.chrome.browser.tab.TabCreationState;
  import org.chromium.chrome.browser.tab.TabLaunchType;
-@@ -578,9 +579,13 @@ public class TabGridDialogMediator
+@@ -565,9 +566,13 @@ public class TabGridDialogMediator
  
              assert relatedTabs.size() > 0;
  
@@ -49,7 +49,7 @@ index 5f12387c05368..f29c86612efb8 100644
              RecordUserAction.record("MobileNewTabOpened." + mComponentName);
          };
 diff --git a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupUiMediator.java b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupUiMediator.java
-index 3765322c8f0c0..fa3ddb43ddf8c 100644
+index 52a32ca6c0a54..73c184a071882 100644
 --- a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupUiMediator.java
 +++ b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabGroupUiMediator.java
 @@ -17,6 +17,7 @@ import org.chromium.base.metrics.RecordUserAction;
@@ -60,10 +60,10 @@ index 3765322c8f0c0..fa3ddb43ddf8c 100644
  import org.chromium.chrome.browser.layouts.LayoutStateProvider;
  import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserver;
  import org.chromium.chrome.browser.layouts.LayoutType;
-@@ -350,8 +351,12 @@ public class TabGroupUiMediator implements BackPressHandler {
+@@ -345,8 +346,12 @@ public class TabGroupUiMediator implements BackPressHandler {
+             assert relatedTabs.size() > 0;
  
-                 parentTabToAttach = relatedTabs.get(relatedTabs.size() - 1);
-             }
+             parentTabToAttach = relatedTabs.get(relatedTabs.size() - 1);
 +            String url = UrlConstants.NTP_URL;
 +            if (HomepageManager.getInstance().getPrefNTPIsHomepageEnabled()) {
 +                url = HomepageManager.getInstance().getHomepageUri();
@@ -167,7 +167,7 @@ index 40f30858f0180..2849b22a08148 100644
          LaunchMetricsJni.get().recordHomePageLaunchMetrics(
                  showHomeButton, homepageIsNtp, homepageUrl);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/ChromeTabCreator.java b/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/ChromeTabCreator.java
-index 4300ad0894ab0..acf440dfd0a36 100644
+index 283df36a53597..3a3ca5b92a797 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/ChromeTabCreator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabmodel/ChromeTabCreator.java
 @@ -26,6 +26,7 @@ import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingTask;
@@ -178,7 +178,7 @@ index 4300ad0894ab0..acf440dfd0a36 100644
  import org.chromium.chrome.browser.ntp.NewTabPageLaunchOrigin;
  import org.chromium.chrome.browser.ntp.NewTabPageUtils;
  import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsBridge;
-@@ -472,6 +473,12 @@ public class ChromeTabCreator extends TabCreator {
+@@ -495,6 +496,12 @@ public class ChromeTabCreator extends TabCreator {
       * @return the created tab.
       */
      public Tab launchUrl(String url, @TabLaunchType int type, Intent intent, long intentTimestamp) {
@@ -192,10 +192,10 @@ index 4300ad0894ab0..acf440dfd0a36 100644
          loadUrlParams.setIntentReceivedTimestamp(intentTimestamp);
          return createNewTab(loadUrlParams, type, null, intent);
 diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
-index 8596c3022dcb3..a78a936c3177f 100644
+index 0c41e1edfea7a..cbf19ff2e3f59 100644
 --- a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
 +++ b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
-@@ -385,6 +385,7 @@ public final class ChromePreferenceKeys {
+@@ -366,6 +366,7 @@ public final class ChromePreferenceKeys {
      public static final String HOMEPAGE_PARTNER_CUSTOMIZED_DEFAULT_GURL =
              "Chrome.Homepage.PartnerCustomizedDefaultGurl";
  
@@ -204,10 +204,10 @@ index 8596c3022dcb3..a78a936c3177f 100644
       * Key used to save homepage location set by enterprise policy
       */
 diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/LegacyChromePreferenceKeys.java b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/LegacyChromePreferenceKeys.java
-index 8eecb99b97f6f..3663a9ee67edf 100644
+index 34b1934eb2f50..a8e880f222bb6 100644
 --- a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/LegacyChromePreferenceKeys.java
 +++ b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/LegacyChromePreferenceKeys.java
-@@ -70,6 +70,7 @@ public class LegacyChromePreferenceKeys {
+@@ -67,6 +67,7 @@ public class LegacyChromePreferenceKeys {
                  ChromePreferenceKeys.HOMEPAGE_CUSTOM_URI,
                  ChromePreferenceKeys.HOMEPAGE_ENABLED,
                  ChromePreferenceKeys.HOMEPAGE_USE_DEFAULT_URI,
@@ -216,7 +216,7 @@ index 8eecb99b97f6f..3663a9ee67edf 100644
                  ChromePreferenceKeys.LATEST_UNSUPPORTED_VERSION,
                  ChromePreferenceKeys.LOCALE_MANAGER_AUTO_SWITCH,
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index f874f81537b71..6ae11fc0b71ef 100644
+index 8655d2e8e6434..5af9bdb7fbc50 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 @@ -1514,6 +1514,9 @@ Your Google account may have other forms of browsing history like searches and a
@@ -230,10 +230,10 @@ index f874f81537b71..6ae11fc0b71ef 100644
          Last 24 hours
        </message>
 diff --git a/chrome/browser/ui/browser_ui_prefs.cc b/chrome/browser/ui/browser_ui_prefs.cc
-index 3024320b2d014..3ce76a2ae9827 100644
+index e7311dcc95872..c6d3123154a6b 100644
 --- a/chrome/browser/ui/browser_ui_prefs.cc
 +++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -65,6 +65,8 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -70,6 +70,8 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
                                  GetHomeButtonAndHomePageIsNewTabPageFlags());
    registry->RegisterBooleanPref(prefs::kShowHomeButton, false,
                                  GetHomeButtonAndHomePageIsNewTabPageFlags());
@@ -243,10 +243,10 @@ index 3024320b2d014..3ce76a2ae9827 100644
    registry->RegisterInt64Pref(prefs::kDefaultBrowserLastDeclined, 0);
    bool reset_check_default = false;
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
-index 03237079edc8d..caa31c9e129df 100644
+index 8ce6e44c723e3..0c8bdc42f61fa 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -1310,6 +1310,10 @@ inline constexpr char kUsedPolicyCertificates[] =
+@@ -1297,6 +1297,10 @@ inline constexpr char kUsedPolicyCertificates[] =
  // visible on the toolbar.
  inline constexpr char kShowHomeButton[] = "browser.show_home_button";
  
@@ -258,5 +258,5 @@ index 03237079edc8d..caa31c9e129df 100644
  // The old key value is kept to avoid unnecessary migration code.
  inline constexpr char kSpeechRecognitionFilterProfanities[] =
 -- 
-2.34.1
+2.25.1
 

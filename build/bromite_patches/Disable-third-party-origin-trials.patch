@@ -1,4 +1,4 @@
-From 07588625cc6998c23638a1bdab81a341aa98797f Mon Sep 17 00:00:00 2001
+From 9e42f5b4e1487ef1c29a3f89563c6fcad51c0fc5 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Thu, 4 Nov 2021 09:19:24 +0100
 Subject: [PATCH 144/192] Disable third-party origin trials
@@ -17,10 +17,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  9 files changed, 16 insertions(+), 47 deletions(-)
 
 diff --git a/components/embedder_support/origin_trials/origin_trial_policy_impl.cc b/components/embedder_support/origin_trials/origin_trial_policy_impl.cc
-index f1c426673ae4c..2f5bec8b39b21 100644
+index f7d5345d2f744..dfefce72244fd 100644
 --- a/components/embedder_support/origin_trials/origin_trial_policy_impl.cc
 +++ b/components/embedder_support/origin_trials/origin_trial_policy_impl.cc
-@@ -23,10 +23,10 @@
+@@ -24,10 +24,10 @@
  
  namespace embedder_support {
  
@@ -33,7 +33,7 @@ index f1c426673ae4c..2f5bec8b39b21 100644
      0x51, 0x14, 0x66, 0xaa, 0x02, 0x53, 0x4e, 0x33, 0xa1, 0x15,
  };
  
-@@ -60,7 +60,8 @@ OriginTrialPolicyImpl::OriginTrialPolicyImpl() {
+@@ -61,7 +61,8 @@ OriginTrialPolicyImpl::OriginTrialPolicyImpl() {
  OriginTrialPolicyImpl::~OriginTrialPolicyImpl() = default;
  
  bool OriginTrialPolicyImpl::IsOriginTrialsSupported() const {
@@ -44,10 +44,10 @@ index f1c426673ae4c..2f5bec8b39b21 100644
  
  const std::vector<blink::OriginTrialPublicKey>&
 diff --git a/components/embedder_support/origin_trials/origin_trial_policy_impl.h b/components/embedder_support/origin_trials/origin_trial_policy_impl.h
-index 68ba1512c7527..7220b4de79e24 100644
+index 637fa54d4c4d6..88fa4e6cc0060 100644
 --- a/components/embedder_support/origin_trials/origin_trial_policy_impl.h
 +++ b/components/embedder_support/origin_trials/origin_trial_policy_impl.h
-@@ -34,13 +34,13 @@ class OriginTrialPolicyImpl : public blink::OriginTrialPolicy {
+@@ -34,6 +34,7 @@ class OriginTrialPolicyImpl : public blink::OriginTrialPolicy {
    bool IsTokenDisabled(base::StringPiece token_signature) const override;
    bool IsOriginSecure(const GURL& url) const override;
  
@@ -55,7 +55,8 @@ index 68ba1512c7527..7220b4de79e24 100644
    bool SetPublicKeysFromASCIIString(const std::string& ascii_public_key);
    bool SetDisabledFeatures(const std::string& disabled_feature_list);
    bool SetDisabledTokens(const std::vector<std::string>& tokens);
- 
+@@ -44,7 +45,6 @@ class OriginTrialPolicyImpl : public blink::OriginTrialPolicy {
+   bool GetAllowOnlyDeprecationTrials() const;
    const std::set<std::string>* GetDisabledTokensForTesting() const override;
  
 - private:
@@ -63,10 +64,10 @@ index 68ba1512c7527..7220b4de79e24 100644
    std::set<std::string> disabled_features_;
    std::set<std::string> disabled_tokens_;
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index da87a4f823d6f..4a328d868a460 100644
+index 5cf177fc73dd2..7b9a932862028 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
-@@ -8211,7 +8211,6 @@ void NavigationRequest::SetSourceSiteInstanceToInitiatorIfNeeded() {
+@@ -8300,7 +8300,6 @@ void NavigationRequest::SetSourceSiteInstanceToInitiatorIfNeeded() {
  void NavigationRequest::ForceEnableOriginTrials(
      const std::vector<std::string>& trials) {
    DCHECK(!HasCommitted());
@@ -75,7 +76,7 @@ index da87a4f823d6f..4a328d868a460 100644
  
  network::CrossOriginEmbedderPolicy
 diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
-index 94d3c751277e0..2104bf3ee528f 100644
+index ab92d5b8f7106..82a64a5ba9640 100644
 --- a/content/renderer/render_frame_impl.cc
 +++ b/content/renderer/render_frame_impl.cc
 @@ -475,10 +475,6 @@ void FillNavigationParamsRequest(
@@ -166,10 +167,10 @@ index 60c7e0e9d330f..b4494711ccce5 100644
    return policy && policy->IsOriginTrialsSupported() &&
           policy->IsOriginSecure(url);
 diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
-index 39407a0bee521..664fab519a4bd 100644
+index edbcc3d17226c..7dbbd3f24bce8 100644
 --- a/third_party/blink/renderer/core/loader/document_loader.cc
 +++ b/third_party/blink/renderer/core/loader/document_loader.cc
-@@ -178,13 +178,6 @@ BASE_FEATURE(kLoadNotificationsForSameDocumentNavigations,
+@@ -172,13 +172,6 @@ namespace {
  Vector<OriginTrialFeature> CopyInitiatorOriginTrials(
      const WebVector<int>& initiator_origin_trial_features) {
    Vector<OriginTrialFeature> result;
@@ -183,7 +184,7 @@ index 39407a0bee521..664fab519a4bd 100644
    return result;
  }
  
-@@ -197,18 +190,12 @@ WebVector<int> CopyInitiatorOriginTrials(
+@@ -191,18 +184,12 @@ WebVector<int> CopyInitiatorOriginTrials(
  Vector<String> CopyForceEnabledOriginTrials(
      const WebVector<WebString>& force_enabled_origin_trials) {
    Vector<String> result;
@@ -202,7 +203,7 @@ index 39407a0bee521..664fab519a4bd 100644
    return result;
  }
  
-@@ -2809,10 +2796,6 @@ void DocumentLoader::CreateParserPostCommit() {
+@@ -2800,10 +2787,6 @@ void DocumentLoader::CreateParserPostCommit() {
            OriginTrialFeature::kTouchEventFeatureDetection);
      }
  
@@ -258,5 +259,5 @@ index b793add749d8f..9444224ad5ccb 100644
      return base::FeatureList::IsEnabled(features::kPortals);
  
 -- 
-2.34.1
+2.25.1
 
