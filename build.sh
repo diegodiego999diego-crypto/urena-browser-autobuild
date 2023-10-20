@@ -135,23 +135,29 @@ sync() {
     echo ">> [$(date)] Syncing chromium $chromium_version"
     cd $chromium_dir
     gclient_config
+    if [ -d "$chromium_dir/src" ]; then
+        cd $chromium_dir/src
+        git fetch origin refs/tags/$chromium_version
+        git reset --hard FETCH_HEAD
+    fi
     if [ $history -eq 1 ]; then
-        gclient sync -D --nohooks -R -r $chromium_version
+        gclient sync -D --nohooks -R
     else
-        gclient sync --no-history -D --nohooks -R -r $chromium_version
+        gclient sync --no-history -D --nohooks -R
     fi
     gclient runhooks
     patch
 }
 
 gclient_config() {
+    url=https://github.com/chromium/chromium.git
+    commit_hash=$(git ls-remote --refs $url refs/tags/$chromium_version | awk '{print $1}')
     cat <<EOF > "$chromium_dir/.gclient"
 solutions = [{
-    "url": "https://github.com/chromium/chromium",
+    "url": "$url@$commit_hash",
     "managed": False,
     "name": "src",
     "custom_deps": {},
-    "custom_hooks": [],
     "custom_vars": {}
 }]
 
