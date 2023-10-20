@@ -29,7 +29,8 @@ usage() {
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432 MonochromePublic"
+    apks="ChromePublic SystemWebView TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
+        TrichromeLibrary6432 TrichromeWebView6432 MonochromePublic"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
     apk_arch=${1}
@@ -57,26 +58,18 @@ build() {
     gn gen "out/$1" --args="$build_args"
     build_targets="chrome_public_apk system_webview_apk monochrome_public_apk"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
-        build_targets="$build_targets trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
-                trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
+        build_targets="$build_targets trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
+    else
+        build_targets="$build_targets trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
+
     ninja -C out/$1 $build_targets
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
-            if [[ "$apk.apk" == *Public.apk ]] || [[ "$apk.apk" == SystemWebView.apk ]] || [[ "$apk.apk" == *6432.apk ]]; then
-                mkdir -p "${root_dir}/apks/${apk_arch}"
-                mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-            else
-                if [ "$1" = "x64" ]; then
-                    mkdir -p "${root_dir}/apks/x86"
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-                elif [ "$1" = "arm64" ]; then
-                    mkdir -p "${root_dir}/apks/arm"
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-                fi
-            fi
+            mkdir -p "${root_dir}/apks/${apk_arch}"
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
         fi
     done
 }
