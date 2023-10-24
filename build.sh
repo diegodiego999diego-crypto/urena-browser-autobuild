@@ -74,10 +74,7 @@ build() {
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
             mkdir -p "${root_dir}/apks/${apk_arch}"
-            apk_dir="${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-            mv "out/${1}/apks/$apk.apk" $apk_dir
-            echo ">> [$(date)] Signing $apk with AOSP test keys"
-            bash "${root_dir}/sign.sh" $apk_dir "${root_dir}/platform.jks" platform platform
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
         fi
     done
 }
