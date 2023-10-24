@@ -48,8 +48,13 @@ build() {
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
 
-    if [ $clean -eq 1 ] && [ -d "out/$1" ]; then
-        rm -rf "out/$1"
+    if [ $clean -eq 1 ]; then
+        if [ -d "out/$1" ]; then
+            rm -rf "out/$1"
+        fi
+        if [ -d "${root_dir}/apks/${apk_arch}" ]; then
+            rm -rf "${root_dir}/apks/${apk_arch}"
+        fi
     fi
 
     build_args+=' cc_wrapper="ccache"'
