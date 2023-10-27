@@ -7,7 +7,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version="117.0.5938.153"
+chromium_version="117.0.5938.156"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
