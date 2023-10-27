@@ -7,7 +7,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version="117.0.5938.153"
+chromium_version="117.0.5938.156"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
@@ -29,7 +29,8 @@ usage() {
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="ChromePublic SystemWebView TrichromeChrome32 TrichromeLibrary32 TrichromeWebView32 TrichromeChrome6432 TrichromeLibrary6432 TrichromeWebView6432 MonochromePublic"
+    apks="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
+        TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
     apk_arch=${1}
@@ -47,36 +48,32 @@ build() {
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
 
-    if [ $clean -eq 1 ] && [ -d "out/$1" ]; then
-        rm -rf "out/$1"
+    if [ $clean -eq 1 ]; then
+        if [ -d "out/$1" ]; then
+            rm -rf "out/$1"
+        fi
+        if [ -d "${root_dir}/apks/${apk_arch}" ]; then
+            rm -rf "${root_dir}/apks/${apk_arch}"
+        fi
     fi
 
     build_args+=' cc_wrapper="ccache"'
 
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
-    build_targets="chrome_public_apk system_webview_apk monochrome_public_apk"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
-        build_targets="$build_targets trichrome_webview_32_apk trichrome_chrome_32_apk trichrome_library_32_apk \
-                trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
+        build_targets="trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
+    else
+        build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
+
     ninja -C out/$1 $build_targets
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
-            if [[ "$apk.apk" == *Public.apk ]] || [[ "$apk.apk" == SystemWebView.apk ]] || [[ "$apk.apk" == *6432.apk ]]; then
-                mkdir -p "${root_dir}/apks/${apk_arch}"
-                mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-            else
-                if [ "$1" = "x64" ]; then
-                    mkdir -p "${root_dir}/apks/x86"
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/x86/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-                elif [ "$1" = "arm64" ]; then
-                    mkdir -p "${root_dir}/apks/arm"
-                    mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/arm/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-                fi
-            fi
+            mkdir -p "${root_dir}/apks/${apk_arch}"
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
         fi
     done
 }
@@ -137,23 +134,29 @@ sync() {
     echo ">> [$(date)] Syncing chromium $chromium_version"
     cd $chromium_dir
     gclient_config
+    if [ -d "$chromium_dir/src" ]; then
+        cd $chromium_dir/src
+        git fetch origin refs/tags/$chromium_version
+        git reset --hard FETCH_HEAD
+    fi
     if [ $history -eq 1 ]; then
-        gclient sync -D --nohooks -R -r $chromium_version
+        gclient sync -D --nohooks -R
     else
-        gclient sync --no-history -D --nohooks -R -r $chromium_version
+        gclient sync --no-history -D --nohooks -R
     fi
     gclient runhooks
     patch
 }
 
 gclient_config() {
+    url=https://github.com/chromium/chromium.git
+    commit_hash=$(git ls-remote --refs $url refs/tags/$chromium_version | awk '{print $1}')
     cat <<EOF > "$chromium_dir/.gclient"
 solutions = [{
-    "url": "https://github.com/chromium/chromium",
+    "url": "$url@$commit_hash",
     "managed": False,
     "name": "src",
     "custom_deps": {},
-    "custom_hooks": [],
     "custom_vars": {}
 }]
 
