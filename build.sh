@@ -136,6 +136,7 @@ sync() {
     gclient_config
     if [ -d "$chromium_dir/src" ]; then
         cd $chromium_dir/src
+        git checkout main
         git fetch origin refs/tags/$chromium_version
         git reset --hard FETCH_HEAD
     fi
