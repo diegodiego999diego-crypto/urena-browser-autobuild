@@ -21,8 +21,9 @@ usage() {
     echo "  Options:"
     echo "    -a <arch> Build specified arch"
     echo "    -c Clean"
-    echo "    -h Show this message"
-    echo "    -s Sync without history"
+    echo "    -u Show this message"
+    echo "    -s Sync source"
+    echo "    -h Sync without history"
     echo
     exit 1
 }
@@ -176,12 +177,13 @@ init_repo(){
     fi
 }
 
-while getopts ":a:chr:s" opt; do
+while getopts ":a:cur:sh" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
-    h) usage ;;
-    s) gsync=1 && history=0 ;;
+    u) usage ;;
+    s) gsync=1  ;;
+    h) history=0 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
