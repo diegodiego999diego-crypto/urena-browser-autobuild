@@ -1,7 +1,6 @@
-From 29987d607a6cc3d4d4ad1261524fbde4f5cf4808 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 25 Mar 2018 21:49:37 +0200
-Subject: [PATCH 056/192] AudioBuffer, AnalyserNode: fp mitigations
+Subject: AudioBuffer, AnalyserNode: fp mitigations
 
 Truncate base latency precision to two digits
 
@@ -22,10 +21,9 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  12 files changed, 60 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index 82741e95ba8a4..73d1dd5a999d9 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -3881,6 +3881,10 @@ const FeatureEntry kFeatureEntries[] = {
+@@ -4185,6 +4185,10 @@ const FeatureEntry kFeatureEntries[] = {
       flag_descriptions::kKioskEnableAppServiceDescription, kOsCrOS,
       FEATURE_VALUE_TYPE(features::kKioskEnableAppService)},
  #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -37,10 +35,9 @@ index 82741e95ba8a4..73d1dd5a999d9 100644
      {"enable-webrtc-remote-event-log",
       flag_descriptions::kWebRtcRemoteEventLogName,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index c631c713f425c..9b9d00359008a 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -3639,6 +3639,11 @@ const char kWebTransportDeveloperModeDescription[] =
+@@ -3740,6 +3740,11 @@ const char kWebTransportDeveloperModeDescription[] =
      "When enabled, removes the requirement that all certificates used for "
      "WebTransport over HTTP/3 are issued by a known certificate root.";
  
@@ -53,10 +50,9 @@ index c631c713f425c..9b9d00359008a 100644
      "Automatic detection of WebUSB-compatible devices";
  const char kWebUsbDeviceDetectionDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index 302a8e99a898e..e6dc3d91746f3 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -2095,6 +2095,9 @@ extern const char kWebRtcRemoteEventLogDescription[];
+@@ -2174,6 +2174,9 @@ extern const char kWebRtcRemoteEventLogDescription[];
  extern const char kWebrtcUseMinMaxVEADimensionsName[];
  extern const char kWebrtcUseMinMaxVEADimensionsDescription[];
  
@@ -67,10 +63,9 @@ index 302a8e99a898e..e6dc3d91746f3 100644
  extern const char kWebTransportDeveloperModeDescription[];
  
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
-index ae80cfe4aec94..fe7912e08aed7 100644
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -244,6 +244,10 @@ BASE_FEATURE(kBiddingAndScoringDebugReportingAPI,
+@@ -258,6 +258,10 @@ BASE_FEATURE(kBiddingAndScoringDebugReportingAPI,
               "BiddingAndScoringDebugReportingAPI",
               base::FEATURE_DISABLED_BY_DEFAULT);
  
@@ -82,10 +77,9 @@ index ae80cfe4aec94..fe7912e08aed7 100644
  // Enables compaction of backing stores on Blink's heap.
  BASE_FEATURE(kBlinkHeapCompaction,
 diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
-index 6ece6ab12363f..0be0e4712487d 100644
 --- a/third_party/blink/public/common/features.h
 +++ b/third_party/blink/public/common/features.h
-@@ -149,6 +149,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapConcurrentSweeping);
+@@ -158,6 +158,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapConcurrentSweeping);
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapIncrementalMarking);
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kBlinkHeapIncrementalMarkingStress);
  
@@ -95,7 +89,6 @@ index 6ece6ab12363f..0be0e4712487d 100644
      kBlockingDownloadsInAdFrameWithoutUserActivation);
  
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_buffer.cc b/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
-index 2e032806463bb..e75d55be56435 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
 +++ b/third_party/blink/renderer/modules/webaudio/audio_buffer.cc
 @@ -196,6 +196,20 @@ AudioBuffer::AudioBuffer(AudioBus* bus)
@@ -120,7 +113,6 @@ index 2e032806463bb..e75d55be56435 100644
      unsigned channel_index,
      ExceptionState& exception_state) {
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_buffer.h b/third_party/blink/renderer/modules/webaudio/audio_buffer.h
-index ce75d7ab3a290..b4c562a024749 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_buffer.h
 +++ b/third_party/blink/renderer/modules/webaudio/audio_buffer.h
 @@ -115,6 +115,8 @@ class MODULES_EXPORT AudioBuffer final : public ScriptWrappable {
@@ -133,7 +125,6 @@ index ce75d7ab3a290..b4c562a024749 100644
    static DOMFloat32Array* CreateFloat32ArrayOrNull(
        uint32_t length,
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_context.cc b/third_party/blink/renderer/modules/webaudio/audio_context.cc
-index 4dedc0b91be74..46c31a4d55c5e 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/audio_context.cc
 @@ -11,6 +11,7 @@
@@ -156,7 +147,6 @@ index 4dedc0b91be74..46c31a4d55c5e 100644
  
  double AudioContext::outputLatency() const {
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
-index c9fa2fd3953b4..f744265cc7224 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 @@ -29,6 +29,7 @@
@@ -186,10 +176,9 @@ index c9fa2fd3953b4..f744265cc7224 100644
    DCHECK(IsMainThread());
    GraphAutoLocker locker(this);
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-index b3a041474b308..152a0ae4881f8 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-@@ -338,6 +338,8 @@ class MODULES_EXPORT BaseAudioContext
+@@ -339,6 +339,8 @@ class MODULES_EXPORT BaseAudioContext
    // if the execution context does not exist.
    bool CheckExecutionContextAndThrowIfNecessary(ExceptionState&);
  
@@ -199,7 +188,6 @@ index b3a041474b308..152a0ae4881f8 100644
    enum ContextType { kRealtimeContext, kOfflineContext };
  
 diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
-index f9d05fc50e89d..f7179f5c98dbd 100644
 --- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
 @@ -368,6 +368,7 @@ void OfflineAudioContext::FireCompletionEvent() {
@@ -211,7 +199,6 @@ index f9d05fc50e89d..f7179f5c98dbd 100644
      // Call the offline rendering completion event listener and resolve the
      // promise too.
 diff --git a/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc b/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
-index 256ea358bc701..a0873c1aed599 100644
 --- a/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
 +++ b/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
 @@ -29,6 +29,7 @@
@@ -256,6 +243,5 @@ index 256ea358bc701..a0873c1aed599 100644
      }
    }
  }
--- 
-2.34.1
-
+--
+2.25.1

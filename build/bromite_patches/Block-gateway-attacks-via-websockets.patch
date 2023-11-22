@@ -1,7 +1,6 @@
-From 51d8cd9c6f81b5bc866fd0908255837d5e3c3b4b Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Tue, 28 Jul 2020 12:28:58 +0200
-Subject: [PATCH 109/192] Block gateway attacks via websockets
+Subject: Block gateway attacks via websockets
 
 This approach is not comprehensive, see also:
 * https://bugs.chromium.org/p/chromium/issues/detail?id=590714
@@ -23,10 +22,9 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  12 files changed, 133 insertions(+), 2 deletions(-)
 
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.cc b/third_party/blink/renderer/core/execution_context/execution_context.cc
-index 1bc4805ab9da9..8f50f8feef79f 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.cc
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.cc
-@@ -736,4 +736,20 @@ void ExecutionContext::WriteIntoTrace(
+@@ -713,4 +713,20 @@ void ExecutionContext::WriteIntoTrace(
    proto->set_world_type(GetWorldType(*this));
  }
  
@@ -48,10 +46,9 @@ index 1bc4805ab9da9..8f50f8feef79f 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
-index 180cda4e10fc4..8d38f4c1b5f3b 100644
 --- a/third_party/blink/renderer/core/execution_context/execution_context.h
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.h
-@@ -398,6 +398,7 @@ class CORE_EXPORT ExecutionContext : public Supplementable<ExecutionContext>,
+@@ -391,6 +391,7 @@ class CORE_EXPORT ExecutionContext : public Supplementable<ExecutionContext>,
    void SetAddressSpace(network::mojom::blink::IPAddressSpace ip_address_space);
  
    HeapObserverSet<ContextLifecycleObserver>& ContextLifecycleObserverSet();
@@ -60,10 +57,9 @@ index 180cda4e10fc4..8d38f4c1b5f3b 100644
  
    // Implementation of WindowOrWorkerGlobalScope.crossOriginIsolated.
 diff --git a/third_party/blink/renderer/core/loader/base_fetch_context.h b/third_party/blink/renderer/core/loader/base_fetch_context.h
-index 1479573dbc605..0bcf66f467af2 100644
 --- a/third_party/blink/renderer/core/loader/base_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/base_fetch_context.h
-@@ -88,6 +88,7 @@ class CORE_EXPORT BaseFetchContext : public FetchContext {
+@@ -89,6 +89,7 @@ class CORE_EXPORT BaseFetchContext : public FetchContext {
  
    virtual SubresourceFilter* GetSubresourceFilter() const = 0;
    virtual bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const = 0;
@@ -72,10 +68,9 @@ index 1479573dbc605..0bcf66f467af2 100644
    CreateWebSocketHandshakeThrottle() = 0;
  
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.cc b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-index 7d3adaa1f95fa..4168b49e6ac32 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
-@@ -591,6 +591,26 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
+@@ -588,6 +588,26 @@ bool FrameFetchContext::ShouldBlockRequestByInspector(const KURL& url) const {
    return should_block_request;
  }
  
@@ -103,7 +98,6 @@ index 7d3adaa1f95fa..4168b49e6ac32 100644
      const ResourceRequest& resource_request,
      const ResourceLoaderOptions& options,
 diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.h b/third_party/blink/renderer/core/loader/frame_fetch_context.h
-index 6bf0e35ad2a1d..d211d25696602 100644
 --- a/third_party/blink/renderer/core/loader/frame_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/frame_fetch_context.h
 @@ -175,6 +175,7 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
@@ -115,7 +109,6 @@ index 6bf0e35ad2a1d..d211d25696602 100644
        mojom::blink::RequestContextType request_context,
        network::mojom::blink::IPAddressSpace target_address_space,
 diff --git a/third_party/blink/renderer/core/loader/worker_fetch_context.cc b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
-index 1f2ae8311b78a..06b92a8b1118d 100644
 --- a/third_party/blink/renderer/core/loader/worker_fetch_context.cc
 +++ b/third_party/blink/renderer/core/loader/worker_fetch_context.cc
 @@ -25,6 +25,7 @@
@@ -154,10 +147,9 @@ index 1f2ae8311b78a..06b92a8b1118d 100644
      const ResourceRequest& resource_request,
      const ResourceLoaderOptions& options,
 diff --git a/third_party/blink/renderer/core/loader/worker_fetch_context.h b/third_party/blink/renderer/core/loader/worker_fetch_context.h
-index 098cd9c783ec6..e4031b1005fbe 100644
 --- a/third_party/blink/renderer/core/loader/worker_fetch_context.h
 +++ b/third_party/blink/renderer/core/loader/worker_fetch_context.h
-@@ -63,6 +63,7 @@ class WorkerFetchContext final : public BaseFetchContext {
+@@ -64,6 +64,7 @@ class WorkerFetchContext final : public BaseFetchContext {
    bool ShouldBlockWebSocketByMixedContentCheck(const KURL&) const override;
    std::unique_ptr<WebSocketHandshakeThrottle> CreateWebSocketHandshakeThrottle()
        override;
@@ -166,7 +158,6 @@ index 098cd9c783ec6..e4031b1005fbe 100644
        mojom::blink::RequestContextType request_context,
        network::mojom::blink::IPAddressSpace target_address_space,
 diff --git a/third_party/blink/renderer/core/workers/installed_scripts_manager.cc b/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
-index 2a978cb476740..fe67745d54ccd 100644
 --- a/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
 +++ b/third_party/blink/renderer/core/workers/installed_scripts_manager.cc
 @@ -33,9 +33,9 @@ InstalledScriptsManager::ScriptData::ScriptData(
@@ -182,7 +173,6 @@ index 2a978cb476740..fe67745d54ccd 100644
  
  ContentSecurityPolicyResponseHeaders
 diff --git a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
-index b8aff17d259ca..c25135fcb18b5 100644
 --- a/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
 +++ b/third_party/blink/renderer/modules/background_fetch/background_fetch_manager.cc
 @@ -101,6 +101,30 @@ bool ShouldBlockDanglingMarkup(const KURL& request_url) {
@@ -231,10 +221,9 @@ index b8aff17d259ca..c25135fcb18b5 100644
        return RejectWithTypeError(script_state, request_url,
                                   "that port is not allowed", exception_state);
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
-index 98a78f1a7b6a5..40b01a00c8904 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
 +++ b/third_party/blink/renderer/modules/websockets/websocket_channel_impl.cc
-@@ -275,6 +275,11 @@ bool WebSocketChannelImpl::Connect(const KURL& url, const String& protocol) {
+@@ -276,6 +276,11 @@ bool WebSocketChannelImpl::Connect(const KURL& url, const String& protocol) {
      return false;
    }
  
@@ -247,7 +236,6 @@ index 98a78f1a7b6a5..40b01a00c8904 100644
      // Two features are registered here:
      // - `kWebSocket`: a non-sticky feature that will disable BFCache for any
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_common.cc b/third_party/blink/renderer/modules/websockets/websocket_common.cc
-index 9e543e41518ff..086628ea10ff5 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_common.cc
 +++ b/third_party/blink/renderer/modules/websockets/websocket_common.cc
 @@ -125,9 +125,39 @@ WebSocketCommon::ConnectResult WebSocketCommon::Connect(
@@ -291,7 +279,6 @@ index 9e543e41518ff..086628ea10ff5 100644
                                      const String& reason,
                                      WebSocketChannel* channel,
 diff --git a/third_party/blink/renderer/modules/websockets/websocket_common.h b/third_party/blink/renderer/modules/websockets/websocket_common.h
-index ed3d0daade26f..7f0cdf10d9732 100644
 --- a/third_party/blink/renderer/modules/websockets/websocket_common.h
 +++ b/third_party/blink/renderer/modules/websockets/websocket_common.h
 @@ -7,6 +7,8 @@
@@ -312,6 +299,5 @@ index ed3d0daade26f..7f0cdf10d9732 100644
    // The following methods are public for testing.
  
    // Returns true if |protocol| is a valid WebSocket subprotocol name.
--- 
-2.34.1
-
+--
+2.25.1

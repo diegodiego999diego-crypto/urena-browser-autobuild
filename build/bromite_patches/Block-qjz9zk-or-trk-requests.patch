@@ -1,7 +1,6 @@
-From e5fe5907c98ff8fce9462716ce9edb40f1e00938 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 30 Oct 2019 11:50:13 +0100
-Subject: [PATCH 115/192] Block 'qjz9zk' or 'trk:' requests
+Subject: Block 'qjz9zk' or 'trk:' requests
 
 An info bar is displayed unless the --disable-trkbar command-line flag or the chrome://flag option is used.
 This patch is based on Iridium's 'net: add "trk:" scheme and help identify URLs being retrieved'
@@ -27,7 +26,6 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 net/url_request/trk_protocol_handler.h
 
 diff --git a/chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.cc b/chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.cc
-index 4c88614c68c25..e4366ea4d0902 100644
 --- a/chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.cc
 +++ b/chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.cc
 @@ -58,6 +58,7 @@ ChromeAutocompleteSchemeClassifier::GetInputTypeForScheme(
@@ -39,7 +37,6 @@ index 4c88614c68c25..e4366ea4d0902 100644
         base::EqualsCaseInsensitiveASCII(scheme, url::kDataScheme))) {
      return metrics::OmniboxInputType::URL;
 diff --git a/chrome/browser/history/history_utils.cc b/chrome/browser/history/history_utils.cc
-index 6da2d4cc0e48b..753f92da2e7be 100644
 --- a/chrome/browser/history/history_utils.cc
 +++ b/chrome/browser/history/history_utils.cc
 @@ -22,6 +22,7 @@ bool CanAddURLToHistory(const GURL& url) {
@@ -51,7 +48,6 @@ index 6da2d4cc0e48b..753f92da2e7be 100644
        url.SchemeIs(chrome::kChromeSearchScheme) ||
        url.SchemeIs(dom_distiller::kDomDistillerScheme))
 diff --git a/chrome/browser/ui/singleton_tabs.cc b/chrome/browser/ui/singleton_tabs.cc
-index 544b7d815220c..8287f30c76e2b 100644
 --- a/chrome/browser/ui/singleton_tabs.cc
 +++ b/chrome/browser/ui/singleton_tabs.cc
 @@ -174,6 +174,11 @@ int GetIndexOfExistingTab(Browser* browser, const NavigateParams& params) {
@@ -67,7 +63,6 @@ index 544b7d815220c..8287f30c76e2b 100644
      content::BrowserURLHandler::GetInstance()->RewriteURLIfNecessary(
          &rewritten_tab_url, browser->profile());
 diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
-index 3900b74d4b95c..8d23a6ed73c1e 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
 +++ b/components/omnibox/browser/autocomplete_input.cc
 @@ -90,10 +90,15 @@ void OffsetComponentsExcludingScheme(url::Parsed* parts, int offset) {
@@ -97,7 +92,6 @@ index 3900b74d4b95c..8d23a6ed73c1e 100644
      // Obtain the URL prefixed by view-source or blob and parse it.
      std::u16string real_url(text.substr(after_scheme_and_colon));
 diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/url_fixer.cc
-index d44b4cee79157..3db922698161e 100644
 --- a/components/url_formatter/url_fixer.cc
 +++ b/components/url_formatter/url_fixer.cc
 @@ -563,6 +563,10 @@ GURL FixupURL(const std::string& text, const std::string& desired_tld) {
@@ -112,10 +106,9 @@ index d44b4cee79157..3db922698161e 100644
    if (scheme == url::kFileScheme)
      return GURL(parts.scheme.is_valid() ? text : FixupPath(text));
 diff --git a/content/browser/child_process_security_policy_impl.cc b/content/browser/child_process_security_policy_impl.cc
-index ccc2e7da62b79..d83cffabe575e 100644
 --- a/content/browser/child_process_security_policy_impl.cc
 +++ b/content/browser/child_process_security_policy_impl.cc
-@@ -823,6 +823,7 @@ ChildProcessSecurityPolicyImpl::ChildProcessSecurityPolicyImpl()
+@@ -829,6 +829,7 @@ ChildProcessSecurityPolicyImpl::ChildProcessSecurityPolicyImpl()
    RegisterPseudoScheme(url::kJavaScriptScheme);
    RegisterPseudoScheme(kViewSourceScheme);
    RegisterPseudoScheme(kGoogleChromeScheme);
@@ -124,7 +117,6 @@ index ccc2e7da62b79..d83cffabe575e 100644
  
  ChildProcessSecurityPolicyImpl::~ChildProcessSecurityPolicyImpl() {
 diff --git a/net/BUILD.gn b/net/BUILD.gn
-index 8883c27b66b2a..bc87e0f8f0361 100644
 --- a/net/BUILD.gn
 +++ b/net/BUILD.gn
 @@ -1056,6 +1056,8 @@ component("net") {
@@ -138,7 +130,6 @@ index 8883c27b66b2a..bc87e0f8f0361 100644
      "url_request/url_request_job.h",
 diff --git a/net/url_request/trk_protocol_handler.cc b/net/url_request/trk_protocol_handler.cc
 new file mode 100644
-index 0000000000000..e32409c333a5e
 --- /dev/null
 +++ b/net/url_request/trk_protocol_handler.cc
 @@ -0,0 +1,25 @@
@@ -169,7 +160,6 @@ index 0000000000000..e32409c333a5e
 +}  // namespace net
 diff --git a/net/url_request/trk_protocol_handler.h b/net/url_request/trk_protocol_handler.h
 new file mode 100644
-index 0000000000000..b37fe2def5c6d
 --- /dev/null
 +++ b/net/url_request/trk_protocol_handler.h
 @@ -0,0 +1,30 @@
@@ -204,7 +194,6 @@ index 0000000000000..b37fe2def5c6d
 +
 +#endif  // NET_URL_REQUEST_TRK_PROTOCOL_HANDLER_H_
 diff --git a/net/url_request/url_request.cc b/net/url_request/url_request.cc
-index 655d9ebcd3928..572f9e62e94f7 100644
 --- a/net/url_request/url_request.cc
 +++ b/net/url_request/url_request.cc
 @@ -13,6 +13,7 @@
@@ -237,7 +226,6 @@ index 655d9ebcd3928..572f9e62e94f7 100644
    net_log_.BeginEvent(NetLogEventType::REQUEST_ALIVE, [&] {
      return NetLogURLRequestConstructorParams(url, priority_,
 diff --git a/net/url_request/url_request_context_builder.cc b/net/url_request/url_request_context_builder.cc
-index 9f4ed67802f46..d7bbc87ea0213 100644
 --- a/net/url_request/url_request_context_builder.cc
 +++ b/net/url_request/url_request_context_builder.cc
 @@ -48,6 +48,7 @@
@@ -248,7 +236,7 @@ index 9f4ed67802f46..d7bbc87ea0213 100644
  #include "net/url_request/url_request_context.h"
  #include "net/url_request/url_request_job_factory.h"
  #include "net/url_request/url_request_throttler_manager.h"
-@@ -573,6 +574,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
+@@ -574,6 +575,8 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
      job_factory->SetProtocolHandler(scheme_handler.first,
                                      std::move(scheme_handler.second));
    }
@@ -258,7 +246,6 @@ index 9f4ed67802f46..d7bbc87ea0213 100644
  
    context->set_job_factory(std::move(job_factory));
 diff --git a/url/url_constants.cc b/url/url_constants.cc
-index 850a31ce22de6..b65df785d593b 100644
 --- a/url/url_constants.cc
 +++ b/url/url_constants.cc
 @@ -29,6 +29,7 @@ const char16_t kDataScheme16[] = u"data";
@@ -270,7 +257,6 @@ index 850a31ce22de6..b65df785d593b 100644
  const char kFtpScheme[] = "ftp";
  const char16_t kFtpScheme16[] = u"ftp";
 diff --git a/url/url_constants.h b/url/url_constants.h
-index 5eda4e89f2582..6ba533af6d0b6 100644
 --- a/url/url_constants.h
 +++ b/url/url_constants.h
 @@ -33,6 +33,7 @@ COMPONENT_EXPORT(URL) extern const char16_t kContentIDScheme16[];
@@ -282,7 +268,6 @@ index 5eda4e89f2582..6ba533af6d0b6 100644
  COMPONENT_EXPORT(URL) extern const char kFileSystemScheme[];
  COMPONENT_EXPORT(URL) extern const char16_t kFileSystemScheme16[];
 diff --git a/url/url_util.cc b/url/url_util.cc
-index 001c50e72fd24..685526881e955 100644
 --- a/url/url_util.cc
 +++ b/url/url_util.cc
 @@ -46,6 +46,7 @@ struct SchemeRegistry {
@@ -301,6 +286,5 @@ index 001c50e72fd24..685526881e955 100644
    };
  
    // Schemes that can be sent CORS requests.
--- 
-2.34.1
-
+--
+2.25.1

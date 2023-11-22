@@ -1,7 +1,6 @@
-From b441f1f396e0a40a681d787f661081cbe48a677a Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sat, 22 Aug 2020 12:46:20 +0200
-Subject: [PATCH 119/192] Disable text fragments by default
+Subject: Disable text fragments by default
 
 Revert "[Text Fragment] Unflag fragment directive removal."
 
@@ -21,12 +20,11 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  10 files changed, 33 insertions(+), 4 deletions(-)
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index 23846b7990c17..edc33c9c6b9bf 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -6901,6 +6901,11 @@ const FeatureEntry kFeatureEntries[] = {
-          "")},
- #endif
+@@ -7235,6 +7235,11 @@ const FeatureEntry kFeatureEntries[] = {
+      flag_descriptions::kLegacyTechReportTopLevelUrlDescription, kOsAll,
+      FEATURE_VALUE_TYPE(features::kLegacyTechReportTopLevelUrl)},
  
 +    {"enable-text-fragment-anchor",
 +     flag_descriptions::kEnableTextFragmentAnchorName,
@@ -37,10 +35,9 @@ index 23846b7990c17..edc33c9c6b9bf 100644
      {"enable-web-authentication-chromeos-authenticator",
       flag_descriptions::kEnableWebAuthenticationChromeOSAuthenticatorName,
 diff --git a/chrome/browser/flag-metadata.json b/chrome/browser/flag-metadata.json
-index ab1f33fc70420..0c67d85c164df 100644
 --- a/chrome/browser/flag-metadata.json
 +++ b/chrome/browser/flag-metadata.json
-@@ -3148,6 +3148,11 @@
+@@ -3255,6 +3255,11 @@
      "owners": [ "robsc", "napper", "alanlxl" ],
      "expiry_milestone": 130
    },
@@ -53,10 +50,9 @@ index ab1f33fc70420..0c67d85c164df 100644
      "name": "enable-neural-stylus-palm-rejection",
      "owners": [ "robsc", "napper", "adlr" ],
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index e755510a401cd..bb42b389a5589 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -1486,6 +1486,10 @@ const char kDropInputEventsBeforeFirstPaintDescription[] =
+@@ -1501,6 +1501,10 @@ const char kDropInputEventsBeforeFirstPaintDescription[] =
      "intentionally interact with elements on that page. By dropping the events "
      "we prevent accidental interaction with a page the user has not seen yet.";
  
@@ -68,10 +64,9 @@ index e755510a401cd..bb42b389a5589 100644
      "Enables CSS selector fragment anchors";
  const char kEnableCssSelectorFragmentAnchorDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index ed06c2f0f619f..88e690dad1b42 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -832,6 +832,9 @@ extern const char kExperimentalRgbKeyboardPatternsDescription[];
+@@ -843,6 +843,9 @@ extern const char kExperimentalRgbKeyboardPatternsDescription[];
  
  extern const char kRetailCouponsName[];
  extern const char kRetailCouponsDescription[];
@@ -82,10 +77,9 @@ index ed06c2f0f619f..88e690dad1b42 100644
  extern const char kDropInputEventsBeforeFirstPaintName[];
  extern const char kDropInputEventsBeforeFirstPaintDescription[];
 diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.cc b/chrome/browser/ui/prefs/prefs_tab_helper.cc
-index 475a46589eecb..0e9cfc24accbe 100644
 --- a/chrome/browser/ui/prefs/prefs_tab_helper.cc
 +++ b/chrome/browser/ui/prefs/prefs_tab_helper.cc
-@@ -361,7 +361,7 @@ void PrefsTabHelper::RegisterProfilePrefs(
+@@ -366,7 +366,7 @@ void PrefsTabHelper::RegisterProfilePrefs(
        prefs::kEnableReferrers,
        !base::FeatureList::IsEnabled(features::kNoReferrers));
    registry->RegisterBooleanPref(prefs::kEnableEncryptedMedia, true);
@@ -93,13 +87,12 @@ index 475a46589eecb..0e9cfc24accbe 100644
 +  registry->RegisterBooleanPref(prefs::kScrollToTextFragmentEnabled, false);
  #if BUILDFLAG(IS_ANDROID)
    registry->RegisterDoublePref(browser_ui::prefs::kWebKitFontScaleFactor, 1.0);
-   registry->RegisterBooleanPref(browser_ui::prefs::kWebKitForceEnableZoom,
+   registry->RegisterIntegerPref(prefs::kAccessibilityTextSizeContrastFactor, 0);
 diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.cc
-index 26ce4a01376cf..bf469ba421e52 100644
 --- a/content/child/runtime_features.cc
 +++ b/content/child/runtime_features.cc
-@@ -284,6 +284,8 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
-     {wf::EnableSharedAutofill, raw_ref(features::kAutofillSharedAutofill)},
+@@ -293,6 +293,8 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
+ #endif
      {wf::EnableTouchDragAndContextMenu,
       raw_ref(features::kTouchDragAndContextMenu)},
 +    {wf::EnableTextFragmentIdentifiers,
@@ -108,12 +101,11 @@ index 26ce4a01376cf..bf469ba421e52 100644
       raw_ref(features::kUserActivationSameOriginVisibility)},
      {wf::EnableVideoPlaybackQuality, raw_ref(features::kVideoPlaybackQuality)},
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
-index 9e0801e355390..68af5b10d69f8 100644
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -787,6 +787,11 @@ BASE_FEATURE(kExtendScriptResourceLifetime,
- // trials.
- BASE_FEATURE(kFencedFrames, "FencedFrames", base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -767,6 +767,11 @@ BASE_FEATURE(kFencedFramesM119Features,
+              "FencedFramesM119Features",
+              base::FEATURE_DISABLED_BY_DEFAULT);
  
 +// Enable text snippets in URL fragments. https://crbug.com/919204.
 +BASE_FEATURE(kTextFragmentAnchor,
@@ -124,10 +116,9 @@ index 9e0801e355390..68af5b10d69f8 100644
  BASE_FEATURE(kFileHandlingIcons,
               "FileHandlingIcons",
 diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
-index 0be0e4712487d..793c70c41896d 100644
 --- a/third_party/blink/public/common/features.h
 +++ b/third_party/blink/public/common/features.h
-@@ -352,6 +352,7 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDispatchBeforeUnloadOnFreeze);
+@@ -351,6 +351,7 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDispatchBeforeUnloadOnFreeze);
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDisplayLocking);
  
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDropInputEventsBeforeFirstPaint);
@@ -136,10 +127,9 @@ index 0be0e4712487d..793c70c41896d 100644
  BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDroppedTouchSequenceIncludesTouchEnd);
  
 diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
-index f255a4fb30fbd..15e3c38e35bf9 100644
 --- a/third_party/blink/renderer/core/dom/document.cc
 +++ b/third_party/blink/renderer/core/dom/document.cc
-@@ -4412,9 +4412,14 @@ void Document::SetURL(const KURL& url) {
+@@ -4465,9 +4465,14 @@ void Document::SetURL(const KURL& url) {
    TRACE_EVENT1("navigation", "Document::SetURL", "url",
                 new_url.GetString().Utf8());
  
@@ -155,10 +145,9 @@ index f255a4fb30fbd..15e3c38e35bf9 100644
    url_ = new_url;
    UpdateBaseURL();
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-index 9a36374db163d..f5d8699b53384 100644
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -3537,10 +3537,9 @@
+@@ -3736,10 +3736,9 @@
      },
      {
        name: "TextFragmentIdentifiers",
@@ -171,6 +160,5 @@ index 9a36374db163d..f5d8699b53384 100644
      },
      {
        name: "TextFragmentTapOpensContextMenu",
--- 
-2.34.1
-
+--
+2.25.1

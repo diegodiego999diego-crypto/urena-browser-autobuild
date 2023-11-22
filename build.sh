@@ -7,7 +7,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version="117.0.5938.156"
+chromium_version="119.0.6045.160"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
@@ -96,12 +96,12 @@ patch() {
 
     bromite_patches_list=$(cat "${root_dir}/build/bromite_patches_list.txt")
     for file in $bromite_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/build/bromite_patches/$file"
+        git am -C0 -3 --ignore-whitespace "${root_dir}/build/bromite_patches/$file"
     done
 
     e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
     for file in $e_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
+        git am -C0 -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
     done
 
     # Rename Chrome to Browser

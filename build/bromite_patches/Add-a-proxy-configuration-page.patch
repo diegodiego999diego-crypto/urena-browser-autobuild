@@ -1,7 +1,6 @@
-From 57be1b5a2c42f9530d8acfc6fb091392773c767c Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Thu, 29 Mar 2018 00:43:32 +0200
-Subject: [PATCH 066/192] Add a proxy configuration page
+Subject: Add a proxy configuration page
 
 Accessible from proxy settings and chrome://proxy
 Allows to use a PAC script URL, automatic configuration and explicit proxy settings.
@@ -20,7 +19,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../java/res/xml/privacy_preferences.xml      |   4 +
  .../privacy/settings/PrivacySettings.java     |   1 +
  .../chrome_autocomplete_provider_client.cc    |   2 +
- chrome/browser/browser_resources.grd          |   4 +-
+ chrome/browser/browser_resources.grd          |   3 +
  .../extensions/api/proxy/proxy_api_helpers.cc |   2 +-
  chrome/browser/net/proxy_service_factory.cc   |  24 +-
  chrome/browser/net/proxy_service_factory.h    |   3 +
@@ -41,7 +40,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../proxy_config/proxy_policy_handler.cc      |   2 +-
  net/proxy_resolution/proxy_config.cc          |  52 ++-
  net/proxy_resolution/proxy_config.h           |   3 +
- 25 files changed, 981 insertions(+), 18 deletions(-)
+ 25 files changed, 981 insertions(+), 17 deletions(-)
  create mode 100644 chrome/browser/resources/proxy_config.css
  create mode 100644 chrome/browser/resources/proxy_config.html
  create mode 100644 chrome/browser/resources/proxy_config.js
@@ -49,7 +48,6 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 chrome/browser/ui/webui/proxy_config_ui.h
 
 diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res/values/values.xml
-index ce68e038c7d31..9a30818faacaa 100644
 --- a/chrome/android/java/res/values/values.xml
 +++ b/chrome/android/java/res/values/values.xml
 @@ -27,6 +27,9 @@ found in the LICENSE file.
@@ -63,7 +61,6 @@ index ce68e038c7d31..9a30818faacaa 100644
      <integer name="download_infobar_fill_in_delay">1200</integer>
      <integer name="download_infobar_fill_out_delay">200</integer>
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
-index 4c71a1e2ba2ab..68b5042d47935 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
 @@ -9,6 +9,10 @@ found in the LICENSE file.
@@ -78,10 +75,9 @@ index 4c71a1e2ba2ab..68b5042d47935 100644
          android:key="clear_browsing_data"
          android:title="@string/clear_browsing_data_title"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index a946ec6c709f2..a6e901bb87980 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -82,6 +82,7 @@ public class PrivacySettings extends PreferenceFragmentCompat
+@@ -77,6 +77,7 @@ public class PrivacySettings
      private static final String PREF_SAFE_BROWSING = "safe_browsing";
      private static final String PREF_SYNC_AND_SERVICES_LINK = "sync_and_services_link";
      private static final String PREF_PRIVACY_SANDBOX = "privacy_sandbox";
@@ -90,10 +86,9 @@ index a946ec6c709f2..a6e901bb87980 100644
      private static final String PREF_INCOGNITO_LOCK = "incognito_lock";
      private static final String PREF_THIRD_PARTY_COOKIES = "third_party_cookies";
 diff --git a/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc b/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
-index d08bd3c772c6b..7aa817639291c 100644
 --- a/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
 +++ b/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc
-@@ -297,6 +297,8 @@ ChromeAutocompleteProviderClient::GetBuiltinsToProvideAsUserTypes() {
+@@ -304,6 +304,8 @@ ChromeAutocompleteProviderClient::GetBuiltinsToProvideAsUserTypes() {
    builtins_to_provide.push_back(
        base::ASCIIToUTF16(chrome::kChromeUISettingsURL));
  #endif
@@ -103,10 +98,9 @@ index d08bd3c772c6b..7aa817639291c 100644
        base::ASCIIToUTF16(chrome::kChromeUIVersionURL));
    return builtins_to_provide;
 diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resources.grd
-index a5d1b74743d97..d49348b856951 100644
 --- a/chrome/browser/browser_resources.grd
 +++ b/chrome/browser/browser_resources.grd
-@@ -277,11 +277,13 @@
+@@ -252,6 +252,9 @@
          <include name="IDR_PREF_HASH_SEED_BIN" file="resources\settings_internal\pref_hash_seed.bin" type="BINDATA" />
          <include name="IDR_ADDITIONAL_MODULE_IDS" file="${additional_modules_list_file}" use_base_dir="false" type="BINDATA" />
        </if>
@@ -114,15 +108,9 @@ index a5d1b74743d97..d49348b856951 100644
 +      <include name="IDR_PROXY_CONFIG_HTML" file="resources\proxy_config.html" flattenhtml="true" type="BINDATA" compress="gzip" />
 +      <include name="IDR_PROXY_CONFIG_JS" file="resources\proxy_config.js" type="BINDATA" compress="gzip" />
        <if expr="not is_android">
-         <include name="IDR_ABOUT_SYS_HTML" file="resources\about_sys\about_sys.html" type="BINDATA" />
-         <include name="IDR_ABOUT_SYS_CSS" file="resources\about_sys\about_sys.css" type="BINDATA" />
-         <include name="IDR_ABOUT_SYS_JS" file="resources\about_sys\about_sys.js" preprocess="true" type="BINDATA" />
--
          <!-- Page not available for guest. -->
          <include name="IDR_PAGE_NOT_AVAILABLE_FOR_GUEST_APP_HTML" file="resources\page_not_available_for_guest\app.html" type="BINDATA" />
-         <include name="IDR_MEDIA_ROUTER_INTERNALS_HTML" file="resources\media_router\internals\media_router_internals.html" type="BINDATA" />
 diff --git a/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc b/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
-index 20f57baa728cd..2712a2dd618de 100644
 --- a/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
 +++ b/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
 @@ -388,7 +388,7 @@ absl::optional<base::Value::Dict> CreateProxyConfigDict(
@@ -135,7 +123,6 @@ index 20f57baa728cd..2712a2dd618de 100644
      case ProxyPrefs::MODE_SYSTEM:
        return ProxyConfigDictionary::CreateSystem();
 diff --git a/chrome/browser/net/proxy_service_factory.cc b/chrome/browser/net/proxy_service_factory.cc
-index 281a393f03936..5dedebc3a9f16 100644
 --- a/chrome/browser/net/proxy_service_factory.cc
 +++ b/chrome/browser/net/proxy_service_factory.cc
 @@ -6,6 +6,7 @@
@@ -188,7 +175,6 @@ index 281a393f03936..5dedebc3a9f16 100644
 +  registry->RegisterBooleanPref("proxy_migrated", false);
 +}
 diff --git a/chrome/browser/net/proxy_service_factory.h b/chrome/browser/net/proxy_service_factory.h
-index a5074896c5ebd..9d2060d09fca2 100644
 --- a/chrome/browser/net/proxy_service_factory.h
 +++ b/chrome/browser/net/proxy_service_factory.h
 @@ -6,6 +6,7 @@
@@ -209,10 +195,9 @@ index a5074896c5ebd..9d2060d09fca2 100644
    // should be used for the system request context and the signin screen
    // (ChromeOS only).
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
-index 8f75f154b981f..17436d6fab77f 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -177,6 +177,8 @@
+@@ -185,6 +185,8 @@
  #include "rlz/buildflags/buildflags.h"
  #include "third_party/abseil-cpp/absl/types/optional.h"
  
@@ -221,7 +206,7 @@ index 8f75f154b981f..17436d6fab77f 100644
  #if BUILDFLAG(ENABLE_BACKGROUND_MODE)
  #include "chrome/browser/background/background_mode_manager.h"
  #endif
-@@ -1410,6 +1412,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+@@ -1389,6 +1391,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
    component_updater::RegisterPrefs(registry);
    domain_reliability::RegisterPrefs(registry);
    embedder_support::OriginTrialPrefs::RegisterPrefs(registry);
@@ -231,7 +216,6 @@ index 8f75f154b981f..17436d6fab77f 100644
    ExternalProtocolHandler::RegisterPrefs(registry);
    flags_ui::PrefServiceFlagsStorage::RegisterPrefs(registry);
 diff --git a/chrome/browser/prefs/chrome_command_line_pref_store.cc b/chrome/browser/prefs/chrome_command_line_pref_store.cc
-index dd4824764ecf6..03019827319af 100644
 --- a/chrome/browser/prefs/chrome_command_line_pref_store.cc
 +++ b/chrome/browser/prefs/chrome_command_line_pref_store.cc
 @@ -156,7 +156,7 @@ void ChromeCommandLinePrefStore::ApplyProxyMode() {
@@ -245,7 +229,6 @@ index dd4824764ecf6..03019827319af 100644
  }
 diff --git a/chrome/browser/resources/proxy_config.css b/chrome/browser/resources/proxy_config.css
 new file mode 100644
-index 0000000000000..0ce4fc031fa12
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.css
 @@ -0,0 +1,61 @@
@@ -312,7 +295,6 @@ index 0000000000000..0ce4fc031fa12
 +}
 diff --git a/chrome/browser/resources/proxy_config.html b/chrome/browser/resources/proxy_config.html
 new file mode 100644
-index 0000000000000..71df46a98a601
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.html
 @@ -0,0 +1,77 @@
@@ -395,7 +377,6 @@ index 0000000000000..71df46a98a601
 +</html>
 diff --git a/chrome/browser/resources/proxy_config.js b/chrome/browser/resources/proxy_config.js
 new file mode 100644
-index 0000000000000..7f92b18dfff49
 --- /dev/null
 +++ b/chrome/browser/resources/proxy_config.js
 @@ -0,0 +1,278 @@
@@ -678,10 +659,9 @@ index 0000000000000..7f92b18dfff49
 +  return ProxyConfigView;
 +})();
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index b499b28307af0..9b37cf6098ee0 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -299,6 +299,8 @@ static_library("ui") {
+@@ -301,6 +301,8 @@ static_library("ui") {
      "webui/metrics_internals/metrics_internals_ui.h",
      "webui/net_export_ui.cc",
      "webui/net_export_ui.h",
@@ -691,10 +671,9 @@ index b499b28307af0..9b37cf6098ee0 100644
      "webui/net_internals/net_internals_ui.h",
      "webui/ntp_tiles_internals_ui.cc",
 diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-index 2eb4bd497a036..b448dcb118d41 100644
 --- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-@@ -59,6 +59,7 @@
+@@ -63,6 +63,7 @@
  #include "chrome/browser/ui/webui/ntp_tiles_internals_ui.h"
  #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
  #include "chrome/browser/ui/webui/policy/policy_ui.h"
@@ -702,7 +681,7 @@ index 2eb4bd497a036..b448dcb118d41 100644
  #include "chrome/browser/ui/webui/predictors/predictors_ui.h"
  #include "chrome/browser/ui/webui/segmentation_internals/segmentation_internals_ui.h"
  #include "chrome/browser/ui/webui/signin_internals_ui.h"
-@@ -493,6 +494,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
+@@ -496,6 +497,8 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
      return &NewWebUI<MetricsInternalsUI>;
    if (url.host_piece() == chrome::kChromeUINetExportHost)
      return &NewWebUI<NetExportUI>;
@@ -713,7 +692,6 @@ index 2eb4bd497a036..b448dcb118d41 100644
    if (url.host_piece() == chrome::kChromeUINTPTilesInternalsHost)
 diff --git a/chrome/browser/ui/webui/proxy_config_ui.cc b/chrome/browser/ui/webui/proxy_config_ui.cc
 new file mode 100644
-index 0000000000000..e0269904b6dfe
 --- /dev/null
 +++ b/chrome/browser/ui/webui/proxy_config_ui.cc
 @@ -0,0 +1,393 @@
@@ -1112,7 +1090,6 @@ index 0000000000000..e0269904b6dfe
 +}
 diff --git a/chrome/browser/ui/webui/proxy_config_ui.h b/chrome/browser/ui/webui/proxy_config_ui.h
 new file mode 100644
-index 0000000000000..04ef3f7c1fb6d
 --- /dev/null
 +++ b/chrome/browser/ui/webui/proxy_config_ui.h
 @@ -0,0 +1,31 @@
@@ -1148,10 +1125,9 @@ index 0000000000000..04ef3f7c1fb6d
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_PROXY_CONFIG_UI_H_
 diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_constants.cc
-index f25f690144d2d..e2610eb6e0f01 100644
 --- a/chrome/common/webui_url_constants.cc
 +++ b/chrome/common/webui_url_constants.cc
-@@ -51,6 +51,8 @@ const char kChromeUICertificateViewerHost[] = "view-cert";
+@@ -56,6 +56,8 @@ const char kChromeUICertificateViewerHost[] = "view-cert";
  const char kChromeUICertificateViewerURL[] = "chrome://view-cert/";
  const char kChromeUIChromeSigninHost[] = "chrome-signin";
  const char kChromeUIChromeSigninURL[] = "chrome://chrome-signin/";
@@ -1160,7 +1136,7 @@ index f25f690144d2d..e2610eb6e0f01 100644
  const char kChromeUIChromeURLsHost[] = "chrome-urls";
  const char kChromeUIChromeURLsURL[] = "chrome://chrome-urls/";
  const char kChromeUIComponentsHost[] = "components";
-@@ -436,6 +438,7 @@ bool IsSystemWebUIHost(base::StringPiece host) {
+@@ -450,6 +452,7 @@ bool IsSystemWebUIHost(base::StringPiece host) {
      kChromeUILockScreenNetworkHost,
      kChromeUILockScreenStartReauthHost,
      kChromeUIMobileSetupHost,
@@ -1168,7 +1144,7 @@ index f25f690144d2d..e2610eb6e0f01 100644
      kChromeUIMultiDeviceSetupHost,
      kChromeUINetworkHost,
      kChromeUINotificationTesterHost,
-@@ -741,6 +744,7 @@ const char* const kChromeHostURLs[] = {
+@@ -759,6 +762,7 @@ const char* const kChromeHostURLs[] = {
  #if !BUILDFLAG(IS_ANDROID)
  #if !BUILDFLAG(IS_CHROMEOS)
      kChromeUIAppLauncherPageHost,
@@ -1177,10 +1153,9 @@ index f25f690144d2d..e2610eb6e0f01 100644
      kChromeUIBookmarksHost,
      kChromeUIDownloadsHost,
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
-index caca46377bbeb..17cce860b2f02 100644
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
-@@ -138,6 +138,8 @@ extern const char kChromeUINTPTilesInternalsHost[];
+@@ -142,6 +142,8 @@ extern const char kChromeUINTPTilesInternalsHost[];
  extern const char kChromeUINaClHost[];
  extern const char kChromeUINetExportHost[];
  extern const char kChromeUINetExportURL[];
@@ -1190,7 +1165,6 @@ index caca46377bbeb..17cce860b2f02 100644
  extern const char kChromeUINetInternalsURL[];
  extern const char kChromeUINewTabHost[];
 diff --git a/components/proxy_config/pref_proxy_config_tracker_impl.cc b/components/proxy_config/pref_proxy_config_tracker_impl.cc
-index 343ab90710d59..eee846925378a 100644
 --- a/components/proxy_config/pref_proxy_config_tracker_impl.cc
 +++ b/components/proxy_config/pref_proxy_config_tracker_impl.cc
 @@ -244,14 +244,14 @@ PrefProxyConfigTrackerImpl::GetEffectiveProxyConfig(
@@ -1219,7 +1193,6 @@ index 343ab90710d59..eee846925378a 100644
            proxy_config, kSettingsProxyConfigTrafficAnnotation);
        return true;
 diff --git a/components/proxy_config/proxy_config_dictionary.cc b/components/proxy_config/proxy_config_dictionary.cc
-index e2c6ce30f8e6e..ba6d314afeca6 100644
 --- a/components/proxy_config/proxy_config_dictionary.cc
 +++ b/components/proxy_config/proxy_config_dictionary.cc
 @@ -30,6 +30,8 @@ const char kProxyPacMandatory[] = "pac_mandatory";
@@ -1315,7 +1288,6 @@ index e2c6ce30f8e6e..ba6d314afeca6 100644
  }
  
 diff --git a/components/proxy_config/proxy_config_dictionary.h b/components/proxy_config/proxy_config_dictionary.h
-index 6f65a50e97f1f..76a439905877d 100644
 --- a/components/proxy_config/proxy_config_dictionary.h
 +++ b/components/proxy_config/proxy_config_dictionary.h
 @@ -42,6 +42,7 @@ class PROXY_CONFIG_EXPORT ProxyConfigDictionary {
@@ -1347,7 +1319,6 @@ index 6f65a50e97f1f..76a439905877d 100644
    base::Value::Dict dict_;
  };
 diff --git a/components/proxy_config/proxy_policy_handler.cc b/components/proxy_config/proxy_policy_handler.cc
-index 5976751880f5d..4f8eeacc93347 100644
 --- a/components/proxy_config/proxy_policy_handler.cc
 +++ b/components/proxy_config/proxy_policy_handler.cc
 @@ -262,7 +262,7 @@ void ProxyPolicyHandler::ApplyPolicySettings(const PolicyMap& policies,
@@ -1360,7 +1331,6 @@ index 5976751880f5d..4f8eeacc93347 100644
        break;
      }
 diff --git a/net/proxy_resolution/proxy_config.cc b/net/proxy_resolution/proxy_config.cc
-index 190d25a2d3a50..972e472501699 100644
 --- a/net/proxy_resolution/proxy_config.cc
 +++ b/net/proxy_resolution/proxy_config.cc
 @@ -112,7 +112,7 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules) {
@@ -1430,7 +1400,6 @@ index 190d25a2d3a50..972e472501699 100644
      const std::string& url_scheme) const {
    const ProxyList* proxy_server_list = const_cast<ProxyRules*>(this)->
 diff --git a/net/proxy_resolution/proxy_config.h b/net/proxy_resolution/proxy_config.h
-index c14a396559000..096df1e2e5f65 100644
 --- a/net/proxy_resolution/proxy_config.h
 +++ b/net/proxy_resolution/proxy_config.h
 @@ -103,6 +103,9 @@ class NET_EXPORT ProxyConfig {
@@ -1443,6 +1412,5 @@ index c14a396559000..096df1e2e5f65 100644
  
      // Returns one of {&proxies_for_http, &proxies_for_https, &proxies_for_ftp,
      // &fallback_proxies}, or NULL if there is no proxy to use.
--- 
-2.34.1
-
+--
+2.25.1

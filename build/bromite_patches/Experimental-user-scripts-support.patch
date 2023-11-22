@@ -1,7 +1,6 @@
-From ba86bad2b560bf7f1e7e2d65663681586dcc9edd Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Fri, 13 Aug 2021 17:10:47 +0000
-Subject: [PATCH 142/192] Experimental user scripts support
+Subject: Experimental user scripts support
 
 Activate the user scripts functionality for Android,
 as it is available in the Desktop version.
@@ -28,7 +27,7 @@ Requires patch: Adds-support-for-writing-URIs.patch
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/android/BUILD.gn                       |   4 +
+ chrome/android/BUILD.gn                       |   7 +-
  .../android/java/res/xml/main_preferences.xml |   5 +
  .../browser/download/DownloadUtils.java       |   6 +
  .../init/ProcessInitializationHandler.java    |   3 +
@@ -51,7 +50,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../renderer/chrome_render_thread_observer.cc |   5 +
  components/components_strings.grd             |   1 +
  components/user_scripts/README.md             | 150 ++++
- components/user_scripts/android/BUILD.gn      |  83 ++
+ components/user_scripts/android/BUILD.gn      |  84 ++
  .../java/res/layout/accept_script_item.xml    | 160 ++++
  .../java/res/layout/accept_script_list.xml    |  10 +
  .../java/res/layout/scripts_preference.xml    |  40 +
@@ -136,7 +135,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../renderer/web_ui_injection_host.h          |  27 +
  .../strings/userscripts_strings.grdp          |  54 ++
  tools/gritsettings/resource_ids.spec          |   6 +
- 108 files changed, 9488 insertions(+), 1 deletion(-)
+ 108 files changed, 9491 insertions(+), 2 deletions(-)
  create mode 100644 components/user_scripts/README.md
  create mode 100755 components/user_scripts/android/BUILD.gn
  create mode 100644 components/user_scripts/android/java/res/layout/accept_script_item.xml
@@ -224,20 +223,22 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100755 components/user_scripts/strings/userscripts_strings.grdp
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 04622b7bf6f1f..8a1fa40a1e7aa 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -236,6 +236,9 @@ if (current_toolchain == default_toolchain) {
-       "//third_party/androidx:androidx_gridlayout_gridlayout_java",
-       "//third_party/androidx:androidx_preference_preference_java",
-     ]
+@@ -179,7 +179,11 @@ if (current_toolchain == default_toolchain) {
+     sources = chrome_java_resources
+     sources += [ "//chrome/android/java/res_app/layout/main.xml" ]
+ 
+-    deps = [
 +    # this need to be into android_resources("chrome_app_java_resources") section because
 +    # android:java_resources are packed *_percent.pak and placed in the executable folder
-+    deps += [ "//components/user_scripts/android:java_resources" ]
-   }
- 
-   android_library("app_hooks_java") {
-@@ -550,6 +553,7 @@ if (current_toolchain == default_toolchain) {
++    deps = [ "//components/user_scripts/android:java_resources" ]
++
++    deps += [
+       ":chrome_base_module_resources",
+       ":ui_locale_string_resources",
+       "//chrome/android/webapk/libs/common:splash_resources",
+@@ -583,6 +587,7 @@ if (current_toolchain == default_toolchain) {
        "//components/ukm/android:java",
        "//components/url_formatter/android:url_formatter_java",
        "//components/user_prefs/android:java",
@@ -246,10 +247,9 @@ index 04622b7bf6f1f..8a1fa40a1e7aa 100644
        "//components/variations/android:variations_java",
        "//components/version_info/android:version_constants_java",
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
-index 5f8ed2aba57cd..683735e9a721d 100644
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
-@@ -116,6 +116,11 @@ found in the LICENSE file.
+@@ -115,6 +115,11 @@
          android:key="useragent_settings"
          android:order="20"
          android:title="@string/prefs_useragent_settings"/>
@@ -262,10 +262,9 @@ index 5f8ed2aba57cd..683735e9a721d 100644
          android:fragment="org.chromium.chrome.browser.language.settings.LanguageSettings"
          android:key="languages"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
-index 440a6d8685fd4..fec71889e9bc0 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadUtils.java
-@@ -72,6 +72,7 @@ import org.chromium.ui.UiUtils;
+@@ -75,6 +75,7 @@ import org.chromium.ui.UiUtils;
  import org.chromium.ui.base.DeviceFormFactor;
  import org.chromium.ui.widget.Toast;
  import org.chromium.url.GURL;
@@ -273,7 +272,7 @@ index 440a6d8685fd4..fec71889e9bc0 100644
  
  import java.io.File;
  
-@@ -420,6 +421,11 @@ public class DownloadUtils {
+@@ -456,6 +457,11 @@ public class DownloadUtils {
      public static boolean openFile(String filePath, String mimeType, String downloadGuid,
              OTRProfileID otrProfileID, String originalUrl, String referrer,
              @DownloadOpenSource int source, Context context) {
@@ -286,10 +285,9 @@ index 440a6d8685fd4..fec71889e9bc0 100644
          DownloadManagerService service = DownloadManagerService.getDownloadManagerService();
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-index 2ca41ee6bc094..e59a3c5abdd3a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-@@ -119,6 +119,8 @@ import java.util.ArrayList;
+@@ -124,6 +124,8 @@ import java.util.ArrayList;
  import java.util.Date;
  import java.util.List;
  
@@ -298,7 +296,7 @@ index 2ca41ee6bc094..e59a3c5abdd3a 100644
  /**
   * Handles the initialization dependences of the browser process.  This is meant to handle the
   * initialization that is not tied to any particular Activity, and the logic that should only be
-@@ -315,6 +317,7 @@ public class ProcessInitializationHandler {
+@@ -331,6 +333,7 @@ public class ProcessInitializationHandler {
  
                  DefaultBrowserInfo.initBrowserFetcher();
  
@@ -307,7 +305,6 @@ index 2ca41ee6bc094..e59a3c5abdd3a 100644
  
                  PartnerBrowserCustomizations.getInstance().setOnInitializeAsyncFinished(
 diff --git a/chrome/android/java_sources.gni b/chrome/android/java_sources.gni
-index a5f30237c3bfa..ba61e355c51b2 100644
 --- a/chrome/android/java_sources.gni
 +++ b/chrome/android/java_sources.gni
 @@ -23,6 +23,7 @@ import("//chrome/common/features.gni")
@@ -325,10 +322,9 @@ index a5f30237c3bfa..ba61e355c51b2 100644
 +
 +chrome_java_sources += userscripts_java_sources
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index f2e4217b94d1c..38787b5f4c80e 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -3523,6 +3523,13 @@ static_library("browser") {
+@@ -3684,6 +3684,13 @@ static_library("browser") {
        ]
        deps += [ "//chrome/android/modules/dev_ui/provider:native" ]
      }
@@ -343,10 +339,9 @@ index f2e4217b94d1c..38787b5f4c80e 100644
      #!is_android
      sources += [
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index feaa4584c8a98..aba0e2e89e817 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -161,6 +161,7 @@
+@@ -165,6 +165,7 @@
  #include "components/ui_devtools/switches.h"
  #include "components/variations/service/google_groups_updater_service.h"
  #include "components/variations/variations_switches.h"
@@ -354,8 +349,8 @@ index feaa4584c8a98..aba0e2e89e817 100644
  #include "components/version_info/version_info.h"
  #include "components/viz/common/features.h"
  #include "components/viz/common/switches.h"
-@@ -8312,6 +8313,12 @@ const FeatureEntry kFeatureEntries[] = {
-      FEATURE_VALUE_TYPE(ash::features::kClipboardHistoryUrlTitles)},
+@@ -8643,6 +8644,12 @@ const FeatureEntry kFeatureEntries[] = {
+      FEATURE_VALUE_TYPE(ash::features::kClipboardHistoryWebContentsPaste)},
  #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  
 +#if BUILDFLAG(IS_ANDROID)
@@ -368,10 +363,9 @@ index feaa4584c8a98..aba0e2e89e817 100644
      {"enable-media-foundation-video-capture",
       flag_descriptions::kEnableMediaFoundationVideoCaptureName,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index 4fd26779df83e..b614f7bf72e08 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -7381,6 +7381,11 @@ const char kUseOutOfProcessVideoDecodingDescription[] =
+@@ -7604,6 +7604,11 @@ const char kUseOutOfProcessVideoDecodingDescription[] =
      "enabled in ash-chrome).";
  #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
  
@@ -384,10 +378,9 @@ index 4fd26779df83e..b614f7bf72e08 100644
  const char kWebShareName[] = "Web Share";
  const char kWebShareDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index e21404e9bc26f..f1afb602b881e 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -4228,6 +4228,9 @@ extern const char kQuickCommandsDescription[];
+@@ -4361,6 +4361,9 @@ extern const char kQuickCommandsDescription[];
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // defined (OS_FUCHSIA)
  
@@ -398,10 +391,9 @@ index e21404e9bc26f..f1afb602b881e 100644
  extern const char kWebShareName[];
  extern const char kWebShareDescription[];
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
-index 7d4642bec22d4..5f5880a8f79b6 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -257,6 +257,7 @@
+@@ -270,6 +270,7 @@
  #include "components/permissions/contexts/geolocation_permission_context_android.h"
  #include "components/query_tiles/tile_service_prefs.h"
  #include "components/webapps/browser/android/install_prompt_prefs.h"
@@ -409,7 +401,7 @@ index 7d4642bec22d4..5f5880a8f79b6 100644
  #else  // BUILDFLAG(IS_ANDROID)
  #include "chrome/browser/cart/cart_service.h"
  #include "chrome/browser/companion/core/promo_handler.h"
-@@ -1731,6 +1732,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+@@ -1716,6 +1717,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
    translate::TranslatePrefs::RegisterProfilePrefs(registry);
    omnibox::RegisterProfilePrefs(registry);
    ZeroSuggestProvider::RegisterProfilePrefs(registry);
@@ -420,7 +412,6 @@ index 7d4642bec22d4..5f5880a8f79b6 100644
  #if !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
    promos_utils::RegisterProfilePrefs(registry);
 diff --git a/chrome/browser/profiles/BUILD.gn b/chrome/browser/profiles/BUILD.gn
-index e8f8f22f3d76c..b64e05273c918 100644
 --- a/chrome/browser/profiles/BUILD.gn
 +++ b/chrome/browser/profiles/BUILD.gn
 @@ -60,6 +60,9 @@ source_set("profile") {
@@ -434,10 +425,9 @@ index e8f8f22f3d76c..b64e05273c918 100644
      deps += [ "//extensions/browser" ]
    }
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-index 30cf8620c9c4e..1ac481691bef9 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -457,6 +457,10 @@
+@@ -494,6 +494,10 @@
  #include "chrome/browser/offline_pages/request_coordinator_factory.h"
  #endif
  
@@ -448,7 +438,7 @@ index 30cf8620c9c4e..1ac481691bef9 100644
  namespace chrome {
  
  void AddProfilesExtraParts(ChromeBrowserMainParts* main_parts) {
-@@ -1112,6 +1116,9 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -1206,6 +1210,9 @@ void ChromeBrowserMainExtraPartsProfiles::
  #endif
    WebDataServiceFactory::GetInstance();
    webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
@@ -459,10 +449,9 @@ index 30cf8620c9c4e..1ac481691bef9 100644
  
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
 diff --git a/chrome/browser/profiles/profile_manager.cc b/chrome/browser/profiles/profile_manager.cc
-index ad64bc75b7383..26b23873b37f4 100644
 --- a/chrome/browser/profiles/profile_manager.cc
 +++ b/chrome/browser/profiles/profile_manager.cc
-@@ -106,6 +106,10 @@
+@@ -109,6 +109,10 @@
  #include "extensions/common/manifest.h"
  #endif
  
@@ -473,7 +462,7 @@ index ad64bc75b7383..26b23873b37f4 100644
  #if BUILDFLAG(ENABLE_SESSION_SERVICE)
  #include "chrome/browser/sessions/app_session_service_factory.h"
  #include "chrome/browser/sessions/session_service_factory.h"
-@@ -1493,6 +1497,15 @@ void ProfileManager::DoFinalInitForServices(Profile* profile,
+@@ -1534,6 +1538,15 @@ void ProfileManager::DoFinalInitForServices(Profile* profile,
  #endif
  
  #endif
@@ -490,7 +479,6 @@ index ad64bc75b7383..26b23873b37f4 100644
    // Initialization needs to happen after extension system initialization (for
    // extension::ManagementPolicy) and InitProfileUserPrefs (for setting the
 diff --git a/chrome/browser/profiles/renderer_updater.cc b/chrome/browser/profiles/renderer_updater.cc
-index 884e79cd54e0d..72aabc880dd79 100644
 --- a/chrome/browser/profiles/renderer_updater.cc
 +++ b/chrome/browser/profiles/renderer_updater.cc
 @@ -39,6 +39,8 @@
@@ -502,7 +490,7 @@ index 884e79cd54e0d..72aabc880dd79 100644
  RendererUpdater::RendererUpdater(Profile* profile)
      : profile_(profile),
        is_off_the_record_(profile_->IsOffTheRecord()),
-@@ -76,6 +78,9 @@ RendererUpdater::RendererUpdater(Profile* profile)
+@@ -77,6 +79,9 @@ RendererUpdater::RendererUpdater(Profile* profile)
    force_youtube_restrict_.Init(policy::policy_prefs::kForceYouTubeRestrict,
                                 pref_service);
    allowed_domains_for_apps_.Init(prefs::kAllowedDomainsForApps, pref_service);
@@ -512,7 +500,7 @@ index 884e79cd54e0d..72aabc880dd79 100644
  
    pref_change_registrar_.Init(pref_service);
    pref_change_registrar_.Add(
-@@ -90,6 +95,12 @@ RendererUpdater::RendererUpdater(Profile* profile)
+@@ -91,6 +96,12 @@ RendererUpdater::RendererUpdater(Profile* profile)
        prefs::kAllowedDomainsForApps,
        base::BindRepeating(&RendererUpdater::UpdateAllRenderers,
                            base::Unretained(this)));
@@ -525,8 +513,8 @@ index 884e79cd54e0d..72aabc880dd79 100644
  }
  
  RendererUpdater::~RendererUpdater() {
-@@ -242,5 +253,11 @@ chrome::mojom::DynamicParamsPtr RendererUpdater::CreateRendererDynamicParams()
-       GetBoundSessionParams(),
+@@ -244,5 +255,11 @@ chrome::mojom::DynamicParamsPtr RendererUpdater::CreateRendererDynamicParams()
+       GetBoundSessionThrottlerParams(),
  #endif
        force_google_safesearch_.GetValue(), force_youtube_restrict_.GetValue(),
 -      allowed_domains_for_apps_.GetValue());
@@ -539,10 +527,9 @@ index 884e79cd54e0d..72aabc880dd79 100644
 +  );
  }
 diff --git a/chrome/browser/profiles/renderer_updater.h b/chrome/browser/profiles/renderer_updater.h
-index cdd3f2239d836..a904514cd37fa 100644
 --- a/chrome/browser/profiles/renderer_updater.h
 +++ b/chrome/browser/profiles/renderer_updater.h
-@@ -108,6 +108,9 @@ class RendererUpdater : public KeyedService,
+@@ -109,6 +109,9 @@ class RendererUpdater : public KeyedService,
  
    // Prefs that we sync to the renderers.
    BooleanPrefMember force_google_safesearch_;
@@ -553,18 +540,17 @@ index cdd3f2239d836..a904514cd37fa 100644
    StringPrefMember allowed_domains_for_apps_;
  };
 diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-index b448dcb118d41..ecc5b1601c8e9 100644
 --- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-@@ -101,6 +101,7 @@
- #include "components/signin/public/base/signin_switches.h"
+@@ -107,6 +107,7 @@
+ #include "components/signin/public/base/signin_buildflags.h"
  #include "components/site_engagement/content/site_engagement_service.h"
  #include "components/supervised_user/core/common/buildflags.h"
 +#include "components/user_scripts/browser/ui/user_scripts_ui.h"
  #include "content/public/browser/web_contents.h"
  #include "content/public/browser/web_ui.h"
  #include "content/public/common/content_client.h"
-@@ -532,6 +533,10 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
+@@ -535,6 +536,10 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
      return &NewWebUI<UserActionsUI>;
    if (url.host_piece() == chrome::kChromeUIVersionHost)
      return &NewWebUI<VersionUI>;
@@ -576,18 +562,17 @@ index b448dcb118d41..ecc5b1601c8e9 100644
  #if !BUILDFLAG(IS_ANDROID)
  #if !BUILDFLAG(IS_CHROMEOS)
 diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
-index 98d206b764d92..0d98e7079d94f 100644
 --- a/chrome/chrome_paks.gni
 +++ b/chrome/chrome_paks.gni
 @@ -121,6 +121,7 @@ template("chrome_extra_paks") {
-       "$root_gen_dir/skia/skia_resources.pak",
+       "$root_gen_dir/net/net_resources.pak",
        "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
        "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
 +      "$root_gen_dir/chrome/userscripts_browser_resources.pak",
        "$root_gen_dir/ui/resources/webui_resources.pak",
      ]
      deps = [
-@@ -139,6 +140,7 @@ template("chrome_extra_paks") {
+@@ -138,6 +139,7 @@ template("chrome_extra_paks") {
        "//third_party/blink/public:devtools_inspector_resources",
        "//third_party/blink/public:resources",
        "//ui/resources",
@@ -596,7 +581,6 @@ index 98d206b764d92..0d98e7079d94f 100644
      if (defined(invoker.deps)) {
        deps += invoker.deps
 diff --git a/chrome/common/renderer_configuration.mojom b/chrome/common/renderer_configuration.mojom
-index 950f9599de5e5..71417fe885889 100644
 --- a/chrome/common/renderer_configuration.mojom
 +++ b/chrome/common/renderer_configuration.mojom
 @@ -29,6 +29,7 @@ struct DynamicParams {
@@ -608,10 +592,9 @@ index 950f9599de5e5..71417fe885889 100644
  
  // Allows the renderer to notify the browser process that requests in renderer
 diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
-index 5bf67204d5006..73463b19fd29b 100644
 --- a/chrome/renderer/BUILD.gn
 +++ b/chrome/renderer/BUILD.gn
-@@ -233,6 +233,12 @@ static_library("renderer") {
+@@ -234,6 +234,12 @@ static_library("renderer") {
      "//v8",
    ]
  
@@ -625,11 +608,10 @@ index 5bf67204d5006..73463b19fd29b 100644
  
    configs += [ "//build/config/compiler:wexit_time_destructors" ]
 diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
-index 8d02ca21674b1..efef7a84641b0 100644
 --- a/chrome/renderer/chrome_content_renderer_client.cc
 +++ b/chrome/renderer/chrome_content_renderer_client.cc
-@@ -252,6 +252,11 @@
- #include "chrome/renderer/media/chrome_key_systems.h"
+@@ -256,6 +256,11 @@
+ #include "chrome/renderer/cco/multiline_detector.h"
  #endif
  
 +#if BUILDFLAG(IS_ANDROID)
@@ -640,7 +622,7 @@ index 8d02ca21674b1..efef7a84641b0 100644
  using autofill::AutofillAgent;
  using autofill::PasswordAutofillAgent;
  using autofill::PasswordGenerationAgent;
-@@ -428,6 +433,14 @@ void ChromeContentRendererClient::RenderThreadStarted() {
+@@ -432,6 +437,14 @@ void ChromeContentRendererClient::RenderThreadStarted() {
        WebString::FromASCII(extensions::kExtensionScheme));
  #endif
  
@@ -655,7 +637,7 @@ index 8d02ca21674b1..efef7a84641b0 100644
  #if BUILDFLAG(ENABLE_SPELLCHECK)
    if (!spellcheck_)
      InitSpellCheck();
-@@ -601,6 +614,15 @@ void ChromeContentRendererClient::RenderFrameCreated(
+@@ -605,6 +618,15 @@ void ChromeContentRendererClient::RenderFrameCreated(
        render_frame, registry);
  #endif
  
@@ -671,7 +653,7 @@ index 8d02ca21674b1..efef7a84641b0 100644
  #if BUILDFLAG(ENABLE_PPAPI)
    new PepperHelper(render_frame);
  #endif
-@@ -1599,6 +1621,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
+@@ -1607,6 +1629,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentStart(
        render_frame);
    // |render_frame| might be dead by now.
  #endif
@@ -689,7 +671,7 @@ index 8d02ca21674b1..efef7a84641b0 100644
  }
  
  void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
-@@ -1608,6 +1641,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
+@@ -1616,6 +1649,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentEnd(
        render_frame);
    // |render_frame| might be dead by now.
  #endif
@@ -707,7 +689,7 @@ index 8d02ca21674b1..efef7a84641b0 100644
  }
  
  void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
-@@ -1617,6 +1661,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
+@@ -1625,6 +1669,17 @@ void ChromeContentRendererClient::RunScriptsAtDocumentIdle(
        render_frame);
    // |render_frame| might be dead by now.
  #endif
@@ -726,7 +708,6 @@ index 8d02ca21674b1..efef7a84641b0 100644
  
  void ChromeContentRendererClient::
 diff --git a/chrome/renderer/chrome_render_thread_observer.cc b/chrome/renderer/chrome_render_thread_observer.cc
-index c32abc15c0b41..24555c18adf6d 100644
 --- a/chrome/renderer/chrome_render_thread_observer.cc
 +++ b/chrome/renderer/chrome_render_thread_observer.cc
 @@ -54,6 +54,8 @@
@@ -749,10 +730,9 @@ index c32abc15c0b41..24555c18adf6d 100644
  
  void ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest(
 diff --git a/components/components_strings.grd b/components/components_strings.grd
-index e13fef4f13bee..5d7619b855d61 100644
 --- a/components/components_strings.grd
 +++ b/components/components_strings.grd
-@@ -335,6 +335,7 @@
+@@ -336,6 +336,7 @@
        <part file="user_education_strings.grdp" />
        <part file="version_ui_strings.grdp" />
        <part file="webapps_strings.grdp" />
@@ -762,7 +742,6 @@ index e13fef4f13bee..5d7619b855d61 100644
          <part file="history_clusters_strings.grdp" />
 diff --git a/components/user_scripts/README.md b/components/user_scripts/README.md
 new file mode 100644
-index 0000000000000..257241678f0f5
 --- /dev/null
 +++ b/components/user_scripts/README.md
 @@ -0,0 +1,150 @@
@@ -918,10 +897,9 @@ index 0000000000000..257241678f0f5
 +See also: https://github.com/bromite/bromite/pull/857
 diff --git a/components/user_scripts/android/BUILD.gn b/components/user_scripts/android/BUILD.gn
 new file mode 100755
-index 0000000000000..7ffea90435331
 --- /dev/null
 +++ b/components/user_scripts/android/BUILD.gn
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,84 @@
 +# This file is part of Bromite.
 +
 +# Bromite is free software: you can redistribute it and/or modify
@@ -938,6 +916,7 @@ index 0000000000000..7ffea90435331
 +# along with Bromite. If not, see <https://www.gnu.org/licenses/>.
 +
 +import("//build/config/android/rules.gni")
++import("//third_party/jni_zero/jni_zero.gni")
 +
 +generate_jni("user_scripts_jni_headers") {
 +  sources = [ "java/src/org/chromium/components/user_scripts/UserScriptsBridge.java" ]
@@ -1007,7 +986,6 @@ index 0000000000000..7ffea90435331
 +}
 diff --git a/components/user_scripts/android/java/res/layout/accept_script_item.xml b/components/user_scripts/android/java/res/layout/accept_script_item.xml
 new file mode 100644
-index 0000000000000..753558b8e1e82
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/accept_script_item.xml
 @@ -0,0 +1,160 @@
@@ -1174,7 +1152,6 @@ index 0000000000000..753558b8e1e82
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/layout/accept_script_list.xml b/components/user_scripts/android/java/res/layout/accept_script_list.xml
 new file mode 100644
-index 0000000000000..a3d84312bd1ed
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/accept_script_list.xml
 @@ -0,0 +1,10 @@
@@ -1191,7 +1168,6 @@ index 0000000000000..a3d84312bd1ed
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/layout/scripts_preference.xml b/components/user_scripts/android/java/res/layout/scripts_preference.xml
 new file mode 100644
-index 0000000000000..d2b03911e1a04
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/layout/scripts_preference.xml
 @@ -0,0 +1,40 @@
@@ -1238,7 +1214,6 @@ index 0000000000000..d2b03911e1a04
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/res/values/dimens.xml b/components/user_scripts/android/java/res/values/dimens.xml
 new file mode 100755
-index 0000000000000..61ba4712a7268
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/values/dimens.xml
 @@ -0,0 +1,11 @@
@@ -1255,7 +1230,6 @@ index 0000000000000..61ba4712a7268
 +</resources>
 diff --git a/components/user_scripts/android/java/res/xml/userscripts_preferences.xml b/components/user_scripts/android/java/res/xml/userscripts_preferences.xml
 new file mode 100644
-index 0000000000000..1f0d2e3148c69
 --- /dev/null
 +++ b/components/user_scripts/android/java/res/xml/userscripts_preferences.xml
 @@ -0,0 +1,34 @@
@@ -1295,7 +1269,6 @@ index 0000000000000..1f0d2e3148c69
 +</PreferenceScreen>
 diff --git a/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java b/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java
 new file mode 100755
-index 0000000000000..cff2f0d73f0b7
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/chrome/browser/user_scripts/UserScriptsUtils.java
 @@ -0,0 +1,87 @@
@@ -1388,7 +1361,6 @@ index 0000000000000..cff2f0d73f0b7
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java
 new file mode 100644
-index 0000000000000..2768a0bbdec99
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/FragmentWindowAndroid.java
 @@ -0,0 +1,90 @@
@@ -1484,7 +1456,6 @@ index 0000000000000..2768a0bbdec99
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java
 new file mode 100644
-index 0000000000000..6bf09bdc28210
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/IUserScriptsUtils.java
 @@ -0,0 +1,22 @@
@@ -1513,7 +1484,6 @@ index 0000000000000..6bf09bdc28210
 \ No newline at end of file
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java
 new file mode 100644
-index 0000000000000..dfa342c74fa20
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptInfo.java
 @@ -0,0 +1,37 @@
@@ -1556,7 +1526,6 @@ index 0000000000000..dfa342c74fa20
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java
 new file mode 100644
-index 0000000000000..3747d977134ab
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListBaseAdapter.java
 @@ -0,0 +1,163 @@
@@ -1725,7 +1694,6 @@ index 0000000000000..3747d977134ab
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java
 new file mode 100644
-index 0000000000000..636ec0f01f349
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/ScriptListPreference.java
 @@ -0,0 +1,171 @@
@@ -1902,7 +1870,6 @@ index 0000000000000..636ec0f01f349
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java
 new file mode 100644
-index 0000000000000..e247e46621afd
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsBridge.java
 @@ -0,0 +1,212 @@
@@ -2120,7 +2087,6 @@ index 0000000000000..e247e46621afd
 +}
 diff --git a/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java
 new file mode 100755
-index 0000000000000..ac0f6e7b72594
 --- /dev/null
 +++ b/components/user_scripts/android/java/src/org/chromium/components/user_scripts/UserScriptsPreferences.java
 @@ -0,0 +1,116 @@
@@ -2242,7 +2208,6 @@ index 0000000000000..ac0f6e7b72594
 +}
 diff --git a/components/user_scripts/android/java_sources.gni b/components/user_scripts/android/java_sources.gni
 new file mode 100644
-index 0000000000000..23b31e62a1026
 --- /dev/null
 +++ b/components/user_scripts/android/java_sources.gni
 @@ -0,0 +1,18 @@
@@ -2266,7 +2231,6 @@ index 0000000000000..23b31e62a1026
 +]
 diff --git a/components/user_scripts/android/user_scripts_bridge.cc b/components/user_scripts/android/user_scripts_bridge.cc
 new file mode 100644
-index 0000000000000..0c60baf10854f
 --- /dev/null
 +++ b/components/user_scripts/android/user_scripts_bridge.cc
 @@ -0,0 +1,173 @@
@@ -2445,7 +2409,6 @@ index 0000000000000..0c60baf10854f
 +}
 diff --git a/components/user_scripts/android/user_scripts_bridge.h b/components/user_scripts/android/user_scripts_bridge.h
 new file mode 100644
-index 0000000000000..48b6048770926
 --- /dev/null
 +++ b/components/user_scripts/android/user_scripts_bridge.h
 @@ -0,0 +1,31 @@
@@ -2483,7 +2446,6 @@ index 0000000000000..48b6048770926
 \ No newline at end of file
 diff --git a/components/user_scripts/browser/BUILD.gn b/components/user_scripts/browser/BUILD.gn
 new file mode 100755
-index 0000000000000..20151d6e09434
 --- /dev/null
 +++ b/components/user_scripts/browser/BUILD.gn
 @@ -0,0 +1,77 @@
@@ -2566,7 +2528,6 @@ index 0000000000000..20151d6e09434
 +}
 diff --git a/components/user_scripts/browser/file_task_runner.cc b/components/user_scripts/browser/file_task_runner.cc
 new file mode 100755
-index 0000000000000..1273751f2a19e
 --- /dev/null
 +++ b/components/user_scripts/browser/file_task_runner.cc
 @@ -0,0 +1,40 @@
@@ -2612,7 +2573,6 @@ index 0000000000000..1273751f2a19e
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/browser/file_task_runner.h b/components/user_scripts/browser/file_task_runner.h
 new file mode 100755
-index 0000000000000..72d6e6521b75f
 --- /dev/null
 +++ b/components/user_scripts/browser/file_task_runner.h
 @@ -0,0 +1,34 @@
@@ -2652,7 +2612,6 @@ index 0000000000000..72d6e6521b75f
 +#endif  // USERSCRIPTS_BROWSER_FILE_TASK_RUNNER_H_
 diff --git a/components/user_scripts/browser/resources/browser_resources.grd b/components/user_scripts/browser/resources/browser_resources.grd
 new file mode 100644
-index 0000000000000..ab3931bf89575
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/browser_resources.grd
 @@ -0,0 +1,14 @@
@@ -2673,7 +2632,6 @@ index 0000000000000..ab3931bf89575
 \ No newline at end of file
 diff --git a/components/user_scripts/browser/resources/user-script-ui/BUILD.gn b/components/user_scripts/browser/resources/user-script-ui/BUILD.gn
 new file mode 100644
-index 0000000000000..54a5eb306a932
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/BUILD.gn
 @@ -0,0 +1,8 @@
@@ -2687,7 +2645,6 @@ index 0000000000000..54a5eb306a932
 +}
 diff --git a/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html
 new file mode 100644
-index 0000000000000..13e768de14938
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.html
 @@ -0,0 +1,14 @@
@@ -2707,7 +2664,6 @@ index 0000000000000..13e768de14938
 +</html>
 diff --git a/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js
 new file mode 100644
-index 0000000000000..8b2dff6af5cc9
 --- /dev/null
 +++ b/components/user_scripts/browser/resources/user-script-ui/user-scripts-ui.js
 @@ -0,0 +1,9 @@
@@ -2722,7 +2678,6 @@ index 0000000000000..8b2dff6af5cc9
 +});
 diff --git a/components/user_scripts/browser/ui/user_scripts_ui.cc b/components/user_scripts/browser/ui/user_scripts_ui.cc
 new file mode 100644
-index 0000000000000..22c29d5a3a7c1
 --- /dev/null
 +++ b/components/user_scripts/browser/ui/user_scripts_ui.cc
 @@ -0,0 +1,146 @@
@@ -2874,7 +2829,6 @@ index 0000000000000..22c29d5a3a7c1
 +}
 diff --git a/components/user_scripts/browser/ui/user_scripts_ui.h b/components/user_scripts/browser/ui/user_scripts_ui.h
 new file mode 100644
-index 0000000000000..c2dbb8e23990b
 --- /dev/null
 +++ b/components/user_scripts/browser/ui/user_scripts_ui.h
 @@ -0,0 +1,37 @@
@@ -2917,7 +2871,6 @@ index 0000000000000..c2dbb8e23990b
 +#endif
 diff --git a/components/user_scripts/browser/user_script_loader.cc b/components/user_scripts/browser/user_script_loader.cc
 new file mode 100755
-index 0000000000000..78e3132bc4ab7
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_loader.cc
 @@ -0,0 +1,715 @@
@@ -3638,7 +3591,6 @@ index 0000000000000..78e3132bc4ab7
 +}  // namespace extensions
 diff --git a/components/user_scripts/browser/user_script_loader.h b/components/user_scripts/browser/user_script_loader.h
 new file mode 100755
-index 0000000000000..086cdd8f210b5
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_loader.h
 @@ -0,0 +1,168 @@
@@ -3812,7 +3764,6 @@ index 0000000000000..086cdd8f210b5
 +#endif  // USERSCRIPTS_BROWSER_USER_SCRIPT_LOADER_H_
 diff --git a/components/user_scripts/browser/user_script_pref_info.cc b/components/user_scripts/browser/user_script_pref_info.cc
 new file mode 100644
-index 0000000000000..fc78f8ff84aa3
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_pref_info.cc
 @@ -0,0 +1,34 @@
@@ -3852,7 +3803,6 @@ index 0000000000000..fc78f8ff84aa3
 +}
 diff --git a/components/user_scripts/browser/user_script_pref_info.h b/components/user_scripts/browser/user_script_pref_info.h
 new file mode 100644
-index 0000000000000..94f32fa65f8c0
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_pref_info.h
 @@ -0,0 +1,72 @@
@@ -3930,7 +3880,6 @@ index 0000000000000..94f32fa65f8c0
 +#endif // USERSCRIPTS_BROWSER_USERSCRIPT_PREF_INFO_H_
 diff --git a/components/user_scripts/browser/user_script_prefs.cc b/components/user_scripts/browser/user_script_prefs.cc
 new file mode 100644
-index 0000000000000..6b28ad5b058c0
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_prefs.cc
 @@ -0,0 +1,275 @@
@@ -4211,7 +4160,6 @@ index 0000000000000..6b28ad5b058c0
 +}
 diff --git a/components/user_scripts/browser/user_script_prefs.h b/components/user_scripts/browser/user_script_prefs.h
 new file mode 100644
-index 0000000000000..9780ba97e2332
 --- /dev/null
 +++ b/components/user_scripts/browser/user_script_prefs.h
 @@ -0,0 +1,62 @@
@@ -4279,7 +4227,6 @@ index 0000000000000..9780ba97e2332
 +#endif // USERSCRIPTS_BROWSER_USERSCRIPT_PREFS_H_
 diff --git a/components/user_scripts/browser/userscripts_browser_client.cc b/components/user_scripts/browser/userscripts_browser_client.cc
 new file mode 100755
-index 0000000000000..751b016447ab6
 --- /dev/null
 +++ b/components/user_scripts/browser/userscripts_browser_client.cc
 @@ -0,0 +1,78 @@
@@ -4363,7 +4310,6 @@ index 0000000000000..751b016447ab6
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/browser/userscripts_browser_client.h b/components/user_scripts/browser/userscripts_browser_client.h
 new file mode 100755
-index 0000000000000..52b169c1e15ba
 --- /dev/null
 +++ b/components/user_scripts/browser/userscripts_browser_client.h
 @@ -0,0 +1,62 @@
@@ -4431,7 +4377,6 @@ index 0000000000000..52b169c1e15ba
 +#endif  // USERSCRIPTS_BROWSER_USERSCRIPTS_BROWSER_CLIENT_H_
 diff --git a/components/user_scripts/common/BUILD.gn b/components/user_scripts/common/BUILD.gn
 new file mode 100755
-index 0000000000000..f15590635b8a0
 --- /dev/null
 +++ b/components/user_scripts/common/BUILD.gn
 @@ -0,0 +1,48 @@
@@ -4485,7 +4430,6 @@ index 0000000000000..f15590635b8a0
 +}
 diff --git a/components/user_scripts/common/constants.h b/components/user_scripts/common/constants.h
 new file mode 100755
-index 0000000000000..a12ed45a2ecc2
 --- /dev/null
 +++ b/components/user_scripts/common/constants.h
 @@ -0,0 +1,15 @@
@@ -4506,7 +4450,6 @@ index 0000000000000..a12ed45a2ecc2
 +#endif  // USERSCRIPTS_COMMON_CONSTANTS_H_
 diff --git a/components/user_scripts/common/error_utils.cc b/components/user_scripts/common/error_utils.cc
 new file mode 100755
-index 0000000000000..8c671cd3b34bd
 --- /dev/null
 +++ b/components/user_scripts/common/error_utils.cc
 @@ -0,0 +1,54 @@
@@ -4566,7 +4509,6 @@ index 0000000000000..8c671cd3b34bd
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/common/error_utils.h b/components/user_scripts/common/error_utils.h
 new file mode 100755
-index 0000000000000..c4141ee066cba
 --- /dev/null
 +++ b/components/user_scripts/common/error_utils.h
 @@ -0,0 +1,24 @@
@@ -4596,7 +4538,6 @@ index 0000000000000..c4141ee066cba
 +#endif  // USERSCRIPTS_COMMON_ERROR_UTILS_H_
 diff --git a/components/user_scripts/common/extension_message_generator.cc b/components/user_scripts/common/extension_message_generator.cc
 new file mode 100755
-index 0000000000000..69fa3f10242e4
 --- /dev/null
 +++ b/components/user_scripts/common/extension_message_generator.cc
 @@ -0,0 +1,29 @@
@@ -4631,7 +4572,6 @@ index 0000000000000..69fa3f10242e4
 +}  // namespace IPC
 diff --git a/components/user_scripts/common/extension_message_generator.h b/components/user_scripts/common/extension_message_generator.h
 new file mode 100755
-index 0000000000000..5707859274658
 --- /dev/null
 +++ b/components/user_scripts/common/extension_message_generator.h
 @@ -0,0 +1,11 @@
@@ -4648,7 +4588,6 @@ index 0000000000000..5707859274658
 +#endif
 diff --git a/components/user_scripts/common/extension_messages.cc b/components/user_scripts/common/extension_messages.cc
 new file mode 100755
-index 0000000000000..928614cfb9ff7
 --- /dev/null
 +++ b/components/user_scripts/common/extension_messages.cc
 @@ -0,0 +1,40 @@
@@ -4694,7 +4633,6 @@ index 0000000000000..928614cfb9ff7
 +}  // namespace IPC
 diff --git a/components/user_scripts/common/extension_messages.h b/components/user_scripts/common/extension_messages.h
 new file mode 100755
-index 0000000000000..7ade312a2e94a
 --- /dev/null
 +++ b/components/user_scripts/common/extension_messages.h
 @@ -0,0 +1,70 @@
@@ -4770,7 +4708,6 @@ index 0000000000000..7ade312a2e94a
 +#endif  // USERSCRIPTS_COMMON_EXTENSION_MESSAGES_H_
 diff --git a/components/user_scripts/common/host_id.cc b/components/user_scripts/common/host_id.cc
 new file mode 100755
-index 0000000000000..3f284589391a7
 --- /dev/null
 +++ b/components/user_scripts/common/host_id.cc
 @@ -0,0 +1,31 @@
@@ -4807,7 +4744,6 @@ index 0000000000000..3f284589391a7
 +}
 diff --git a/components/user_scripts/common/host_id.h b/components/user_scripts/common/host_id.h
 new file mode 100755
-index 0000000000000..b5e4c9dcfeea6
 --- /dev/null
 +++ b/components/user_scripts/common/host_id.h
 @@ -0,0 +1,35 @@
@@ -4848,7 +4784,6 @@ index 0000000000000..b5e4c9dcfeea6
 +#endif  // USERSCRIPTS_COMMON_HOST_ID_H_
 diff --git a/components/user_scripts/common/script_constants.h b/components/user_scripts/common/script_constants.h
 new file mode 100755
-index 0000000000000..6b05e2d7cdea5
 --- /dev/null
 +++ b/components/user_scripts/common/script_constants.h
 @@ -0,0 +1,33 @@
@@ -4887,7 +4822,6 @@ index 0000000000000..6b05e2d7cdea5
 +#endif  // USERSCRIPTS_COMMON_SCRIPT_CONSTANTS_H_
 diff --git a/components/user_scripts/common/url_pattern.cc b/components/user_scripts/common/url_pattern.cc
 new file mode 100755
-index 0000000000000..6a3d5cee1eaa3
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern.cc
 @@ -0,0 +1,803 @@
@@ -5696,7 +5630,6 @@ index 0000000000000..6a3d5cee1eaa3
 +}
 diff --git a/components/user_scripts/common/url_pattern.h b/components/user_scripts/common/url_pattern.h
 new file mode 100755
-index 0000000000000..86632a553e362
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern.h
 @@ -0,0 +1,302 @@
@@ -6004,7 +5937,6 @@ index 0000000000000..86632a553e362
 +#endif  // USERSCRIPTS_COMMON_URL_PATTERN_H_
 diff --git a/components/user_scripts/common/url_pattern_set.cc b/components/user_scripts/common/url_pattern_set.cc
 new file mode 100755
-index 0000000000000..33d6aed70ca8c
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern_set.cc
 @@ -0,0 +1,335 @@
@@ -6345,7 +6277,6 @@ index 0000000000000..33d6aed70ca8c
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/url_pattern_set.h b/components/user_scripts/common/url_pattern_set.h
 new file mode 100755
-index 0000000000000..93818e97c4357
 --- /dev/null
 +++ b/components/user_scripts/common/url_pattern_set.h
 @@ -0,0 +1,160 @@
@@ -6511,7 +6442,6 @@ index 0000000000000..93818e97c4357
 +#endif  // USERSCRIPTS_COMMON_URL_PATTERN_SET_H_
 diff --git a/components/user_scripts/common/user_script.cc b/components/user_scripts/common/user_script.cc
 new file mode 100755
-index 0000000000000..ae88cc74490d5
 --- /dev/null
 +++ b/components/user_scripts/common/user_script.cc
 @@ -0,0 +1,329 @@
@@ -6846,7 +6776,6 @@ index 0000000000000..ae88cc74490d5
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/user_script.h b/components/user_scripts/common/user_script.h
 new file mode 100755
-index 0000000000000..cf5af2e553d0c
 --- /dev/null
 +++ b/components/user_scripts/common/user_script.h
 @@ -0,0 +1,403 @@
@@ -7255,7 +7184,6 @@ index 0000000000000..cf5af2e553d0c
 +#endif  // USERSCRIPTS_COMMON_USER_SCRIPT_H_
 diff --git a/components/user_scripts/common/user_scripts_features.cc b/components/user_scripts/common/user_scripts_features.cc
 new file mode 100644
-index 0000000000000..21ff96b73a7a5
 --- /dev/null
 +++ b/components/user_scripts/common/user_scripts_features.cc
 @@ -0,0 +1,32 @@
@@ -7293,7 +7221,6 @@ index 0000000000000..21ff96b73a7a5
 +}
 diff --git a/components/user_scripts/common/user_scripts_features.h b/components/user_scripts/common/user_scripts_features.h
 new file mode 100644
-index 0000000000000..bf72a547ee471
 --- /dev/null
 +++ b/components/user_scripts/common/user_scripts_features.h
 @@ -0,0 +1,36 @@
@@ -7335,7 +7262,6 @@ index 0000000000000..bf72a547ee471
 +#endif
 diff --git a/components/user_scripts/common/view_type.cc b/components/user_scripts/common/view_type.cc
 new file mode 100755
-index 0000000000000..10b5fe5559dbf
 --- /dev/null
 +++ b/components/user_scripts/common/view_type.cc
 @@ -0,0 +1,39 @@
@@ -7380,7 +7306,6 @@ index 0000000000000..10b5fe5559dbf
 +}  // namespace extensions
 diff --git a/components/user_scripts/common/view_type.h b/components/user_scripts/common/view_type.h
 new file mode 100755
-index 0000000000000..977318725b91a
 --- /dev/null
 +++ b/components/user_scripts/common/view_type.h
 @@ -0,0 +1,48 @@
@@ -7434,7 +7359,6 @@ index 0000000000000..977318725b91a
 +#endif  // USERSCRIPTS_COMMON_VIEW_TYPE_H_
 diff --git a/components/user_scripts/renderer/BUILD.gn b/components/user_scripts/renderer/BUILD.gn
 new file mode 100755
-index 0000000000000..868757daf6305
 --- /dev/null
 +++ b/components/user_scripts/renderer/BUILD.gn
 @@ -0,0 +1,65 @@
@@ -7505,7 +7429,6 @@ index 0000000000000..868757daf6305
 +}
 diff --git a/components/user_scripts/renderer/extension_frame_helper.cc b/components/user_scripts/renderer/extension_frame_helper.cc
 new file mode 100755
-index 0000000000000..fe105fb0e7e60
 --- /dev/null
 +++ b/components/user_scripts/renderer/extension_frame_helper.cc
 @@ -0,0 +1,95 @@
@@ -7606,7 +7529,6 @@ index 0000000000000..fe105fb0e7e60
 +}  // namespace user_scripts
 diff --git a/components/user_scripts/renderer/extension_frame_helper.h b/components/user_scripts/renderer/extension_frame_helper.h
 new file mode 100755
-index 0000000000000..741e4dda031a5
 --- /dev/null
 +++ b/components/user_scripts/renderer/extension_frame_helper.h
 @@ -0,0 +1,90 @@
@@ -7702,7 +7624,6 @@ index 0000000000000..741e4dda031a5
 +#endif  // USERSCRIPTS_RENDERER_EXTENSION_FRAME_HELPER_H_
 diff --git a/components/user_scripts/renderer/injection_host.cc b/components/user_scripts/renderer/injection_host.cc
 new file mode 100755
-index 0000000000000..58abe06444f63
 --- /dev/null
 +++ b/components/user_scripts/renderer/injection_host.cc
 @@ -0,0 +1,12 @@
@@ -7720,7 +7641,6 @@ index 0000000000000..58abe06444f63
 +}
 diff --git a/components/user_scripts/renderer/injection_host.h b/components/user_scripts/renderer/injection_host.h
 new file mode 100755
-index 0000000000000..2cd552ac96445
 --- /dev/null
 +++ b/components/user_scripts/renderer/injection_host.h
 @@ -0,0 +1,41 @@
@@ -7767,7 +7687,6 @@ index 0000000000000..2cd552ac96445
 +#endif  // USERSCRIPTS_RENDERER_INJECTION_HOST_H_
 diff --git a/components/user_scripts/renderer/resources/greasemonkey_api.js b/components/user_scripts/renderer/resources/greasemonkey_api.js
 new file mode 100755
-index 0000000000000..bc09911571a81
 --- /dev/null
 +++ b/components/user_scripts/renderer/resources/greasemonkey_api.js
 @@ -0,0 +1,82 @@
@@ -7855,7 +7774,6 @@ index 0000000000000..bc09911571a81
 +})();
 diff --git a/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd b/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd
 new file mode 100755
-index 0000000000000..cd64e7dafefb6
 --- /dev/null
 +++ b/components/user_scripts/renderer/resources/user_scripts_renderer_resources.grd
 @@ -0,0 +1,14 @@
@@ -7875,7 +7793,6 @@ index 0000000000000..cd64e7dafefb6
 +</grit>
 diff --git a/components/user_scripts/renderer/script_context.cc b/components/user_scripts/renderer/script_context.cc
 new file mode 100755
-index 0000000000000..675750354c7f7
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_context.cc
 @@ -0,0 +1,191 @@
@@ -8072,7 +7989,6 @@ index 0000000000000..675750354c7f7
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_context.h b/components/user_scripts/renderer/script_context.h
 new file mode 100755
-index 0000000000000..96f99d12ec13b
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_context.h
 @@ -0,0 +1,67 @@
@@ -8145,7 +8061,6 @@ index 0000000000000..96f99d12ec13b
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_CONTEXT_H_
 diff --git a/components/user_scripts/renderer/script_injection.cc b/components/user_scripts/renderer/script_injection.cc
 new file mode 100755
-index 0000000000000..5705d28a6b0c7
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection.cc
 @@ -0,0 +1,293 @@
@@ -8444,7 +8359,6 @@ index 0000000000000..5705d28a6b0c7
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_injection.h b/components/user_scripts/renderer/script_injection.h
 new file mode 100755
-index 0000000000000..c02c16443d639
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection.h
 @@ -0,0 +1,155 @@
@@ -8605,7 +8519,6 @@ index 0000000000000..c02c16443d639
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_INJECTION_H_
 diff --git a/components/user_scripts/renderer/script_injection_manager.cc b/components/user_scripts/renderer/script_injection_manager.cc
 new file mode 100755
-index 0000000000000..c2d8add684af1
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection_manager.cc
 @@ -0,0 +1,415 @@
@@ -9026,7 +8939,6 @@ index 0000000000000..c2d8add684af1
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/script_injection_manager.h b/components/user_scripts/renderer/script_injection_manager.h
 new file mode 100755
-index 0000000000000..252b3c70ee0bd
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injection_manager.h
 @@ -0,0 +1,100 @@
@@ -9132,7 +9044,6 @@ index 0000000000000..252b3c70ee0bd
 +}
 diff --git a/components/user_scripts/renderer/script_injector.h b/components/user_scripts/renderer/script_injector.h
 new file mode 100755
-index 0000000000000..c9e26fd5903a5
 --- /dev/null
 +++ b/components/user_scripts/renderer/script_injector.h
 @@ -0,0 +1,96 @@
@@ -9234,7 +9145,6 @@ index 0000000000000..c9e26fd5903a5
 +#endif  // USERSCRIPTS_RENDERER_SCRIPT_INJECTOR_H_
 diff --git a/components/user_scripts/renderer/scripts_run_info.cc b/components/user_scripts/renderer/scripts_run_info.cc
 new file mode 100755
-index 0000000000000..5a85b7e4c73bc
 --- /dev/null
 +++ b/components/user_scripts/renderer/scripts_run_info.cc
 @@ -0,0 +1,31 @@
@@ -9271,7 +9181,6 @@ index 0000000000000..5a85b7e4c73bc
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/scripts_run_info.h b/components/user_scripts/renderer/scripts_run_info.h
 new file mode 100755
-index 0000000000000..fd23cfd71ac9f
 --- /dev/null
 +++ b/components/user_scripts/renderer/scripts_run_info.h
 @@ -0,0 +1,69 @@
@@ -9346,7 +9255,6 @@ index 0000000000000..fd23cfd71ac9f
 +#endif  // USERSCRIPTS_RENDERER_SCRIPTS_RUN_INFO_H_
 diff --git a/components/user_scripts/renderer/user_script_injector.cc b/components/user_scripts/renderer/user_script_injector.cc
 new file mode 100755
-index 0000000000000..f2fbbb4871320
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_injector.cc
 @@ -0,0 +1,227 @@
@@ -9579,7 +9487,6 @@ index 0000000000000..f2fbbb4871320
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/user_script_injector.h b/components/user_scripts/renderer/user_script_injector.h
 new file mode 100755
-index 0000000000000..1c6064ea6401c
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_injector.h
 @@ -0,0 +1,86 @@
@@ -9671,7 +9578,6 @@ index 0000000000000..1c6064ea6401c
 +#endif  // USERSCRIPTS_RENDERER_USER_SCRIPT_INJECTOR_H_
 diff --git a/components/user_scripts/renderer/user_script_set.cc b/components/user_scripts/renderer/user_script_set.cc
 new file mode 100755
-index 0000000000000..f2a47e2e54177
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set.cc
 @@ -0,0 +1,266 @@
@@ -9943,7 +9849,6 @@ index 0000000000000..f2a47e2e54177
 +}  // namespace extensions
 diff --git a/components/user_scripts/renderer/user_script_set.h b/components/user_scripts/renderer/user_script_set.h
 new file mode 100755
-index 0000000000000..3b6703a6d2750
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set.h
 @@ -0,0 +1,101 @@
@@ -10050,7 +9955,6 @@ index 0000000000000..3b6703a6d2750
 +#endif  // USERSCRIPTS_RENDERER_USER_SCRIPT_SET_H_
 diff --git a/components/user_scripts/renderer/user_script_set_manager.cc b/components/user_scripts/renderer/user_script_set_manager.cc
 new file mode 100755
-index 0000000000000..f601abca4cc54
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set_manager.cc
 @@ -0,0 +1,77 @@
@@ -10134,7 +10038,6 @@ index 0000000000000..f601abca4cc54
 \ No newline at end of file
 diff --git a/components/user_scripts/renderer/user_script_set_manager.h b/components/user_scripts/renderer/user_script_set_manager.h
 new file mode 100755
-index 0000000000000..56e209afda773
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_script_set_manager.h
 @@ -0,0 +1,61 @@
@@ -10201,7 +10104,6 @@ index 0000000000000..56e209afda773
 +#endif
 diff --git a/components/user_scripts/renderer/user_scripts_dispatcher.cc b/components/user_scripts/renderer/user_scripts_dispatcher.cc
 new file mode 100755
-index 0000000000000..6bf2606e60c23
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_dispatcher.cc
 @@ -0,0 +1,36 @@
@@ -10244,7 +10146,6 @@ index 0000000000000..6bf2606e60c23
 \ No newline at end of file
 diff --git a/components/user_scripts/renderer/user_scripts_dispatcher.h b/components/user_scripts/renderer/user_scripts_dispatcher.h
 new file mode 100755
-index 0000000000000..9a51c5b53b6e1
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_dispatcher.h
 @@ -0,0 +1,49 @@
@@ -10299,7 +10200,6 @@ index 0000000000000..9a51c5b53b6e1
 +#endif
 diff --git a/components/user_scripts/renderer/user_scripts_renderer_client.cc b/components/user_scripts/renderer/user_scripts_renderer_client.cc
 new file mode 100755
-index 0000000000000..f41c37786d1bb
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_renderer_client.cc
 @@ -0,0 +1,108 @@
@@ -10413,7 +10313,6 @@ index 0000000000000..f41c37786d1bb
 +}
 diff --git a/components/user_scripts/renderer/user_scripts_renderer_client.h b/components/user_scripts/renderer/user_scripts_renderer_client.h
 new file mode 100755
-index 0000000000000..4733292c8bf0f
 --- /dev/null
 +++ b/components/user_scripts/renderer/user_scripts_renderer_client.h
 @@ -0,0 +1,38 @@
@@ -10457,7 +10356,6 @@ index 0000000000000..4733292c8bf0f
 +#endif
 diff --git a/components/user_scripts/renderer/web_ui_injection_host.cc b/components/user_scripts/renderer/web_ui_injection_host.cc
 new file mode 100755
-index 0000000000000..8049f3c7e0062
 --- /dev/null
 +++ b/components/user_scripts/renderer/web_ui_injection_host.cc
 @@ -0,0 +1,40 @@
@@ -10503,7 +10401,6 @@ index 0000000000000..8049f3c7e0062
 +}
 diff --git a/components/user_scripts/renderer/web_ui_injection_host.h b/components/user_scripts/renderer/web_ui_injection_host.h
 new file mode 100755
-index 0000000000000..810fc66854d64
 --- /dev/null
 +++ b/components/user_scripts/renderer/web_ui_injection_host.h
 @@ -0,0 +1,27 @@
@@ -10536,7 +10433,6 @@ index 0000000000000..810fc66854d64
 +#endif  // USERSCRIPTS_RENDERER_WEB_UI_INJECTION_HOST_H_
 diff --git a/components/user_scripts/strings/userscripts_strings.grdp b/components/user_scripts/strings/userscripts_strings.grdp
 new file mode 100755
-index 0000000000000..a512c68c96412
 --- /dev/null
 +++ b/components/user_scripts/strings/userscripts_strings.grdp
 @@ -0,0 +1,54 @@
@@ -10595,10 +10491,9 @@ index 0000000000000..a512c68c96412
 +
 +</grit-part>
 diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index a327136986b82..919e222137c5f 100644
 --- a/tools/gritsettings/resource_ids.spec
 +++ b/tools/gritsettings/resource_ids.spec
-@@ -907,6 +907,12 @@
+@@ -955,6 +955,12 @@
    "components/autofill/core/browser/autofill_address_rewriter_resources.grd":{
      "includes": [6220]
    },
@@ -10611,6 +10506,5 @@ index a327136986b82..919e222137c5f 100644
    # END components/ section.
  
    # START ios/ section.
--- 
-2.34.1
-
+--
+2.25.1

@@ -1,0 +1,156 @@
+From 25ce8e1834b68118eea259f03c8933afcf7bc573 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Fri, 29 Sep 2023 14:35:06 +0530
+Subject: [PATCH 11/58] fixup Add option to force tablet UI
+
+---
+ .../ui/android/strings/android_chrome_strings.grd |  7 -------
+ .../toolbar/top/ToolbarControlContainer.java      | 15 +++------------
+ components/BUILD.gn                               |  4 ++--
+ .../strings/android/browser_ui_strings.grd        |  6 ++++++
+ ui/android/BUILD.gn                               |  2 --
+ .../org/chromium/ui/base/DeviceFormFactor.java    | 11 +++++------
+ 6 files changed, 16 insertions(+), 29 deletions(-)
+
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index cd0dea13e8ef9..973ae94d5a872 100644
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -1823,13 +1823,6 @@ Your Google account may have other forms of browsing history like searches and a
+       <message name="IDS_TRACKING_PROTECTION_SUMMARY" desc="" translateable="false">
+         Protection from trackers (third-party cookies, IP tracking, invasive scripts, and more)
+       </message>
+-
+-      <message name="IDS_FORCE_TABLET_UI_SUMMARY" desc="Summary of the preference that allows the user to force chromium to use tablet UI.">
+-       Open chromium in Tablet Mode
+-      </message>
+-      <message name="IDS_FORCE_TABLET_UI_TITLE" desc="Title of the preference that allows the user to update force tablet UI settings.">
+-        Force Tablet Mode
+-      </message>
+       <message name="IDS_MOVE_TOOLBAR_BOTTOM_TITLE" desc="Title of the preference that allows the user to move toolbar on bottom.">
+         Move toolbar to bottom
+       </message>
+diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java
+index 8bdb3c8d3bbc4..a54ec94044657 100644
+--- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java
++++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java
+@@ -176,8 +176,9 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
+ 
+             return backgroundDrawable;
+         } else {
+-            Drawable backgroundDrawable = new ColorDrawable(
+-                    ChromeColors.getPrimaryBackgroundColor(getContext(), incognito));
++            final Drawable backgroundDrawable =
++                    AppCompatResources.getDrawable(getContext(), R.drawable.toolbar_background)
++                            .mutate();
+             backgroundDrawable.setTint(ChromeColors.getDefaultThemeColor(getContext(), incognito));
+             backgroundDrawable.setTintMode(PorterDuff.Mode.MULTIPLY);
+ 
+@@ -212,16 +213,6 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
+                 tabSupplier, compositorInMotionSupplier,
+                 browserStateBrowserControlsVisibilityDelegate, isVisible,
+                 layoutStateProviderSupplier, fullscreenManager);
+-
+-        View toolbarView = findViewById(R.id.toolbar);
+-        assert toolbarView != null;
+-
+-        if (toolbarView instanceof ToolbarTablet) {
+-            // On tablet, draw a fake tab strip and toolbar until the compositor is
+-            // ready to draw the real tab strip. (On phone, the toolbar is made entirely
+-            // of Android views, which are already initialized.)
+-            setBackground(getTempTabStripDrawable(isIncognito));
+-        }
+     }
+ 
+     @Override
+diff --git a/components/BUILD.gn b/components/BUILD.gn
+index cb89c56644882..3692d8ed2c586 100644
+--- a/components/BUILD.gn
++++ b/components/BUILD.gn
+@@ -817,7 +817,7 @@ test("components_unittests") {
+   # On other platforms, no components should depend on Chrome.
+   # Since //chrome depends on //extensions, we also only assert_no_deps on
+   # extensions targets for non-lacros builds.
+-  if (!is_chromeos_lacros  && !is_android) {
++  if (!is_chromeos_lacros && !is_android) {
+     assert_no_deps = [ "//chrome/*" ]
+     assert_no_deps += disallowed_extension_deps_
+   }
+@@ -1103,7 +1103,7 @@ if (use_blink) {
+     # dependency. On other platforms, no components should depend on Chrome.
+     # Since //chrome depends on //extensions, we also only assert_no_deps on
+     # extensions targets for non-lacros builds.
+-    if (!is_chromeos_lacros  && !is_android) {
++    if (!is_chromeos_lacros && !is_android) {
+       assert_no_deps = [ "//chrome/*" ]
+       assert_no_deps += disallowed_extension_deps_
+     }
+diff --git a/components/browser_ui/strings/android/browser_ui_strings.grd b/components/browser_ui/strings/android/browser_ui_strings.grd
+index 4c85ac26d9def..d3546d252c525 100644
+--- a/components/browser_ui/strings/android/browser_ui_strings.grd
++++ b/components/browser_ui/strings/android/browser_ui_strings.grd
+@@ -1013,6 +1013,12 @@
+       <message name="IDS_ACCESSIBILITY_CAPTIONS_TITLE" desc="Title of the preference that allows the user to update caption settings.">
+         Captions
+       </message>
++      <message name="IDS_FORCE_TABLET_UI_SUMMARY" desc="Summary of the preference that allows the user to force chromium to use tablet UI.">
++       Open chromium in Tablet Mode
++      </message>
++      <message name="IDS_FORCE_TABLET_UI_TITLE" desc="Title of the preference that allows the user to update force tablet UI settings.">
++        Force Tablet Mode
++      </message>
+ 
+       <!-- Text Size Contrast -->
+       <!-- TODO(crbug.com/1446230): Add descriptions and make the strings translateable. -->
+diff --git a/ui/android/BUILD.gn b/ui/android/BUILD.gn
+index 6aaffadc768ca..7d68f8ca350b7 100644
+--- a/ui/android/BUILD.gn
++++ b/ui/android/BUILD.gn
+@@ -411,8 +411,6 @@ android_library("ui_no_recycler_view_java") {
+     ":ui_android_features_java",
+     ":ui_java_resources",
+     ":ui_utils_java",
+-    # dependency for ui_no_recycler_view_java
+-    "//chrome/browser/preferences:java",
+     "//base:base_java",
+     "//base:jni_java",
+     "//build/android:build_java",
+diff --git a/ui/android/java/src/org/chromium/ui/base/DeviceFormFactor.java b/ui/android/java/src/org/chromium/ui/base/DeviceFormFactor.java
+index 39e1f0e915d6b..68074c7bb0773 100644
+--- a/ui/android/java/src/org/chromium/ui/base/DeviceFormFactor.java
++++ b/ui/android/java/src/org/chromium/ui/base/DeviceFormFactor.java
+@@ -5,6 +5,8 @@
+ package org.chromium.ui.base;
+ 
+ import android.content.Context;
++import android.content.SharedPreferences;
++import android.preference.PreferenceManager;
+ 
+ import androidx.annotation.UiThread;
+ import androidx.annotation.VisibleForTesting;
+@@ -12,8 +14,6 @@ import androidx.annotation.VisibleForTesting;
+ import org.chromium.base.ContextUtils;
+ import org.chromium.base.ThreadUtils;
+ import org.chromium.base.annotations.CalledByNative;
+-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
+-import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+ import org.chromium.ui.R;
+ import org.chromium.ui.display.DisplayAndroid;
+ import org.chromium.ui.display.DisplayUtil;
+@@ -64,10 +64,9 @@ public class DeviceFormFactor {
+      *         E.g. http://developer.samsung.com/samsung-dex/testing
+      */
+     public static boolean isNonMultiDisplayContextOnTablet(Context context) {
+-        if (SharedPreferencesManager.getInstance().readBoolean(
+-                ChromePreferenceKeys.FLAGS_FORCE_TABLET_UI_ENABLED, false))
+-            return true;
+-        return detectScreenWidthBucket(context) >= SCREEN_BUCKET_TABLET;
++        boolean isTabletUi = PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
++                "force_tablet_ui_enabled", false);
++        return isTabletUi || detectScreenWidthBucket(context) >= SCREEN_BUCKET_TABLET;
+     }
+ 
+     /**
+-- 
+2.34.1
+

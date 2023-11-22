@@ -1,7 +1,6 @@
-From 160b7e30a26384fb69283ae95b91e7238d2d1c3c Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Thu, 7 Oct 2021 14:27:12 +0000
-Subject: [PATCH 092/192] Bromite auto updater
+Subject: Bromite auto updater
 
 Enable checking for new versions, with notifications and proxy support.
 Restore InlineUpdateFlow feature.
@@ -39,35 +38,34 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointHeaderResponse.java
 
 diff --git a/build/android/java/templates/BuildConfig.template b/build/android/java/templates/BuildConfig.template
-index cfecb6fefdcba..f6521f42246d4 100644
 --- a/build/android/java/templates/BuildConfig.template
 +++ b/build/android/java/templates/BuildConfig.template
-@@ -92,4 +92,6 @@ public class BuildConfig {
- #else
+@@ -87,6 +87,8 @@ public class BuildConfig {
      public static MAYBE_FINAL boolean IS_FOR_TEST MAYBE_FALSE;
  #endif
-+
+ 
 +    public static MAYBE_FINAL String BUILD_TARGET_CPU = _BUILD_TARGET_CPU;
- }
++
+ #if defined(_WRITE_CLANG_PROFILING_DATA)
+     public static MAYBE_FINAL boolean WRITE_CLANG_PROFILING_DATA = true;
+ #else
 diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
-index 758dbe2a66cbc..aea13f388bb36 100644
 --- a/build/config/android/rules.gni
 +++ b/build/config/android/rules.gni
-@@ -2144,6 +2144,9 @@ if (enable_java_templates && is_android) {
-       if (defined(testonly) && testonly) {
-         defines += [ "_IS_FOR_TEST" ]
-       }
-+
+@@ -1894,6 +1894,9 @@ if (enable_java_templates && is_android) {
+       sources = [ "//build/android/java/templates/BuildConfig.template" ]
+       defines = []
+ 
 +      # add arch to org.chromium.build.BuildConfig
 +      defines += [ "_BUILD_TARGET_CPU=\"${target_cpu}\"" ]
-     }
-   }
- 
++
+       # Set these even when !use_final_fields so that they have correct default
+       # values within robolectric_binary(), which ignores jar_excluded_patterns.
+       if ((defined(invoker.assertions_implicitly_enabled) &&
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 4f5cf7b9337c0..f927e1a14b0c1 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -858,6 +858,9 @@ chrome_java_sources = [
+@@ -872,6 +872,9 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java",
    "java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java",
@@ -78,7 +76,6 @@ index 4f5cf7b9337c0..f927e1a14b0c1 100644
    "java/src/org/chromium/chrome/browser/omaha/metrics/HistogramUtils.java",
    "java/src/org/chromium/chrome/browser/omaha/metrics/TrackingProvider.java",
 diff --git a/chrome/android/java/res/xml/about_chrome_preferences.xml b/chrome/android/java/res/xml/about_chrome_preferences.xml
-index fb1dfed23052b..f055e0e91e4bd 100644
 --- a/chrome/android/java/res/xml/about_chrome_preferences.xml
 +++ b/chrome/android/java/res/xml/about_chrome_preferences.xml
 @@ -9,6 +9,11 @@ found in the LICENSE file.
@@ -94,7 +91,6 @@ index fb1dfed23052b..f055e0e91e4bd 100644
          android:key="os_version"
          android:title="@string/os_version_title" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
-index f59f62fdf971b..5da0608895710 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/about_settings/AboutChromeSettings.java
 @@ -21,14 +21,20 @@ import org.chromium.ui.widget.Toast;
@@ -152,7 +148,6 @@ index f59f62fdf971b..5da0608895710 100644
 +    }
  }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
-index 33e232ec8bdda..2e24639a03af2 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/OmahaBase.java
 @@ -33,6 +33,8 @@ import java.net.HttpURLConnection;
@@ -246,7 +241,6 @@ index 33e232ec8bdda..2e24639a03af2 100644
 +    }
  }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
-index b7296bac5b9e3..dd7d998373355 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateConfigs.java
 @@ -11,6 +11,7 @@ import androidx.annotation.IntDef;
@@ -316,7 +310,6 @@ index b7296bac5b9e3..dd7d998373355 100644
 +    }
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
-index 55588e6b4375b..1e7f44b34affe 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelper.java
 @@ -12,6 +12,7 @@ import android.view.Choreographer;
@@ -432,7 +425,6 @@ index 55588e6b4375b..1e7f44b34affe 100644
              // Intentional fall through.
              default:
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
-index 10f69e965845d..27c75c368a446 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
 @@ -4,6 +4,7 @@
@@ -735,7 +727,6 @@ index 10f69e965845d..27c75c368a446 100644
  
              return status;
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
-index 90cfcd7661c43..9451d364347f8 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/VersionNumberGetter.java
 @@ -50,7 +50,8 @@ public class VersionNumberGetter {
@@ -750,7 +741,6 @@ index 90cfcd7661c43..9451d364347f8 100644
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 new file mode 100644
-index 0000000000000..90692d394ebe9
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/BromiteInlineUpdateController.java
 @@ -0,0 +1,272 @@
@@ -1028,7 +1018,6 @@ index 0000000000000..90692d394ebe9
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
 new file mode 100644
-index 0000000000000..260e5f1225f6f
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateController.java
 @@ -0,0 +1,51 @@
@@ -1085,7 +1074,6 @@ index 0000000000000..260e5f1225f6f
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
 new file mode 100644
-index 0000000000000..de41882343e21
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/InlineUpdateControllerFactory.java
 @@ -0,0 +1,21 @@
@@ -1111,10 +1099,9 @@ index 0000000000000..de41882343e21
 +    }
 +}
 diff --git a/chrome/browser/endpoint_fetcher/BUILD.gn b/chrome/browser/endpoint_fetcher/BUILD.gn
-index f263a5c38edc5..03707c32d2e91 100644
 --- a/chrome/browser/endpoint_fetcher/BUILD.gn
 +++ b/chrome/browser/endpoint_fetcher/BUILD.gn
-@@ -18,6 +18,7 @@ android_library("java") {
+@@ -19,6 +19,7 @@ android_library("java") {
    sources = [
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java",
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointResponse.java",
@@ -1122,7 +1109,7 @@ index f263a5c38edc5..03707c32d2e91 100644
    ]
  }
  
-@@ -25,5 +26,6 @@ generate_jni("jni_headers") {
+@@ -26,5 +27,6 @@ generate_jni("jni_headers") {
    sources = [
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java",
      "java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointResponse.java",
@@ -1130,7 +1117,6 @@ index f263a5c38edc5..03707c32d2e91 100644
    ]
  }
 diff --git a/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc b/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
-index a6c7802b3e15b..e33f87ba0aae0 100644
 --- a/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
 +++ b/chrome/browser/endpoint_fetcher/endpoint_fetcher_android.cc
 @@ -9,6 +9,7 @@
@@ -1216,7 +1202,6 @@ index a6c7802b3e15b..e33f87ba0aae0 100644
 +      nullptr);
 +}
 diff --git a/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
-index c28fc4d9793b4..435ecf26fd1be 100644
 --- a/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
 +++ b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointFetcher.java
 @@ -70,6 +70,24 @@ public final class EndpointFetcher {
@@ -1261,7 +1246,6 @@ index c28fc4d9793b4..435ecf26fd1be 100644
  }
 diff --git a/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointHeaderResponse.java b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointHeaderResponse.java
 new file mode 100644
-index 0000000000000..a7bd35381ccd1
 --- /dev/null
 +++ b/chrome/browser/endpoint_fetcher/java/src/org/chromium/chrome/browser/endpoint_fetcher/EndpointHeaderResponse.java
 @@ -0,0 +1,31 @@
@@ -1297,10 +1281,9 @@ index 0000000000000..a7bd35381ccd1
 +    }
 +}
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index db4d5e5031e64..26ad6f888a5e3 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -252,6 +252,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -271,6 +271,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kNotificationPermissionBottomSheet,
      &kPageAnnotationsService,
      &kPreconnectOnTabCreation,
@@ -1308,7 +1291,7 @@ index db4d5e5031e64..26ad6f888a5e3 100644
      &kBookmarksImprovedSaveFlow,
      &kBookmarksRefresh,
      &kOmahaMinSdkVersionAndroid,
-@@ -687,6 +688,10 @@ BASE_FEATURE(kContextMenuTranslateWithGoogleLens,
+@@ -722,6 +723,10 @@ BASE_FEATURE(kContextMenuTranslateWithGoogleLens,
               "ContextMenuTranslateWithGoogleLens",
               base::FEATURE_DISABLED_BY_DEFAULT);
  
@@ -1320,11 +1303,10 @@ index db4d5e5031e64..26ad6f888a5e3 100644
               "LensCameraAssistedSearch",
               base::FEATURE_ENABLED_BY_DEFAULT);
 diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
-index b9f8bb074b60f..120623eb985aa 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.h
 +++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -105,6 +105,7 @@ BASE_DECLARE_FEATURE(kFoldableJankFix);
- BASE_DECLARE_FEATURE(kGridTabSwitcherLandscapeAspectRatioPhones);
+@@ -118,6 +118,7 @@ BASE_DECLARE_FEATURE(kGridTabSwitcherLandscapeAspectRatioPhones);
+ BASE_DECLARE_FEATURE(kHideTabOnTabSwitcher);
  BASE_DECLARE_FEATURE(kImprovedIncognitoScreenshot);
  BASE_DECLARE_FEATURE(kIncognitoReauthenticationForAndroid);
 +BASE_DECLARE_FEATURE(kInlineUpdateFlow);
@@ -1332,10 +1314,9 @@ index b9f8bb074b60f..120623eb985aa 100644
  BASE_DECLARE_FEATURE(kInfobarScrollOptimization);
  BASE_DECLARE_FEATURE(kImprovedA2HS);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index 8817964921a27..c287e9b0bf4b8 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -291,6 +291,7 @@ public abstract class ChromeFeatureList {
+@@ -305,6 +305,7 @@ public abstract class ChromeFeatureList {
              "IncognitoReauthenticationForAndroid";
      public static final String INCOGNITO_SCREENSHOT = "IncognitoScreenshot";
      public static final String INFOBAR_SCROLL_OPTIMIZATION = "InfobarScrollOptimization";
@@ -1344,10 +1325,9 @@ index 8817964921a27..c287e9b0bf4b8 100644
      public static final String INSTALLABLE_AMBIENT_BADGE_MESSAGE = "InstallableAmbientBadgeMessage";
      public static final String INSTANCE_SWITCHER = "InstanceSwitcher";
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 578abb03eb258..c004ab5d7a186 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -2106,6 +2106,12 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -2216,6 +2216,12 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_DEPRECATION_WARNING" desc="Warning about Chrome updates no longer being supported">
          Chrome updates are no longer supported for this version of Android
        </message>
@@ -1360,7 +1340,7 @@ index 578abb03eb258..c004ab5d7a186 100644
  
        <!-- Account management UI strings. -->
        <message name="IDS_ACCOUNT_MANAGEMENT_TITLE" desc="Header title for the account management screen. [CHAR_LIMIT=32]">
-@@ -3722,7 +3728,10 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3840,7 +3846,10 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
  
        <!-- Main menu items -->
        <message name="IDS_MENU_UPDATE" desc="Menu item for updating chrome. [CHAR_LIMIT=24]">
@@ -1372,7 +1352,7 @@ index 578abb03eb258..c004ab5d7a186 100644
        </message>
        <message name="IDS_MENU_UPDATE_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that a newer version of Chrome is available. [CHAR_LIMIT=30]">
          Newer version is available
-@@ -3733,6 +3742,18 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -3851,6 +3860,18 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
        <message name="IDS_MENU_UPDATE_UNSUPPORTED_SUMMARY_DEFAULT" desc="Summary string for update menu item explaining that the Android version on the device is unsupported. [CHAR_LIMIT=30]">
          Android version is unsupported
        </message>
@@ -1392,7 +1372,6 @@ index 578abb03eb258..c004ab5d7a186 100644
          New window
        </message>
 diff --git a/components/endpoint_fetcher/endpoint_fetcher.cc b/components/endpoint_fetcher/endpoint_fetcher.cc
-index 9ce615ea489f0..6fa68a102c1f2 100644
 --- a/components/endpoint_fetcher/endpoint_fetcher.cc
 +++ b/components/endpoint_fetcher/endpoint_fetcher.cc
 @@ -18,6 +18,11 @@
@@ -1537,7 +1516,7 @@ index 9ce615ea489f0..6fa68a102c1f2 100644
  }
  
  void EndpointFetcher::OnResponseFetched(
-@@ -336,3 +392,38 @@ void EndpointFetcher::OnSanitizationResult(
+@@ -338,3 +394,38 @@ void EndpointFetcher::OnSanitizationResult(
  std::string EndpointFetcher::GetUrlForTesting() {
    return url_.spec();
  }
@@ -1577,7 +1556,6 @@ index 9ce615ea489f0..6fa68a102c1f2 100644
 +  std::move(endpoint_fetcher_callback_).Run(std::move(response_));
 +}
 diff --git a/components/endpoint_fetcher/endpoint_fetcher.h b/components/endpoint_fetcher/endpoint_fetcher.h
-index 1b31130514f6b..2e5738e03d6a4 100644
 --- a/components/endpoint_fetcher/endpoint_fetcher.h
 +++ b/components/endpoint_fetcher/endpoint_fetcher.h
 @@ -17,6 +17,8 @@
@@ -1648,6 +1626,5 @@ index 1b31130514f6b..2e5738e03d6a4 100644
    base::WeakPtrFactory<EndpointFetcher> weak_ptr_factory_{this};
  };
  
--- 
-2.34.1
-
+--
+2.25.1

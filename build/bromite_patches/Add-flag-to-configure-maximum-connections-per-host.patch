@@ -1,7 +1,6 @@
-From f9d09645f620097086fb8d70e944c539995ed6e4 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 8 Jul 2018 22:42:04 +0200
-Subject: [PATCH 058/192] Add flag to configure maximum connections per host
+Subject: Add flag to configure maximum connections per host
 
 With the introduction of this flag it is possible to increase the maximum
 allowed connections per host; this can however be detrimental to devices
@@ -20,10 +19,9 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  8 files changed, 44 insertions(+)
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index 3f5f94ed63936..78c2b1a2de4e7 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -1236,6 +1236,11 @@ const FeatureEntry::Choice kForceColorProfileChoices[] = {
+@@ -1287,6 +1287,11 @@ const FeatureEntry::Choice kForceColorProfileChoices[] = {
       switches::kForceDisplayColorProfile, "hdr10"},
  };
  
@@ -35,7 +33,7 @@ index 3f5f94ed63936..78c2b1a2de4e7 100644
  const FeatureEntry::Choice kMemlogModeChoices[] = {
      {flags_ui::kGenericExperimentChoiceDisabled, "", ""},
      {flag_descriptions::kMemlogModeMinimal, heap_profiling::kMemlogMode,
-@@ -5210,6 +5215,9 @@ const FeatureEntry kFeatureEntries[] = {
+@@ -5508,6 +5513,9 @@ const FeatureEntry kFeatureEntries[] = {
       FEATURE_VALUE_TYPE(chrome::android::kShareSheetCustomActionsPolish)},
  
  #endif  // BUILDFLAG(IS_ANDROID)
@@ -46,10 +44,9 @@ index 3f5f94ed63936..78c2b1a2de4e7 100644
       flag_descriptions::kDisallowDocWrittenScriptsUiName,
       flag_descriptions::kDisallowDocWrittenScriptsUiDescription, kOsAll,
 diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index 9b9d00359008a..e647063331153 100644
 --- a/chrome/browser/flag_descriptions.cc
 +++ b/chrome/browser/flag_descriptions.cc
-@@ -2157,6 +2157,10 @@ const char kUnthrottledNestedTimeoutDescription[] =
+@@ -2231,6 +2231,10 @@ const char kUnthrottledNestedTimeoutDescription[] =
      "websites abusing the API will still eventually have their setTimeouts "
      "clamped.";
  
@@ -61,10 +58,9 @@ index 9b9d00359008a..e647063331153 100644
      "Connect to Cast devices on all IP addresses";
  const char kMediaRouterCastAllowAllIPsDescription[] =
 diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index e6dc3d91746f3..1557928890d3a 100644
 --- a/chrome/browser/flag_descriptions.h
 +++ b/chrome/browser/flag_descriptions.h
-@@ -1219,6 +1219,9 @@ extern const char kUndoAutofillDescription[];
+@@ -1264,6 +1264,9 @@ extern const char kUndoAutofillDescription[];
  extern const char kUnthrottledNestedTimeoutName[];
  extern const char kUnthrottledNestedTimeoutDescription[];
  
@@ -75,7 +71,6 @@ index e6dc3d91746f3..1557928890d3a 100644
  extern const char kMediaRouterCastAllowAllIPsDescription[];
  
 diff --git a/components/network_session_configurator/common/network_features.cc b/components/network_session_configurator/common/network_features.cc
-index c1bd42fa99e7b..f6387f1cd9362 100644
 --- a/components/network_session_configurator/common/network_features.cc
 +++ b/components/network_session_configurator/common/network_features.cc
 @@ -8,4 +8,7 @@
@@ -87,7 +82,6 @@ index c1bd42fa99e7b..f6387f1cd9362 100644
 +
  }  // namespace features
 diff --git a/components/network_session_configurator/common/network_features.h b/components/network_session_configurator/common/network_features.h
-index 84d71f126019d..0cbcd7f5b0d17 100644
 --- a/components/network_session_configurator/common/network_features.h
 +++ b/components/network_session_configurator/common/network_features.h
 @@ -10,6 +10,10 @@
@@ -102,7 +96,6 @@ index 84d71f126019d..0cbcd7f5b0d17 100644
  
  #endif  // COMPONENTS_NETWORK_SESSION_CONFIGURATOR_COMMON_NETWORK_FEATURES_H_
 diff --git a/components/network_session_configurator/common/network_switch_list.h b/components/network_session_configurator/common/network_switch_list.h
-index 9f759da5d665a..0d152ec53fb1e 100644
 --- a/components/network_session_configurator/common/network_switch_list.h
 +++ b/components/network_session_configurator/common/network_switch_list.h
 @@ -19,6 +19,10 @@ NETWORK_SWITCH(kEnableUserAlternateProtocolPorts,
@@ -117,7 +110,6 @@ index 9f759da5d665a..0d152ec53fb1e 100644
  NETWORK_SWITCH(kIgnoreCertificateErrors, "ignore-certificate-errors")
  
 diff --git a/components/url_formatter/spoof_checks/top_domains/BUILD.gn b/components/url_formatter/spoof_checks/top_domains/BUILD.gn
-index 97c28c796637b..c3083e3dc11c0 100644
 --- a/components/url_formatter/spoof_checks/top_domains/BUILD.gn
 +++ b/components/url_formatter/spoof_checks/top_domains/BUILD.gn
 @@ -89,6 +89,7 @@ executable("make_top_domain_list_variables") {
@@ -129,7 +121,6 @@ index 97c28c796637b..c3083e3dc11c0 100644
    if (is_ios) {
      frameworks = [ "UIKit.framework" ]
 diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
-index 521ebc8f5023e..41692c9212b16 100644
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc
 @@ -19,6 +19,10 @@
@@ -163,6 +154,5 @@ index 521ebc8f5023e..41692c9212b16 100644
    return g_max_sockets_per_group[pool_type];
  }
  
--- 
-2.34.1
-
+--
+2.25.1
