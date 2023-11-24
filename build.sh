@@ -9,6 +9,7 @@ if [ ! -d "$chromium_dir" ]; then
 fi
 chromium_version="119.0.6045.160"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
+chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
@@ -148,9 +149,13 @@ sync() {
     gclient_config
     if [ -d "$chromium_dir/src" ]; then
         cd $chromium_dir/src
-        git checkout main
         git fetch origin refs/tags/$chromium_version
-        git reset --hard FETCH_HEAD
+        if [ $clean -eq 1 ]; then
+            git checkout main
+            git reset --hard FETCH_HEAD
+        else
+            git reset --hard $chromium_commit_hash
+        fi
     fi
     if [ $history -eq 1 ]; then
         gclient sync -D --nohooks -R
@@ -162,11 +167,9 @@ sync() {
 }
 
 gclient_config() {
-    url=https://github.com/chromium/chromium.git
-    commit_hash=$(git ls-remote --refs $url refs/tags/$chromium_version | awk '{print $1}')
     cat <<EOF > "$chromium_dir/.gclient"
 solutions = [{
-    "url": "$url@$commit_hash",
+    "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
     "name": "src",
     "custom_deps": {},
@@ -215,6 +218,8 @@ if [ ! -d "$chromium_dir/depot_tools" ]; then
     git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$chromium_dir/depot_tools"
 fi
 export PATH="$chromium_dir/depot_tools:$PATH"
+
+chromium_commit_hash=$(git ls-remote --refs $chromium_url refs/tags/$chromium_version | awk '{print $1}')
 
 if [ $clean -eq 1 ]; then
     echo ">> [$(date)] Cleaning chromium source code"
