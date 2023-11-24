@@ -12,6 +12,7 @@ chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 clean=0
 gsync=0
 history=1
+test=0
 arch=""
 
 usage() {
@@ -24,6 +25,7 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
+    echo "    -t Sign with AOSP test-key"
     echo
     exit 1
 }
@@ -48,6 +50,15 @@ build() {
     fi
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
+
+    if [ $test -eq 1 ]; then
+        echo ">> [$(date)] Using AOSP test-key to sign"
+        keystore_path="${root_dir}/platform.jks"
+        build_args+=' android_keystore_path="'$keystore_path'"'
+        build_args+=' android_keystore_name="platform"'
+        build_args+=' android_keystore_password="platform"'
+        build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
+    fi
 
     if [ $clean -eq 1 ]; then
         if [ -d "out/$1" ]; then
@@ -177,13 +188,14 @@ init_repo(){
     fi
 }
 
-while getopts ":a:cur:sh" opt; do
+while getopts ":a:cur:sht" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
     s) gsync=1  ;;
     h) history=0 ;;
+    t) test=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
