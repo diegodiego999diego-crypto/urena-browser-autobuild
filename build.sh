@@ -118,6 +118,9 @@ patch() {
 
     # Rename Chrome to Browser
     rename
+
+    # domain_substitution from ungoogled-chromium
+    domain_substitution
 }
 
 rename() {
@@ -141,6 +144,14 @@ rename() {
 
     git add .
     git commit -m "Browser: Replace Chrome with Browser"
+}
+
+domain_substitution() {
+    cd "${root_dir}/domain_substitution"
+    python3 domain_substitution.py apply -r domain_regex.list -f domain_substitution.list $chromium_dir/src
+    cd $chromium_dir/src
+    git add .
+    git commit -m "Browser: Automated domain substitution"
 }
 
 sync() {
