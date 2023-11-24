@@ -1,25 +1,67 @@
-From 95560e3d0ee9aa16999411d2b5a9cb0d549eec4d Mon Sep 17 00:00:00 2001
+From a79d74e385a077a4e0bd6ae8827514108bc93979 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
-Date: Thu, 23 Nov 2023 17:16:34 +0530
-Subject: [PATCH 15/58] fixup: disable browser sign in feature by default
+Date: Fri, 24 Nov 2023 15:34:45 +0530
+Subject: [PATCH] fixup: disable browser sign in feature by default
 
 ---
- .../browser/password_manager/settings/PasswordSettings.java     | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../settings/PasswordSettings.java                 |  4 ----
+ .../chrome/browser/settings/MainSettings.java      | 14 --------------
+ 2 files changed, 18 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
-index 25a770923c78e..abed6d8ba33ea 100644
+index 25a770923c78e..b22ceff9d786a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
-@@ -705,7 +705,7 @@ public class PasswordSettings extends ChromeBaseSettingsFragment
+@@ -37,7 +37,6 @@ import org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer;
+ import org.chromium.chrome.browser.password_manager.PasswordCheckReferrer;
+ import org.chromium.chrome.browser.password_manager.PasswordManagerHelper;
+ import org.chromium.chrome.browser.preferences.Pref;
+-import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
+ import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
+ import org.chromium.chrome.browser.settings.ChromeManagedPreferenceDelegate;
+ import org.chromium.chrome.browser.settings.SettingsLauncherImpl;
+@@ -705,9 +704,6 @@ public class PasswordSettings extends ChromeBaseSettingsFragment
          if (mSearchQuery != null && !mNoPasswords) {
              return; // Don't add the Manage Account link if there is a search going on.
          }
 -        if (!IdentityServicesProvider.get().getSigninManager(mProfile).isSigninSupported(false)) {
-+        if (!IdentityServicesProvider.get().getSigninManager(getProfile()).isSigninSupported(false)) {
-             return;
-         }
+-            return;
+-        }
          if (getPreferenceScreen().findPreference(PREF_KEY_MANAGE_ACCOUNT_LINK) != null) {
+             return; // Don't add the Manage Account link if it's present.
+         }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index 1e05331724916..079f18eab8e44 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -168,18 +168,6 @@ public class MainSettings extends ChromeBaseSettingsFragment
+         ProfileDataCache profileDataCache =
+                 ProfileDataCache.createWithDefaultImageSizeAndNoBadge(getContext());
+         AccountManagerFacade accountManagerFacade = AccountManagerFacadeProvider.getInstance();
+-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(getProfile());
+-        IdentityManager identityManager =
+-                IdentityServicesProvider.get().getIdentityManager(getProfile());
+-
+-        SyncPromoPreference syncPromoPreference = findPreference(PREF_SYNC_PROMO);
+-        syncPromoPreference.initialize(
+-                profileDataCache, accountManagerFacade, signinManager, identityManager);
+-
+-        SignInPreference signInPreference = findPreference(PREF_SIGN_IN);
+-        signInPreference.initialize(profileDataCache, accountManagerFacade,
+-                UserPrefs.get(getProfile()), SyncServiceFactory.getForProfile(getProfile()),
+-                signinManager, identityManager);
+ 
+         cachePreferences();
+ 
+@@ -253,8 +241,6 @@ public class MainSettings extends ChromeBaseSettingsFragment
+     }
+ 
+     private void updatePreferences() {
+-        removePreferenceIfPresent(PREF_SIGN_IN);
+-
+         updateManageSyncPreference();
+         updateSearchEnginePreference();
+         updateAutofillPreferences();
 -- 
 2.34.1
 
