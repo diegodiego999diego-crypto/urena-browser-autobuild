@@ -1,0 +1,64 @@
+From a28eabc7710c05f51b8a2f2c1c48b4c75302319f Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Fri, 20 Oct 2023 18:49:36 +0530
+Subject: [PATCH] Browser: Enable webRTC by default
+
+---
+ .../core/browser/bromite_content_settings/webrtc.inc            | 2 +-
+ .../peerconnection/peer_connection_dependency_factory.cc        | 2 +-
+ .../blink/renderer/modules/peerconnection/rtc_rtp_receiver.cc   | 2 +-
+ .../blink/renderer/modules/peerconnection/rtc_rtp_sender.cc     | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/components/content_settings/core/browser/bromite_content_settings/webrtc.inc b/components/content_settings/core/browser/bromite_content_settings/webrtc.inc
+index 69b2de0ff52fa..c4ce181e6c88c 100644
+--- a/components/content_settings/core/browser/bromite_content_settings/webrtc.inc
++++ b/components/content_settings/core/browser/bromite_content_settings/webrtc.inc
+@@ -1,4 +1,4 @@
+-  Register(ContentSettingsType::WEBRTC, "webrtc", CONTENT_SETTING_BLOCK,
++  Register(ContentSettingsType::WEBRTC, "webrtc", CONTENT_SETTING_ALLOW,
+            WebsiteSettingsInfo::SYNCABLE,
+            /*allowlisted_schemes=*/{},
+            /*valid_settings=*/{CONTENT_SETTING_ALLOW,
+diff --git a/third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc b/third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc
+index 42ca15d9bf3ff..94a8c92dd5553 100644
+--- a/third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc
++++ b/third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc
+@@ -783,7 +783,7 @@ PeerConnectionDependencyFactory::CreatePortAllocator(
+       WebRTCIPHandlingPolicy policy =
+           GetWebRTCIPHandlingPolicy(webrtc_ip_handling_policy);
+       blink::WebContentSettingsClient* settings = web_frame->GetContentSettingsClient();
+-      if (settings && settings->AllowContentSetting(ContentSettingsType::WEBRTC, false)) {
++      if (settings && settings->AllowContentSetting(ContentSettingsType::WEBRTC, true)) {
+         policy = kDefault;
+       }
+ 
+diff --git a/third_party/blink/renderer/modules/peerconnection/rtc_rtp_receiver.cc b/third_party/blink/renderer/modules/peerconnection/rtc_rtp_receiver.cc
+index 33cdff03d81b5..23fdabd21af42 100644
+--- a/third_party/blink/renderer/modules/peerconnection/rtc_rtp_receiver.cc
++++ b/third_party/blink/renderer/modules/peerconnection/rtc_rtp_receiver.cc
+@@ -261,7 +261,7 @@ RTCRtpCapabilities* RTCRtpReceiver::getCapabilities(ScriptState* state,
+   auto* web_frame =
+       static_cast<WebLocalFrame*>(WebFrame::FromCoreFrame(window->GetFrame()));
+   blink::WebContentSettingsClient* settings = web_frame->GetContentSettingsClient();
+-  if (settings && !settings->AllowContentSetting(ContentSettingsType::WEBRTC, false)) {
++  if (settings && !settings->AllowContentSetting(ContentSettingsType::WEBRTC, true)) {
+     return nullptr;
+   }
+ 
+diff --git a/third_party/blink/renderer/modules/peerconnection/rtc_rtp_sender.cc b/third_party/blink/renderer/modules/peerconnection/rtc_rtp_sender.cc
+index aa249d6484023..1488ebc891f8b 100644
+--- a/third_party/blink/renderer/modules/peerconnection/rtc_rtp_sender.cc
++++ b/third_party/blink/renderer/modules/peerconnection/rtc_rtp_sender.cc
+@@ -1010,7 +1010,7 @@ RTCRtpCapabilities* RTCRtpSender::getCapabilities(ScriptState* state,
+   auto* web_frame =
+       static_cast<WebLocalFrame*>(WebFrame::FromCoreFrame(window->GetFrame()));
+   blink::WebContentSettingsClient* settings = web_frame->GetContentSettingsClient();
+-  if (settings && !settings->AllowContentSetting(ContentSettingsType::WEBRTC, false)) {
++  if (settings && !settings->AllowContentSetting(ContentSettingsType::WEBRTC, true)) {
+     return nullptr;
+   }
+ 
+-- 
+2.34.1
+
