@@ -126,20 +126,18 @@ patch() {
 rename() {
     cd $chromium_dir/src
 
-    # Translation directories
-    dirs="components components/strings chrome/browser/ui/android/strings chrome/browser/ui/android/strings/translations"
+    replacements=("Chrome browser=Browser" "Chrome=Browser" "Bromite=Browser" "Cromite=Browser")
 
-    for dir in $dirs; do
-        grdp_files=$(ls $dir/*.grdp 2> /dev/null | wc -l)
-        if [ "$grdp_files" != "0" ]; then
-	    sed -i 's/Chrome browser/Browser/g' $dir/*.grd*
-	    sed -i 's/Chrome/Browser/g' $dir/*.grd*
-        fi
-        xtb_files=$(ls $dir/*.xtb 2> /dev/null | wc -l)
-        if [ "$xtb_files" != "0" ]; then
-	    sed -i 's/Chrome browser/Browser/g' $dir/*.xtb
-	    sed -i 's/Chrome/Browser/g' $dir/*.xtb
-        fi
+    for replacement in "${replacements[@]}"; do
+        replaced_string=${replacement%%=*}
+        replacement_string=${replacement#*=}
+
+        find . -type f -not -name 'foundation_e.grdp' -name '*.grd*' | while read -r filename; do
+            sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
+        done
+        find . -type f -name '*.xtb' | while read -r filename; do
+            sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
+        done
     done
 
     git add .
