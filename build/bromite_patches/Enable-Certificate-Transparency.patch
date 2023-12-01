@@ -8,65 +8,21 @@ by default.
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc                       |  5 +++++
- chrome/browser/browser_features.cc                  | 13 +++++++------
- chrome/browser/browser_features.h                   |  1 +
- chrome/browser/flag_descriptions.cc                 |  6 +++++-
- chrome/browser/flag_descriptions.h                  |  5 ++++-
- .../browser/net/system_network_context_manager.cc   |  6 +-----
- chrome/browser/ssl/sct_reporting_service.cc         |  5 +++++
- chrome/common/chrome_features.cc                    | 10 ++--------
- net/http/transport_security_state.cc                |  5 +++--
- net/url_request/report_sender.cc                    |  3 ++-
- services/network/network_context.cc                 |  2 +-
- .../network/sct_auditing/sct_auditing_handler.cc    |  2 ++
- 12 files changed, 38 insertions(+), 25 deletions(-)
+ chrome/browser/browser_features.h                        | 1 +
+ chrome/browser/net/system_network_context_manager.cc     | 6 +-----
+ chrome/browser/ssl/sct_reporting_service.cc              | 5 +++++
+ .../about_flags_cc/Enable-Certificate-Transparency.inc   | 9 +++++++++
+ .../Enable-Certificate-Transparency.inc                  | 6 ++++++
+ .../Enable-Certificate-Transparency.inc                  | 2 ++
+ net/http/transport_security_state.cc                     | 5 +++--
+ net/url_request/report_sender.cc                         | 3 ++-
+ services/network/network_context.cc                      | 2 +-
+ services/network/sct_auditing/sct_auditing_handler.cc    | 2 ++
+ 10 files changed, 32 insertions(+), 9 deletions(-)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+ create mode 100644 cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+ create mode 100644 cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
 
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -9899,6 +9899,11 @@ const FeatureEntry kFeatureEntries[] = {
-      flag_descriptions::kWebMidiDescription, kOsAll,
-      FEATURE_VALUE_TYPE(features::kWebMidi)},
- 
-+    {"certificate-transparency-enabled",
-+     flag_descriptions::kCTEnabledName,
-+     flag_descriptions::kCTEnabledDescription, kOsAll,
-+     FEATURE_VALUE_TYPE(features::kCertificateTransparency)},
-+
- #if BUILDFLAG(IS_CHROMEOS_ASH)
-     {"dns-over-https-with-identifiers-reuse-old-policy",
-      flag_descriptions::kDnsOverHttpsWithIdentifiersReuseOldPolicyName,
-diff --git a/chrome/browser/browser_features.cc b/chrome/browser/browser_features.cc
---- a/chrome/browser/browser_features.cc
-+++ b/chrome/browser/browser_features.cc
-@@ -77,6 +77,11 @@ BASE_FEATURE(kEnableUniveralLinks,
-              base::FEATURE_ENABLED_BY_DEFAULT);
- #endif
- 
-+// Enables Certificate Transparency
-+BASE_FEATURE(kCertificateTransparency,
-+             "CertificateTransparency",          // must be enabled
-+             base::FEATURE_ENABLED_BY_DEFAULT);  // in Bromite
-+
- #if BUILDFLAG(IS_CHROMEOS_ASH)
- // Enables reading and writing PWA notification permissions from quick settings
- // menu.
-@@ -177,12 +182,8 @@ BASE_FEATURE(kWebUsbDeviceDetection,
- // update the list of accepted logs. Embedders who are planning to enable this
- // should first reach out to chrome-certificate-transparency@google.com.
- BASE_FEATURE(kCertificateTransparencyAskBeforeEnabling,
--             "CertificateTransparencyAskBeforeEnabling",
--#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
--             base::FEATURE_ENABLED_BY_DEFAULT);
--#else
--             base::FEATURE_DISABLED_BY_DEFAULT);
--#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
-+             "CertificateTransparencyAskBeforeEnabling",    // enabled
-+             base::FEATURE_ENABLED_BY_DEFAULT);             // by default
- 
- BASE_FEATURE(kLargeFaviconFromGoogle,
-              "LargeFaviconFromGoogle",
 diff --git a/chrome/browser/browser_features.h b/chrome/browser/browser_features.h
 --- a/chrome/browser/browser_features.h
 +++ b/chrome/browser/browser_features.h
@@ -78,37 +34,6 @@ diff --git a/chrome/browser/browser_features.h b/chrome/browser/browser_features
  BASE_DECLARE_FEATURE(kCertificateTransparencyAskBeforeEnabling);
  
  BASE_DECLARE_FEATURE(kLargeFaviconFromGoogle);
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -7766,7 +7766,11 @@ const char kAutofillCreditCardUploadDescription[] =
- 
- #endif  // defined(TOOLKIT_VIEWS) || BUILDFLAG(IS_ANDROID)
- 
--#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
-+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
-+const char kCTEnabledName[] = "Enable Certificate Transparency";
-+const char kCTEnabledDescription[] =
-+    "Enables compliance against the Certificate Transparency Policy, with reporting disabled.";
-+
- const char kElasticOverscrollName[] = "Elastic Overscroll";
- const char kElasticOverscrollDescription[] =
-     "Enables Elastic Overscrolling on touchscreens and precision touchpads.";
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -4499,7 +4499,10 @@ extern const char kAutofillCreditCardUploadDescription[];
- 
- #endif  // defined(TOOLKIT_VIEWS) || BUILDFLAG(IS_ANDROID)
- 
--#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
-+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
-+extern const char kCTEnabledName[];
-+extern const char kCTEnabledDescription[];
-+
- extern const char kElasticOverscrollName[];
- extern const char kElasticOverscrollDescription[];
- #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
@@ -147,36 +72,38 @@ diff --git a/chrome/browser/ssl/sct_reporting_service.cc b/chrome/browser/ssl/sc
    if (profile_->IsOffTheRecord() ||
        !base::FeatureList::IsEnabled(features::kSCTAuditing)) {
      return network::mojom::SCTAuditingMode::kDisabled;
-diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
---- a/chrome/common/chrome_features.cc
-+++ b/chrome/common/chrome_features.cc
-@@ -1127,15 +1127,9 @@ BASE_FEATURE(kSchedulerConfiguration,
-              base::FEATURE_DISABLED_BY_DEFAULT);
- #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
- 
--// Controls whether SCT audit reports are queued and the rate at which they
--// should be sampled. Default sampling rate is 1/10,000 certificates.
--#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_ANDROID)
--BASE_FEATURE(kSCTAuditing, "SCTAuditing", base::FEATURE_ENABLED_BY_DEFAULT);
--#else
- // This requires backend infrastructure and a data collection policy.
- // Non-Chrome builds should not use Chrome's infrastructure.
- BASE_FEATURE(kSCTAuditing, "SCTAuditing", base::FEATURE_DISABLED_BY_DEFAULT);
--#endif
- constexpr base::FeatureParam<double> kSCTAuditingSamplingRate{
-     &kSCTAuditing, "sampling_rate", 0.0001};
- 
-@@ -1144,8 +1138,8 @@ constexpr base::FeatureParam<double> kSCTAuditingSamplingRate{
- // about an SCT seen in the wild. If it hasn't been seen, then it is considered
- // a security incident and uploaded to Google.
- BASE_FEATURE(kSCTAuditingHashdance,
--             "SCTAuditingHashdance",
--             base::FEATURE_ENABLED_BY_DEFAULT);
-+             "SCTAuditingHashdance",             // disabled
-+             base::FEATURE_DISABLED_BY_DEFAULT); // by default
- 
- // An estimated high bound for the time it takes Google to ingest updates to an
- // SCT log. Chrome will wait for at least this time plus the Log's Maximum Merge
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,9 @@
++#ifdef FLAG_SECTION
++
++    {"certificate-transparency-enabled",
++     "Enable Certificate Transparency",
++     "Enables compliance against the Certificate Transparency "
++     "Policy, with reporting disabled.", kOsAll,
++     FEATURE_VALUE_TYPE(features::kCertificateTransparency)},
++
++#endif
+diff --git a/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,6 @@
++SET_CROMITE_FEATURE_ENABLED(kCertificateTransparencyAskBeforeEnabling);
++
++// Enables Certificate Transparency
++CROMITE_FEATURE(kCertificateTransparency,
++                "CertificateTransparency",
++                base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,2 @@
++SET_CROMITE_FEATURE_DISABLED(kSCTAuditing);
++SET_CROMITE_FEATURE_DISABLED(kSCTAuditingHashdance);
 diff --git a/net/http/transport_security_state.cc b/net/http/transport_security_state.cc
 --- a/net/http/transport_security_state.cc
 +++ b/net/http/transport_security_state.cc

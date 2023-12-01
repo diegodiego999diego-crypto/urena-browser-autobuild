@@ -8,68 +8,15 @@ with limited CPU/memory resources and it is disabled by default.
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc                   |  8 ++++++++
- chrome/browser/flag_descriptions.cc             |  4 ++++
- chrome/browser/flag_descriptions.h              |  3 +++
  .../common/network_features.cc                  |  3 +++
  .../common/network_features.h                   |  4 ++++
  .../common/network_switch_list.h                |  4 ++++
  .../spoof_checks/top_domains/BUILD.gn           |  1 +
+ ...o-configure-maximum-connections-per-host.inc | 17 +++++++++++++++++
  net/socket/client_socket_pool_manager.cc        | 17 +++++++++++++++++
- 8 files changed, 44 insertions(+)
+ 6 files changed, 46 insertions(+)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/add-flag-to-configure-maximum-connections-per-host.inc
 
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -1287,6 +1287,11 @@ const FeatureEntry::Choice kForceColorProfileChoices[] = {
-      switches::kForceDisplayColorProfile, "hdr10"},
- };
- 
-+const FeatureEntry::Choice kMaxConnectionsPerHostChoices[] = {
-+    {features::kMaxConnectionsPerHostChoiceDefault, "", ""},
-+    {features::kMaxConnectionsPerHostChoice15, switches::kMaxConnectionsPerHost, "15"},
-+};
-+
- const FeatureEntry::Choice kMemlogModeChoices[] = {
-     {flags_ui::kGenericExperimentChoiceDisabled, "", ""},
-     {flag_descriptions::kMemlogModeMinimal, heap_profiling::kMemlogMode,
-@@ -5508,6 +5513,9 @@ const FeatureEntry kFeatureEntries[] = {
-      FEATURE_VALUE_TYPE(chrome::android::kShareSheetCustomActionsPolish)},
- 
- #endif  // BUILDFLAG(IS_ANDROID)
-+    {"max-connections-per-host", flag_descriptions::kMaxConnectionsPerHostName,
-+     flag_descriptions::kMaxConnectionsPerHostDescription, kOsAll,
-+     MULTI_VALUE_TYPE(kMaxConnectionsPerHostChoices)},
-     {"disallow-doc-written-script-loads",
-      flag_descriptions::kDisallowDocWrittenScriptsUiName,
-      flag_descriptions::kDisallowDocWrittenScriptsUiDescription, kOsAll,
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -2231,6 +2231,10 @@ const char kUnthrottledNestedTimeoutDescription[] =
-     "websites abusing the API will still eventually have their setTimeouts "
-     "clamped.";
- 
-+const char kMaxConnectionsPerHostName[] = "Maximum connections per host";
-+const char kMaxConnectionsPerHostDescription[] =
-+     "Customize maximum allowed connections per host.";
-+
- const char kMediaRouterCastAllowAllIPsName[] =
-     "Connect to Cast devices on all IP addresses";
- const char kMediaRouterCastAllowAllIPsDescription[] =
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -1264,6 +1264,9 @@ extern const char kUndoAutofillDescription[];
- extern const char kUnthrottledNestedTimeoutName[];
- extern const char kUnthrottledNestedTimeoutDescription[];
- 
-+extern const char kMaxConnectionsPerHostName[];
-+extern const char kMaxConnectionsPerHostDescription[];
-+
- extern const char kMediaRouterCastAllowAllIPsName[];
- extern const char kMediaRouterCastAllowAllIPsDescription[];
- 
 diff --git a/components/network_session_configurator/common/network_features.cc b/components/network_session_configurator/common/network_features.cc
 --- a/components/network_session_configurator/common/network_features.cc
 +++ b/components/network_session_configurator/common/network_features.cc
@@ -120,6 +67,28 @@ diff --git a/components/url_formatter/spoof_checks/top_domains/BUILD.gn b/compon
    ]
    if (is_ios) {
      frameworks = [ "UIKit.framework" ]
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-configure-maximum-connections-per-host.inc b/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-configure-maximum-connections-per-host.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-configure-maximum-connections-per-host.inc
+@@ -0,0 +1,17 @@
++#ifdef FEATURE_PARAM_SECTION
++
++const FeatureEntry::Choice kMaxConnectionsPerHostChoices[] = {
++    {features::kMaxConnectionsPerHostChoiceDefault, "", ""},
++    {features::kMaxConnectionsPerHostChoice15, switches::kMaxConnectionsPerHost, "15"},
++};
++
++#endif
++
++#ifdef FLAG_SECTION
++
++    {"max-connections-per-host",
++     "Maximum connections per host",
++     "Customize maximum allowed connections per host.", kOsAll,
++     MULTI_VALUE_TYPE(kMaxConnectionsPerHostChoices)},
++
++#endif
 diff --git a/net/socket/client_socket_pool_manager.cc b/net/socket/client_socket_pool_manager.cc
 --- a/net/socket/client_socket_pool_manager.cc
 +++ b/net/socket/client_socket_pool_manager.cc

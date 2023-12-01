@@ -7,52 +7,14 @@ and internal chrome:// pages will be used for the autocomplete results.
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc                 | 22 ++++++++++++++++++-
- .../browser/autocomplete_controller.cc        | 10 +++++++++
- .../omnibox/browser/history_url_provider.cc   |  3 +++
- components/omnibox/browser/search_provider.cc |  4 ++++
- components/url_formatter/url_fixer.cc         |  4 ++++
- 5 files changed, 42 insertions(+), 1 deletion(-)
+ .../browser/autocomplete_controller.cc        | 10 ++++++
+ .../omnibox/browser/history_url_provider.cc   |  3 ++
+ components/omnibox/browser/search_provider.cc |  4 +++
+ components/url_formatter/url_fixer.cc         |  4 +++
+ ...lag-for-omnibox-autocomplete-filtering.inc | 32 +++++++++++++++++++
+ 5 files changed, 53 insertions(+)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-flag-for-omnibox-autocomplete-filtering.inc
 
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -653,6 +653,22 @@ const FeatureEntry::FeatureVariation kReaderModeDiscoverabilityVariations[] = {
- #endif  // BUILDFLAG(IS_ANDROID)
- 
- #if BUILDFLAG(IS_ANDROID)
-+const FeatureEntry::Choice kOmniboxAutocompleteFiltering[] = {
-+    {flags_ui::kGenericExperimentChoiceDefault, "", ""},
-+    {"Search suggestions only",
-+     "omnibox-autocomplete-filtering",
-+     "search"},
-+    {"Search suggestions and bookmarks",
-+     "omnibox-autocomplete-filtering",
-+     "search-bookmarks"},
-+    {"Search suggestions and internal chrome pages",
-+     "omnibox-autocomplete-filtering",
-+     "search-chrome"},
-+    {"Search suggestions, bookmarks, and internal chrome pages",
-+     "omnibox-autocomplete-filtering",
-+     "search-bookmarks-chrome"},
-+};
-+
- const FeatureEntry::FeatureParam kAdaptiveButton_AlwaysNone[] = {
-     {"mode", "always-none"}};
- const FeatureEntry::FeatureParam kAdaptiveButton_AlwaysNewTab[] = {
-@@ -4986,7 +5002,11 @@ const FeatureEntry kFeatureEntries[] = {
-      kOsMac | kOsLinux | kOsWin,
-      FEATURE_VALUE_TYPE(features::kSystemNotifications)},
- #endif  // BUILDFLAG(ENABLE_SYSTEM_NOTIFICATIONS) && !BUILDFLAG(IS_CHROMEOS_ASH)
--#if BUILDFLAG(IS_ANDROID)
-+#if BUILDFLAG(IS_ANDROID) // Bromite autocomplete filtering
-+    {"omnibox-autocomplete-filtering",
-+     "Omnibox Autocomplete Filtering",
-+     "Restrict omnibox autocomplete results to a combination of search suggestions (if enabled), bookmarks, and internal chrome pages.",
-+     kOsAll, MULTI_VALUE_TYPE(kOmniboxAutocompleteFiltering)},
-     {"adaptive-button-in-top-toolbar",
-      flag_descriptions::kAdaptiveButtonInTopToolbarName,
-      flag_descriptions::kAdaptiveButtonInTopToolbarDescription, kOsAndroid,
 diff --git a/components/omnibox/browser/autocomplete_controller.cc b/components/omnibox/browser/autocomplete_controller.cc
 --- a/components/omnibox/browser/autocomplete_controller.cc
 +++ b/components/omnibox/browser/autocomplete_controller.cc
@@ -135,5 +97,42 @@ diff --git a/components/url_formatter/url_fixer.cc b/components/url_formatter/ur
        url.append(kChromeUIDefaultHost);
      FixupPort(trimmed, parts.port, &url);
      FixupPath(trimmed, parts.path, &url);
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Add-flag-for-omnibox-autocomplete-filtering.inc b/cromite_flags/chrome/browser/about_flags_cc/Add-flag-for-omnibox-autocomplete-filtering.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Add-flag-for-omnibox-autocomplete-filtering.inc
+@@ -0,0 +1,32 @@
++#if BUILDFLAG(IS_ANDROID)
++
++#ifdef FEATURE_PARAM_SECTION
++
++const FeatureEntry::Choice kOmniboxAutocompleteFiltering[] = {
++    {flags_ui::kGenericExperimentChoiceDefault, "", ""},
++    {"Search suggestions only",
++     "omnibox-autocomplete-filtering",
++     "search"},
++    {"Search suggestions and bookmarks",
++     "omnibox-autocomplete-filtering",
++     "search-bookmarks"},
++    {"Search suggestions and internal chrome pages",
++     "omnibox-autocomplete-filtering",
++     "search-chrome"},
++    {"Search suggestions, bookmarks, and internal chrome pages",
++     "omnibox-autocomplete-filtering",
++     "search-bookmarks-chrome"},
++};
++
++#endif
++
++#ifdef FLAG_SECTION
++
++    {"omnibox-autocomplete-filtering",
++     "Omnibox Autocomplete Filtering",
++     "Restrict omnibox autocomplete results to a combination of search suggestions (if enabled), bookmarks, and internal chrome pages.",
++     kOsAll, MULTI_VALUE_TYPE(kOmniboxAutocompleteFiltering)},
++
++#endif
++
++#endif
 --
 2.25.1

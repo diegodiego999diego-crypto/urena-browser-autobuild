@@ -4,57 +4,19 @@ Subject: Add flag to disable vibration
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc                                | 4 ++++
- chrome/browser/flag_descriptions.cc                          | 3 +++
- chrome/browser/flag_descriptions.h                           | 2 ++
- content/child/runtime_features.cc                            | 1 +
- content/public/common/content_features.cc                    | 5 +++++
- content/public/common/content_features.h                     | 2 ++
- third_party/blink/public/platform/web_runtime_features.h     | 1 +
- .../blink/renderer/modules/vibration/vibration_controller.cc | 3 +++
- .../blink/renderer/platform/exported/web_runtime_features.cc | 4 ++++
- .../blink/renderer/platform/runtime_enabled_features.json5   | 4 ++++
- 10 files changed, 29 insertions(+)
+ content/child/runtime_features.cc                         | 1 +
+ .../about_flags_cc/Add-flag-to-disable-vibration.inc      | 8 ++++++++
+ .../content_features_cc/Add-flag-to-disable-vibration.inc | 4 ++++
+ .../content_features_h/Add-flag-to-disable-vibration.inc  | 1 +
+ third_party/blink/public/platform/web_runtime_features.h  | 1 +
+ .../renderer/modules/vibration/vibration_controller.cc    | 3 +++
+ .../renderer/platform/exported/web_runtime_features.cc    | 4 ++++
+ .../renderer/platform/runtime_enabled_features.json5      | 4 ++++
+ 8 files changed, 26 insertions(+)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-vibration.inc
+ create mode 100644 cromite_flags/content/public/common/content_features_cc/Add-flag-to-disable-vibration.inc
+ create mode 100644 cromite_flags/content/public/common/content_features_h/Add-flag-to-disable-vibration.inc
 
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -8451,6 +8451,10 @@ const FeatureEntry kFeatureEntries[] = {
-      FEATURE_VALUE_TYPE(features::kNewMacNotificationAPI)},
- #endif
- 
-+    {"enable-vibration", flag_descriptions::kEnableVibrationName,
-+     flag_descriptions::kEnableVibrationDescription, kOsAll,
-+     FEATURE_VALUE_TYPE(features::kVibration)},
-+
- #if BUILDFLAG(IS_CHROMEOS_ASH)
-     {"exo-consumed-by-ime-by-flag",
-      flag_descriptions::kExoConsumedByImeByFlagName,
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -7343,6 +7343,9 @@ const char kLacrosMergeIcuDataFileDescription[] =
-     "Enables sharing common areas of icudtl.dat between Ash and Lacros.";
- #endif  // #if BUILDFLAG(IS_CHROMEOS_LACROS)
- 
-+const char kEnableVibrationName[] = "Vibration";
-+const char kEnableVibrationDescription[] = "Enable vibration API; an user gesture will still be needed.";
-+
- #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
- const char kGetAllScreensMediaName[] = "GetAllScreensMedia API";
- const char kGetAllScreensMediaDescription[] =
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -4469,6 +4469,8 @@ extern const char kWebUITabStripContextMenuAfterTapName[];
- extern const char kWebUITabStripContextMenuAfterTapDescription[];
- #endif  // BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
- 
-+extern const char kEnableVibrationName[];
-+extern const char kEnableVibrationDescription[];
- #if defined(TOOLKIT_VIEWS) || BUILDFLAG(IS_ANDROID)
- 
- extern const char kAutofillCreditCardUploadName[];
 diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.cc
 --- a/content/child/runtime_features.cc
 +++ b/content/child/runtime_features.cc
@@ -66,33 +28,34 @@ diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.
  #endif
  
  #if BUILDFLAG(IS_ANDROID)
-diff --git a/content/public/common/content_features.cc b/content/public/common/content_features.cc
---- a/content/public/common/content_features.cc
-+++ b/content/public/common/content_features.cc
-@@ -106,6 +106,11 @@ BASE_FEATURE(kBackForwardCacheMemoryControls,
- #endif
- );
- 
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-vibration.inc b/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-vibration.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-vibration.inc
+@@ -0,0 +1,8 @@
++#ifdef FLAG_SECTION
++
++    {"enable-vibration",
++     "Vibration",
++     "Enable vibration API; an user gesture will still be needed.", kOsAll,
++     FEATURE_VALUE_TYPE(features::kVibration)},
++
++#endif
+diff --git a/cromite_flags/content/public/common/content_features_cc/Add-flag-to-disable-vibration.inc b/cromite_flags/content/public/common/content_features_cc/Add-flag-to-disable-vibration.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/content/public/common/content_features_cc/Add-flag-to-disable-vibration.inc
+@@ -0,0 +1,4 @@
 +// Enables vibration; an user gesture will still be required if enabled.
-+BASE_FEATURE(kVibration,
-+             "VibrationEnabled",
-+             base::FEATURE_DISABLED_BY_DEFAULT);
-+
- // When this feature is enabled, private network requests initiated from
- // non-secure contexts in the `public` address space  are blocked.
- //
-diff --git a/content/public/common/content_features.h b/content/public/common/content_features.h
---- a/content/public/common/content_features.h
-+++ b/content/public/common/content_features.h
-@@ -311,6 +311,8 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kForceOffTextAutosizing);
- CONTENT_EXPORT BASE_DECLARE_FEATURE(kUserMediaScreenCapturing);
- CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebNfc);
- #endif  // BUILDFLAG(IS_ANDROID)
++CROMITE_FEATURE(kVibration,
++               "VibrationEnabled",
++               base::FEATURE_DISABLED_BY_DEFAULT);
+diff --git a/cromite_flags/content/public/common/content_features_h/Add-flag-to-disable-vibration.inc b/cromite_flags/content/public/common/content_features_h/Add-flag-to-disable-vibration.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/content/public/common/content_features_h/Add-flag-to-disable-vibration.inc
+@@ -0,0 +1 @@
 +CONTENT_EXPORT BASE_DECLARE_FEATURE(kVibration);
-+
- 
- #if BUILDFLAG(IS_MAC)
- CONTENT_EXPORT BASE_DECLARE_FEATURE(kMacAllowBackgroundingRenderProcesses);
 diff --git a/third_party/blink/public/platform/web_runtime_features.h b/third_party/blink/public/platform/web_runtime_features.h
 --- a/third_party/blink/public/platform/web_runtime_features.h
 +++ b/third_party/blink/public/platform/web_runtime_features.h

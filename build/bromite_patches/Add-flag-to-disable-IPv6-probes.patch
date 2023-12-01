@@ -4,58 +4,44 @@ Subject: Add flag to disable IPv6 probes
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc           |  4 ++++
- chrome/browser/flag_descriptions.cc     |  4 ++++
- chrome/browser/flag_descriptions.h      |  3 +++
- net/BUILD.gn                            |  1 +
- net/base/features.cc                    |  4 ++++
- net/base/features.h                     |  3 +++
- net/dns/host_resolver_manager.cc        | 11 +++++++++++
- services/network/public/cpp/features.cc |  5 +++++
- services/network/public/cpp/features.h  |  1 +
- 9 files changed, 36 insertions(+)
+ .../add-flag-to-disable-IPv6-probes.inc               |  8 ++++++++
+ .../features_cc/add-flag-to-disable-IPv6-probes.inc   |  3 +++
+ .../features_h/add-flag-to-disable-IPv6-probes.inc    |  2 ++
+ net/BUILD.gn                                          |  1 +
+ net/dns/host_resolver_manager.cc                      | 11 +++++++++++
+ 5 files changed, 25 insertions(+)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/add-flag-to-disable-IPv6-probes.inc
+ create mode 100644 cromite_flags/net/base/features_cc/add-flag-to-disable-IPv6-probes.inc
+ create mode 100644 cromite_flags/net/base/features_h/add-flag-to-disable-IPv6-probes.inc
 
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -6883,6 +6883,10 @@ const FeatureEntry kFeatureEntries[] = {
-     {"enable-reader-mode-in-cct", flag_descriptions::kReaderModeInCCTName,
-      flag_descriptions::kReaderModeInCCTDescription, kOsAndroid,
-      FEATURE_VALUE_TYPE(chrome::android::kReaderModeInCCT)},
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-disable-IPv6-probes.inc b/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-disable-IPv6-probes.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/add-flag-to-disable-IPv6-probes.inc
+@@ -0,0 +1,8 @@
++#ifdef FLAG_SECTION
++
 +    {"ipv6-probing",
-+     flag_descriptions::kIPv6ProbingName,
-+     flag_descriptions::kIPv6ProbingDescription, kOsAll,
++     "Enable IPv6 probing.",
++     "Send IPv6 probes to a RIPE DNS address to verify IPv6 connectivity.", kOsAll,
 +     FEATURE_VALUE_TYPE(net::features::kIPv6Probing)},
- #endif  // BUILDFLAG(IS_ANDROID)
- 
-     {"shopping-collection",
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -3956,6 +3956,10 @@ const char kAccountReauthenticationRecentTimeWindow0mins[] = "0 mins";
- const char kAccountReauthenticationRecentTimeWindow1mins[] = "1 mins";
- const char kAccountReauthenticationRecentTimeWindow5mins[] = "5 mins";
- 
-+const char kIPv6ProbingName[] = "Enable IPv6 probing.";
-+const char kIPv6ProbingDescription[] =
-+    "Send IPv6 probes to a RIPE DNS address to verify IPv6 connectivity.";
 +
- const char kChimeAlwaysShowNotificationDescription[] =
-     "A debug flag to always show Chime notification after receiving a payload.";
- const char kChimeAlwaysShowNotificationName[] =
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -892,6 +892,9 @@ extern const char kEnableWasmStringrefName[];
- extern const char kEnableWasmStringrefDescription[];
- 
- extern const char kEnableWasmTieringName[];
-+extern const char kIPv6ProbingName[];
-+extern const char kIPv6ProbingDescription[];
-+
- extern const char kEnableWasmTieringDescription[];
- 
- extern const char kEvDetailsInPageInfoName[];
++#endif // ifdef FLAG_SECTION
+diff --git a/cromite_flags/net/base/features_cc/add-flag-to-disable-IPv6-probes.inc b/cromite_flags/net/base/features_cc/add-flag-to-disable-IPv6-probes.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/net/base/features_cc/add-flag-to-disable-IPv6-probes.inc
+@@ -0,0 +1,3 @@
++CROMITE_FEATURE(kIPv6Probing,
++                "IPv6Probing",
++                base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/cromite_flags/net/base/features_h/add-flag-to-disable-IPv6-probes.inc b/cromite_flags/net/base/features_h/add-flag-to-disable-IPv6-probes.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/net/base/features_h/add-flag-to-disable-IPv6-probes.inc
+@@ -0,0 +1,2 @@
++// Enable IPv6 ping probes to RIPE DNS.
++NET_EXPORT BASE_DECLARE_FEATURE(kIPv6Probing);
 diff --git a/net/BUILD.gn b/net/BUILD.gn
 --- a/net/BUILD.gn
 +++ b/net/BUILD.gn
@@ -67,33 +53,6 @@ diff --git a/net/BUILD.gn b/net/BUILD.gn
    ]
  
    public_deps = [
-diff --git a/net/base/features.cc b/net/base/features.cc
---- a/net/base/features.cc
-+++ b/net/base/features.cc
-@@ -41,6 +41,10 @@ BASE_FEATURE(kUseDnsHttpsSvcb,
- const base::FeatureParam<bool> kUseDnsHttpsSvcbEnforceSecureResponse{
-     &kUseDnsHttpsSvcb, "UseDnsHttpsSvcbEnforceSecureResponse", false};
- 
-+BASE_FEATURE(kIPv6Probing,
-+             "IPv6Probing",
-+             base::FEATURE_ENABLED_BY_DEFAULT);
-+
- const base::FeatureParam<base::TimeDelta> kUseDnsHttpsSvcbInsecureExtraTimeMax{
-     &kUseDnsHttpsSvcb, "UseDnsHttpsSvcbInsecureExtraTimeMax",
-     base::Milliseconds(50)};
-diff --git a/net/base/features.h b/net/base/features.h
---- a/net/base/features.h
-+++ b/net/base/features.h
-@@ -52,6 +52,9 @@ NET_EXPORT BASE_DECLARE_FEATURE(kUseDnsHttpsSvcb);
- NET_EXPORT extern const base::FeatureParam<bool>
-     kUseDnsHttpsSvcbEnforceSecureResponse;
- 
-+// Enable IPv6 ping probes to RIPE DNS.
-+NET_EXPORT BASE_DECLARE_FEATURE(kIPv6Probing);
-+
- // If we are still waiting for an HTTPS transaction after all the
- // other transactions in an insecure DnsTask have completed, we will compute a
- // timeout for the remaining transaction. The timeout will be
 diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
 --- a/net/dns/host_resolver_manager.cc
 +++ b/net/dns/host_resolver_manager.cc
@@ -129,31 +88,5 @@ diff --git a/net/dns/host_resolver_manager.cc b/net/dns/host_resolver_manager.cc
    if (probing_ipv6_) {
      ipv6_request_callbacks_.push_back(std::move(callback));
      return ERR_IO_PENDING;
-diff --git a/services/network/public/cpp/features.cc b/services/network/public/cpp/features.cc
---- a/services/network/public/cpp/features.cc
-+++ b/services/network/public/cpp/features.cc
-@@ -32,6 +32,11 @@ BASE_FEATURE(kThrottleDelayable,
-              "ThrottleDelayable",
-              base::FEATURE_ENABLED_BY_DEFAULT);
- 
-+// Enable IPv6 ping probes to RIPE DNS.
-+BASE_FEATURE(kIPv6Probing,
-+             "IPv6Probing",
-+             base::FEATURE_ENABLED_BY_DEFAULT);
-+
- // When kPriorityRequestsDelayableOnSlowConnections is enabled, HTTP
- // requests fetched from a SPDY/QUIC/H2 proxies can be delayed by the
- // ResourceScheduler just as HTTP/1.1 resources are. However, requests from such
-diff --git a/services/network/public/cpp/features.h b/services/network/public/cpp/features.h
---- a/services/network/public/cpp/features.h
-+++ b/services/network/public/cpp/features.h
-@@ -16,6 +16,7 @@ namespace features {
- COMPONENT_EXPORT(NETWORK_CPP) BASE_DECLARE_FEATURE(kNetworkErrorLogging);
- COMPONENT_EXPORT(NETWORK_CPP) BASE_DECLARE_FEATURE(kReporting);
- COMPONENT_EXPORT(NETWORK_CPP) BASE_DECLARE_FEATURE(kThrottleDelayable);
-+COMPONENT_EXPORT(NETWORK_CPP) BASE_DECLARE_FEATURE(kIPv6Probing);
- COMPONENT_EXPORT(NETWORK_CPP)
- BASE_DECLARE_FEATURE(kDelayRequestsOnMultiplexedConnections);
- COMPONENT_EXPORT(NETWORK_CPP)
 --
 2.25.1

@@ -15,17 +15,18 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../NativePageNavigationDelegateImpl.java     |  4 +-
  .../chrome/browser/ntp/NewTabPageLayout.java  | 30 ++++++++-
  .../SuggestionsNavigationDelegate.java        | 17 +++++
- chrome/browser/about_flags.cc                 |  3 +
- chrome/browser/flag_descriptions.cc           |  3 +
- chrome/browser/flag_descriptions.h            |  3 +
- .../flags/android/chrome_feature_list.cc      |  5 ++
- .../flags/android/chrome_feature_list.h       |  1 +
+ .../flags/android/chrome_feature_list.cc      |  1 +
  .../browser/flags/ChromeFeatureList.java      |  1 +
- .../signin/public/base/signin_switches.cc     |  2 +-
- .../variations/fieldtrial_testing_config.json | 18 +++++
- 17 files changed, 195 insertions(+), 5 deletions(-)
+ .../signin/public/base/signin_switches.cc     |  3 +
+ .../Restore-Simplified-NTP-launch.inc         | 12 ++++
+ .../Restore-Simplified-NTP-launch.inc         |  3 +
+ .../Restore-Simplified-NTP-launch.inc         |  1 +
+ 15 files changed, 181 insertions(+), 4 deletions(-)
  create mode 100644 chrome/android/java/res/layout/ntp_shortcuts.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/feedback/SimplifiedNtpFeedbackSource.java
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Restore-Simplified-NTP-launch.inc
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Restore-Simplified-NTP-launch.inc
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
@@ -315,45 +316,6 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/Sug
      /**
       * Opens the suggestions page without recording metrics.
       *
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -5581,6 +5581,9 @@ const FeatureEntry kFeatureEntries[] = {
-      SINGLE_VALUE_TYPE_AND_VALUE(
-          switches::kForceShowUpdateMenuItemCustomSummary,
-          "Custom Summary")},
-+    {"simplified-ntp", flag_descriptions::kSimplifiedNtpName,
-+     flag_descriptions::kSimplifiedNtpDescription, kOsAndroid,
-+     FEATURE_VALUE_TYPE(chrome::android::kSimplifiedNTP)},
-     {"force-show-update-menu-badge", flag_descriptions::kUpdateMenuBadgeName,
-      flag_descriptions::kUpdateMenuBadgeDescription, kOsAndroid,
-      SINGLE_VALUE_TYPE(switches::kForceShowUpdateMenuBadge)},
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -4507,6 +4507,9 @@ const char kStartSurfaceWithAccessibilityName[] =
- const char kStartSurfaceWithAccessibilityDescription[] =
-     "Enable Start Surface with Accessibility.";
- 
-+const char kSimplifiedNtpName[] = "Simplified NTP";
-+const char kSimplifiedNtpDescription[] = "Show a simplified New Tab Page.";
-+
- const char kStrictSiteIsolationName[] = "Strict site isolation";
- const char kStrictSiteIsolationDescription[] =
-     "Security mode that enables site isolation for all sites (SitePerProcess). "
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -2628,6 +2628,9 @@ extern const char kSmartZoomDescription[];
- extern const char kSmartSuggestionForLargeDownloadsName[];
- extern const char kSmartSuggestionForLargeDownloadsDescription[];
- 
-+extern const char kSimplifiedNtpName[];
-+extern const char kSimplifiedNtpDescription[];
-+
- extern const char kStartSurfaceAndroidName[];
- extern const char kStartSurfaceAndroidDescription[];
- 
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
@@ -365,28 +327,6 @@ diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browse
      &kInstanceSwitcher,
      &kInstantStart,
      &kLensCameraAssistedSearch,
-@@ -859,6 +860,10 @@ BASE_FEATURE(kInstanceSwitcher,
-              "InstanceSwitcher",
-              base::FEATURE_ENABLED_BY_DEFAULT);
- 
-+BASE_FEATURE(kSimplifiedNTP,
-+             "SimplifiedNTP",
-+             base::FEATURE_ENABLED_BY_DEFAULT);
-+
- BASE_FEATURE(kPageAnnotationsService,
-              "PageAnnotationsService",
-              base::FEATURE_DISABLED_BY_DEFAULT);
-diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
---- a/chrome/browser/flags/android/chrome_feature_list.h
-+++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -141,6 +141,7 @@ BASE_DECLARE_FEATURE(kOmniboxModernizeVisualUpdate);
- BASE_DECLARE_FEATURE(kOmniboxWarmRecycledViewPool);
- BASE_DECLARE_FEATURE(kOptimizeGeolocationHeaderGeneration);
- BASE_DECLARE_FEATURE(kPageAnnotationsService);
-+BASE_DECLARE_FEATURE(kSimplifiedNTP);
- BASE_DECLARE_FEATURE(kPreconnectOnTabCreation);
- BASE_DECLARE_FEATURE(kBookmarksImprovedSaveFlow);
- BASE_DECLARE_FEATURE(kBookmarksRefresh);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
@@ -401,42 +341,44 @@ diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/f
 diff --git a/components/signin/public/base/signin_switches.cc b/components/signin/public/base/signin_switches.cc
 --- a/components/signin/public/base/signin_switches.cc
 +++ b/components/signin/public/base/signin_switches.cc
-@@ -14,7 +14,7 @@ namespace switches {
- // Feature to add a signed-out avatar on the NTP.
- BASE_FEATURE(kIdentityStatusConsistency,
-              "IdentityStatusConsistency",
--             base::FEATURE_ENABLED_BY_DEFAULT);
-+             base::FEATURE_DISABLED_BY_DEFAULT);
- #endif
+@@ -84,4 +84,7 @@ BASE_FEATURE(kSearchEngineChoiceFre,
  
- // Clears the token service before using it. This allows simulating the
-diff --git a/testing/variations/fieldtrial_testing_config.json b/testing/variations/fieldtrial_testing_config.json
---- a/testing/variations/fieldtrial_testing_config.json
-+++ b/testing/variations/fieldtrial_testing_config.json
-@@ -7994,6 +7994,24 @@
-             ]
-         }
-     ],
-+    "SimplifiedNTP": [
-+        {
-+            "platforms": [
-+                "android"
-+            ],
-+            "experiments": [
-+                {
-+                    "name": "Enabled_NoScrollToLoad",
-+                    "enable_features": [
-+                        "SimplifiedNTP"
-+                    ],
-+                    "disable_features": [
-+                        "ContentSuggestionsScrollToLoad"
-+                    ]
-+                }
-+            ]
-+        }
-+    ],
-     "HelpAppLauncherSearch": [
-         {
-             "platforms": [
+ BASE_FEATURE(kUnoDesktop, "UnoDesktop", base::FEATURE_DISABLED_BY_DEFAULT);
+ 
++#if BUILDFLAG(IS_ANDROID)
++SET_CROMITE_FEATURE_DISABLED(kIdentityStatusConsistency);
++#endif
+ }  // namespace switches
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Restore-Simplified-NTP-launch.inc b/cromite_flags/chrome/browser/about_flags_cc/Restore-Simplified-NTP-launch.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Restore-Simplified-NTP-launch.inc
+@@ -0,0 +1,12 @@
++#if BUILDFLAG(IS_ANDROID)
++
++#ifdef FLAG_SECTION
++
++    {"simplified-ntp",
++     "Simplified NTP",
++     "Show a simplified New Tab Page.", kOsAndroid,
++     FEATURE_VALUE_TYPE(chrome::android::kSimplifiedNTP)},
++
++#endif
++
++#endif
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Restore-Simplified-NTP-launch.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Restore-Simplified-NTP-launch.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Restore-Simplified-NTP-launch.inc
+@@ -0,0 +1,3 @@
++CROMITE_FEATURE(kSimplifiedNTP,
++                "SimplifiedNTP",
++                base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc
+@@ -0,0 +1 @@
++BASE_DECLARE_FEATURE(kSimplifiedNTP);
 --
 2.25.1
