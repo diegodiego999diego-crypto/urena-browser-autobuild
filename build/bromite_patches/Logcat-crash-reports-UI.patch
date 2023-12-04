@@ -1,7 +1,6 @@
-From f9b23220074e2b69ec65d7432e3f2bc07fa44a21 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Tue, 15 Jun 2021 11:49:43 +0000
-Subject: [PATCH 136/192] Logcat crash reports UI
+Subject: Logcat crash reports UI
 
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
@@ -27,7 +26,6 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  18 files changed, 385 insertions(+), 134 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java
-index 03e9446c93261..7185568b7794d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/crash/MinidumpUploadServiceImpl.java
 @@ -44,6 +44,11 @@ import java.lang.annotation.Retention;
@@ -67,7 +65,6 @@ index 03e9446c93261..7185568b7794d 100644
       * Schedules uploading of all pending minidumps, using the JobScheduler API.
       */
 diff --git a/chrome/browser/crash_upload_list/crash_upload_list_android.cc b/chrome/browser/crash_upload_list/crash_upload_list_android.cc
-index 4b779cd60183e..37c2e05252ca4 100644
 --- a/chrome/browser/crash_upload_list/crash_upload_list_android.cc
 +++ b/chrome/browser/crash_upload_list/crash_upload_list_android.cc
 @@ -14,6 +14,7 @@
@@ -133,7 +130,6 @@ index 4b779cd60183e..37c2e05252ca4 100644
    }
  }
 diff --git a/chrome/browser/crash_upload_list/crash_upload_list_android.h b/chrome/browser/crash_upload_list/crash_upload_list_android.h
-index d95f96cbaa4ec..e916a4e24d2af 100644
 --- a/chrome/browser/crash_upload_list/crash_upload_list_android.h
 +++ b/chrome/browser/crash_upload_list/crash_upload_list_android.h
 @@ -35,6 +35,7 @@ class CrashUploadListAndroid : public TextLogUploadList {
@@ -145,10 +141,9 @@ index d95f96cbaa4ec..e916a4e24d2af 100644
   private:
    void LoadUnsuccessfulUploadList(
 diff --git a/chrome/browser/net/chrome_network_delegate.cc b/chrome/browser/net/chrome_network_delegate.cc
-index 136bb81baa984..8998b3680e053 100644
 --- a/chrome/browser/net/chrome_network_delegate.cc
 +++ b/chrome/browser/net/chrome_network_delegate.cc
-@@ -140,6 +140,13 @@ bool IsAccessAllowedAndroid(const base::FilePath& path) {
+@@ -150,6 +150,13 @@ bool IsAccessAllowedAndroid(const base::FilePath& path) {
    if (external_storage_path.IsParent(path))
      return true;
  
@@ -163,10 +158,9 @@ index 136bb81baa984..8998b3680e053 100644
    std::vector<base::FilePath> all_download_dirs =
        base::android::GetAllPrivateDownloadsDirectories();
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 4ce6bd61ca6f9..596b4e0d58b4b 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -658,6 +658,7 @@ static_library("ui") {
+@@ -665,6 +665,7 @@ static_library("ui") {
      "//third_party/re2",
      "//third_party/webrtc_overrides:webrtc_component",
      "//third_party/zlib",
@@ -175,7 +169,6 @@ index 4ce6bd61ca6f9..596b4e0d58b4b 100644
      "//ui/base",
      "//ui/base:data_exchange",
 diff --git a/chrome/browser/ui/webui/crashes_ui.cc b/chrome/browser/ui/webui/crashes_ui.cc
-index d555af6b7d22c..6f0e451ceeec5 100644
 --- a/chrome/browser/ui/webui/crashes_ui.cc
 +++ b/chrome/browser/ui/webui/crashes_ui.cc
 @@ -37,6 +37,19 @@
@@ -430,7 +423,6 @@ index d555af6b7d22c..6f0e451ceeec5 100644
    // Set up the chrome://crashes/ source.
    CreateAndAddCrashesUIHTMLSource(Profile::FromWebUI(web_ui));
 diff --git a/components/crash/core/browser/crashes_ui_util.cc b/components/crash/core/browser/crashes_ui_util.cc
-index d0aff0a0be32a..0b0f995ae3ea6 100644
 --- a/components/crash/core/browser/crashes_ui_util.cc
 +++ b/components/crash/core/browser/crashes_ui_util.cc
 @@ -39,6 +39,8 @@ const CrashesUILocalizedString kCrashesUILocalizedStrings[] = {
@@ -452,7 +444,6 @@ index d0aff0a0be32a..0b0f995ae3ea6 100644
  std::string UploadInfoStateAsString(UploadList::UploadInfo::State state) {
    switch (state) {
 diff --git a/components/crash/core/browser/crashes_ui_util.h b/components/crash/core/browser/crashes_ui_util.h
-index c1c402ac7206c..8e42f9fb6a6d4 100644
 --- a/components/crash/core/browser/crashes_ui_util.h
 +++ b/components/crash/core/browser/crashes_ui_util.h
 @@ -34,6 +34,8 @@ extern const char kCrashesUIRequestCrashUpload[];
@@ -465,7 +456,6 @@ index c1c402ac7206c..8e42f9fb6a6d4 100644
  // Converts and appends the most recent uploads to |out_value|.
  void UploadListToValue(UploadList* upload_list, base::Value::List* out_value);
 diff --git a/components/crash/core/browser/resources/crashes.css b/components/crash/core/browser/resources/crashes.css
-index 9ecd68299460c..d33d21071c3a2 100644
 --- a/components/crash/core/browser/resources/crashes.css
 +++ b/components/crash/core/browser/resources/crashes.css
 @@ -3,7 +3,9 @@
@@ -554,7 +544,6 @@ index 9ecd68299460c..d33d21071c3a2 100644
 +  }
 +}
 diff --git a/components/crash/core/browser/resources/crashes.html b/components/crash/core/browser/resources/crashes.html
-index 4726089968cd3..18ee70fb39f20 100644
 --- a/components/crash/core/browser/resources/crashes.html
 +++ b/components/crash/core/browser/resources/crashes.html
 @@ -1,6 +1,7 @@
@@ -589,7 +578,6 @@ index 4726089968cd3..18ee70fb39f20 100644
  
      <div id="crashList">
 diff --git a/components/crash/core/browser/resources/crashes.ts b/components/crash/core/browser/resources/crashes.ts
-index 591214145a802..4179120e9bbf8 100644
 --- a/components/crash/core/browser/resources/crashes.ts
 +++ b/components/crash/core/browser/resources/crashes.ts
 @@ -12,7 +12,7 @@ import './strings.m.js';
@@ -749,7 +737,6 @@ index 591214145a802..4179120e9bbf8 100644
    requestCrashes();
  });
 diff --git a/components/crash_strings.grdp b/components/crash_strings.grdp
-index 06e865ec6240a..c39ccdd92356b 100644
 --- a/components/crash_strings.grdp
 +++ b/components/crash_strings.grdp
 @@ -19,22 +19,22 @@
@@ -800,7 +787,6 @@ index 06e865ec6240a..c39ccdd92356b 100644
    </message>
  </grit-part>
 diff --git a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/CrashFileManager.java b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/CrashFileManager.java
-index 382ca08df1bc3..0988666035204 100644
 --- a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/CrashFileManager.java
 +++ b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/CrashFileManager.java
 @@ -109,6 +109,8 @@ public class CrashFileManager {
@@ -832,7 +818,6 @@ index 382ca08df1bc3..0988666035204 100644
              String filenameSansExtension = f.getName().split("\\.")[0];
              if (filenameSansExtension.endsWith(localId)) {
 diff --git a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploadCallable.java b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploadCallable.java
-index 78da58078027f..779932a776bd7 100644
 --- a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploadCallable.java
 +++ b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploadCallable.java
 @@ -63,27 +63,8 @@ public class MinidumpUploadCallable implements Callable<Integer> {
@@ -865,7 +850,6 @@ index 78da58078027f..779932a776bd7 100644
          if (result.isSuccess()) {
              String uploadId = result.message();
 diff --git a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploader.java b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploader.java
-index dc7fbc0090099..3516a4ed78fd9 100644
 --- a/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploader.java
 +++ b/components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/MinidumpUploader.java
 @@ -120,31 +120,10 @@ public class MinidumpUploader {
@@ -905,7 +889,6 @@ index dc7fbc0090099..3516a4ed78fd9 100644
          }
      }
 diff --git a/components/upload_list/text_log_upload_list.cc b/components/upload_list/text_log_upload_list.cc
-index 61eaa3e1d5af0..3e1b1e270fdba 100644
 --- a/components/upload_list/text_log_upload_list.cc
 +++ b/components/upload_list/text_log_upload_list.cc
 @@ -165,6 +165,7 @@ std::unique_ptr<UploadList::UploadInfo> TextLogUploadList::TryParseCsvLogEntry(
@@ -917,7 +900,6 @@ index 61eaa3e1d5af0..3e1b1e270fdba 100644
    // Add local ID if present.
    if (components.size() > 2)
 diff --git a/components/upload_list/upload_list.cc b/components/upload_list/upload_list.cc
-index b19139c337587..4d8a4ada9eb36 100644
 --- a/components/upload_list/upload_list.cc
 +++ b/components/upload_list/upload_list.cc
 @@ -99,6 +99,11 @@ std::vector<const UploadList::UploadInfo*> UploadList::GetUploads(
@@ -946,7 +928,6 @@ index b19139c337587..4d8a4ada9eb36 100644
 +  return std::string();
 +}
 diff --git a/components/upload_list/upload_list.h b/components/upload_list/upload_list.h
-index 3b84761fdd397..3d9a134dd783e 100644
 --- a/components/upload_list/upload_list.h
 +++ b/components/upload_list/upload_list.h
 @@ -69,6 +69,9 @@ class UploadList : public base::RefCountedThreadSafe<UploadList> {
@@ -972,6 +953,5 @@ index 3b84761fdd397..3d9a134dd783e 100644
   protected:
    virtual ~UploadList();
  
--- 
-2.34.1
-
+--
+2.25.1

@@ -1,7 +1,6 @@
-From 2ab682f0b3b3122ac50953aef842a13e11ea5cba Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Fri, 8 Apr 2022 11:04:04 +0000
-Subject: [PATCH 164/192] Add lifetime options for permissions
+Subject: Add lifetime options for permissions
 
 Indicate the session mode for content-settings by using the constraint `content_settings::SessionModel` as
 UserSession when setting the value, and also make use of an expiration time value.
@@ -57,7 +56,11 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../one_time_permissions_tracker.cc           | 33 +++++++-
  .../one_time_permissions_tracker.h            |  5 +-
  .../one_time_permissions_tracker_factory.cc   |  2 +-
+ .../embedded_permission_prompt_ask_view.cc    |  2 +-
  .../permission_prompt_bubble_base_view.cc     |  2 +-
+ .../browser/content_autofill_driver.cc        | 64 ++++++++-------
+ .../content/browser/content_autofill_driver.h |  2 +-
+ .../autofill/core/browser/autofill_driver.h   |  2 +
  .../site_settings/PermissionInfo.java         | 14 +++-
  .../site_settings/SingleWebsiteSettings.java  | 10 +++
  .../WebsitePreferenceBridge.java              |  6 +-
@@ -81,17 +84,16 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../android/permissions_android_strings.grd   | 17 ++++
  .../geolocation_permission_context_android.cc | 35 ++++++--
  .../geolocation_permission_context_android.h  | 14 +++-
- .../permissions/permission_context_base.cc    | 55 +++++++++++--
- .../permissions/permission_context_base.h     | 25 +++++-
+ .../permissions/permission_context_base.cc    | 51 ++++++++++--
+ .../permissions/permission_context_base.h     | 23 +++++-
  components/permissions/permission_prompt.h    |  3 +-
- components/permissions/permission_request.cc  | 34 +++++++-
- components/permissions/permission_request.h   | 18 ++++-
+ components/permissions/permission_request.cc  | 30 ++++++-
+ components/permissions/permission_request.h   | 16 +++-
  .../permissions/permission_request_manager.cc | 45 +++++++----
  .../permissions/permission_request_manager.h  | 11 ++-
- 35 files changed, 521 insertions(+), 60 deletions(-)
+ 39 files changed, 547 insertions(+), 92 deletions(-)
 
 diff --git a/chrome/browser/permissions/last_tab_standing_tracker.cc b/chrome/browser/permissions/last_tab_standing_tracker.cc
-index 5df1981731e0e..247155065ce68 100644
 --- a/chrome/browser/permissions/last_tab_standing_tracker.cc
 +++ b/chrome/browser/permissions/last_tab_standing_tracker.cc
 @@ -7,6 +7,32 @@
@@ -139,11 +141,10 @@ index 5df1981731e0e..247155065ce68 100644
 +  }
  }
 diff --git a/chrome/browser/permissions/one_time_permissions_tracker.cc b/chrome/browser/permissions/one_time_permissions_tracker.cc
-index f400a95c022fa..31354261bca8a 100644
 --- a/chrome/browser/permissions/one_time_permissions_tracker.cc
 +++ b/chrome/browser/permissions/one_time_permissions_tracker.cc
-@@ -18,8 +18,34 @@
- #include "components/permissions/features.h"
+@@ -19,8 +19,34 @@
+ #include "components/permissions/permission_context_base.h"
  #include "content/public/browser/visibility.h"
  #include "url/gurl.h"
 +#include "components/content_settings/core/browser/host_content_settings_map.h"
@@ -178,7 +179,7 @@ index f400a95c022fa..31354261bca8a 100644
  OneTimePermissionsTracker::~OneTimePermissionsTracker() = default;
  
  OneTimePermissionsTracker::OriginTrackEntry::OriginTrackEntry() = default;
-@@ -93,6 +119,11 @@ void OneTimePermissionsTracker::WebContentsUnloadedOrigin(
+@@ -108,6 +134,11 @@ void OneTimePermissionsTracker::WebContentsUnloadedOrigin(
          observer.OnLastPageFromOriginClosed(origin);
        }
      }
@@ -191,7 +192,6 @@ index f400a95c022fa..31354261bca8a 100644
  }
  
 diff --git a/chrome/browser/permissions/one_time_permissions_tracker.h b/chrome/browser/permissions/one_time_permissions_tracker.h
-index 168f8e1344c2e..e223b3e6a8244 100644
 --- a/chrome/browser/permissions/one_time_permissions_tracker.h
 +++ b/chrome/browser/permissions/one_time_permissions_tracker.h
 @@ -12,6 +12,7 @@
@@ -211,7 +211,7 @@ index 168f8e1344c2e..e223b3e6a8244 100644
    ~OneTimePermissionsTracker() override;
  
    OneTimePermissionsTracker(const OneTimePermissionsTracker&) = delete;
-@@ -127,7 +128,7 @@ class OneTimePermissionsTracker : public KeyedService {
+@@ -136,7 +137,7 @@ class OneTimePermissionsTracker : public KeyedService {
    base::ObserverList<OneTimePermissionsTrackerObserver> observer_list_;
  
    std::map<url::Origin, OriginTrackEntry> origin_tracker_;
@@ -221,31 +221,241 @@ index 168f8e1344c2e..e223b3e6a8244 100644
  };
  
 diff --git a/chrome/browser/permissions/one_time_permissions_tracker_factory.cc b/chrome/browser/permissions/one_time_permissions_tracker_factory.cc
-index cab98b40bf1de..30b1b56f87f75 100644
 --- a/chrome/browser/permissions/one_time_permissions_tracker_factory.cc
 +++ b/chrome/browser/permissions/one_time_permissions_tracker_factory.cc
-@@ -40,5 +40,5 @@ bool OneTimePermissionsTrackerFactory::ServiceIsCreatedWithBrowserContext()
- 
- KeyedService* OneTimePermissionsTrackerFactory::BuildServiceInstanceFor(
+@@ -41,5 +41,5 @@ bool OneTimePermissionsTrackerFactory::ServiceIsCreatedWithBrowserContext()
+ std::unique_ptr<KeyedService>
+ OneTimePermissionsTrackerFactory::BuildServiceInstanceForBrowserContext(
      content::BrowserContext* context) const {
--  return new OneTimePermissionsTracker();
-+  return new OneTimePermissionsTracker(context);
+-  return std::make_unique<OneTimePermissionsTracker>();
++  return std::make_unique<OneTimePermissionsTracker>(context);
  }
+diff --git a/chrome/browser/ui/views/permissions/embedded_permission_prompt_ask_view.cc b/chrome/browser/ui/views/permissions/embedded_permission_prompt_ask_view.cc
+--- a/chrome/browser/ui/views/permissions/embedded_permission_prompt_ask_view.cc
++++ b/chrome/browser/ui/views/permissions/embedded_permission_prompt_ask_view.cc
+@@ -34,7 +34,7 @@ void EmbeddedPermissionPromptAskView::RunButtonCallback(int button_id) {
+ 
+   if (delegate()) {
+     if (button == ButtonType::kAllowThisTime) {
+-      delegate()->AcceptThisTime();
++      delegate()->AcceptThisTime(content_settings::LifetimeMode::OnlyThisTime);
+     } else if (button == ButtonType::kAllow) {
+       delegate()->Accept();
+     }
 diff --git a/chrome/browser/ui/views/permissions/permission_prompt_bubble_base_view.cc b/chrome/browser/ui/views/permissions/permission_prompt_bubble_base_view.cc
-index d64456f3a7681..c220b0448f287 100644
 --- a/chrome/browser/ui/views/permissions/permission_prompt_bubble_base_view.cc
 +++ b/chrome/browser/ui/views/permissions/permission_prompt_bubble_base_view.cc
-@@ -336,7 +336,7 @@ void PermissionPromptBubbleBaseView::RunButtonCallbacks(
-       delegate_->Accept();
+@@ -263,7 +263,7 @@ void PermissionPromptBubbleBaseView::RunButtonCallback(int button_id) {
        return;
      case PermissionDialogButton::kAcceptOnce:
+       RecordDecision(permissions::PermissionAction::GRANTED_ONCE);
 -      delegate_->AcceptThisTime();
-+      delegate_->AcceptThisTime(content_settings::LifetimeMode::Always);
++      delegate_->AcceptThisTime(content_settings::LifetimeMode::OnlyThisTime);
        return;
      case PermissionDialogButton::kDeny:
-       delegate_->Deny();
+       RecordDecision(permissions::PermissionAction::DENIED);
+diff --git a/components/autofill/content/browser/content_autofill_driver.cc b/components/autofill/content/browser/content_autofill_driver.cc
+--- a/components/autofill/content/browser/content_autofill_driver.cc
++++ b/components/autofill/content/browser/content_autofill_driver.cc
+@@ -412,8 +412,8 @@ void ContentAutofillDriver::FormsSeen(
+                         const std::vector<FormGlobalId>& removed_forms) {
+                        target->GetAutofillManager().OnFormsSeen(
+                            WithNewVersion(updated_forms), removed_forms);
+-                       if (target->secondary_autofill_manager_) {
+-                         target->secondary_autofill_manager_->OnFormsSeen(
++                       if (target->secondary_autofill_manager()) {
++                         target->secondary_autofill_manager()->OnFormsSeen(
+                            WithNewVersion(updated_forms), removed_forms);
+                        }
+                      });
+@@ -443,8 +443,8 @@ void ContentAutofillDriver::FormSubmitted(
+         }
+         target->GetAutofillManager().OnFormSubmitted(
+             WithNewVersion(form), known_success, submission_source);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnFormSubmitted(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnFormSubmitted(
+             WithNewVersion(form), known_success, submission_source);
+         }
+       });
+@@ -468,8 +468,8 @@ void ContentAutofillDriver::TextFieldDidChange(const FormData& raw_form,
+          base::TimeTicks timestamp) {
+         target->GetAutofillManager().OnTextFieldDidChange(
+             WithNewVersion(form), field, bounding_box, timestamp);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnTextFieldDidChange(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnTextFieldDidChange(
+             WithNewVersion(form), field, bounding_box, timestamp);
+         }
+       });
+@@ -491,8 +491,8 @@ void ContentAutofillDriver::TextFieldDidScroll(const FormData& raw_form,
+          const FormFieldData& field, const gfx::RectF& bounding_box) {
+         target->GetAutofillManager().OnTextFieldDidScroll(WithNewVersion(form),
+                                                           field, bounding_box);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnTextFieldDidScroll(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnTextFieldDidScroll(
+               WithNewVersion(form), field, bounding_box);
+         }
+       });
+@@ -515,8 +515,8 @@ void ContentAutofillDriver::SelectControlDidChange(
+          const FormFieldData& field, const gfx::RectF& bounding_box) {
+         target->GetAutofillManager().OnSelectControlDidChange(
+             WithNewVersion(form), field, bounding_box);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnSelectControlDidChange(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnSelectControlDidChange(
+             WithNewVersion(form), field, bounding_box);
+         }
+       });
+@@ -541,8 +541,8 @@ void ContentAutofillDriver::AskForValuesToFill(
+          AutofillSuggestionTriggerSource trigger_source) {
+         target->GetAutofillManager().OnAskForValuesToFill(
+             WithNewVersion(form), field, bounding_box, trigger_source);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnAskForValuesToFill(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnAskForValuesToFill(
+               WithNewVersion(form), field, bounding_box, trigger_source);
+         }
+       });
+@@ -556,8 +556,8 @@ void ContentAutofillDriver::HidePopup() {
+     DCHECK(!target->IsPrerendering())
+         << "We should never affect UI while prerendering";
+     target->GetAutofillManager().OnHidePopup();
+-    if (target->secondary_autofill_manager_)
+-      target->secondary_autofill_manager_->OnHidePopup();
++    if (target->secondary_autofill_manager())
++      target->secondary_autofill_manager()->OnHidePopup();
+   });
+ }
+ 
+@@ -569,8 +569,8 @@ void ContentAutofillDriver::FocusNoLongerOnForm(bool had_interacted_form) {
+       this, had_interacted_form,
+       [](autofill::AutofillDriver* target, bool had_interacted_form) {
+         target->GetAutofillManager().OnFocusNoLongerOnForm(had_interacted_form);
+-        if (target->secondary_autofill_manager_)
+-          target->secondary_autofill_manager_->OnFocusNoLongerOnForm(had_interacted_form);
++        if (target->secondary_autofill_manager())
++          target->secondary_autofill_manager()->OnFocusNoLongerOnForm(had_interacted_form);
+       });
+ }
+ 
+@@ -590,15 +590,15 @@ void ContentAutofillDriver::FocusOnFormField(const FormData& raw_form,
+          const FormFieldData& field, const gfx::RectF& bounding_box) {
+         target->GetAutofillManager().OnFocusOnFormField(WithNewVersion(form),
+                                                         field, bounding_box);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnFocusOnFormField(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnFocusOnFormField(
+             WithNewVersion(form), field, bounding_box);
+         }
+       },
+       [](autofill::AutofillDriver* target) {
+         target->GetAutofillManager().OnFocusNoLongerOnForm(true);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnFocusNoLongerOnForm(true);
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnFocusNoLongerOnForm(true);
+         }
+       });
+ }
+@@ -614,8 +614,8 @@ void ContentAutofillDriver::DidFillAutofillFormData(const FormData& raw_form,
+          base::TimeTicks timestamp) {
+         target->GetAutofillManager().OnDidFillAutofillFormData(
+             WithNewVersion(form), timestamp);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnDidFillAutofillFormData(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnDidFillAutofillFormData(
+             WithNewVersion(form), timestamp);
+         }
+       });
+@@ -627,8 +627,8 @@ void ContentAutofillDriver::DidEndTextFieldEditing() {
+   }
+   router().DidEndTextFieldEditing(this, [](autofill::AutofillDriver* target) {
+     target->GetAutofillManager().OnDidEndTextFieldEditing();
+-    if (target->secondary_autofill_manager_)
+-      target->secondary_autofill_manager_->OnDidEndTextFieldEditing();
++    if (target->secondary_autofill_manager())
++      target->secondary_autofill_manager()->OnDidEndTextFieldEditing();
+   });
+ }
+ 
+@@ -643,8 +643,8 @@ void ContentAutofillDriver::SelectOrSelectListFieldOptionsDidChange(
+         cast(target)
+             ->GetAutofillManager()
+             .OnSelectOrSelectListFieldOptionsDidChange(WithNewVersion(form));
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnSelectOrSelectMenuFieldOptionsDidChange(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnSelectOrSelectListFieldOptionsDidChange(
+             WithNewVersion(form));
+         }
+       });
+@@ -666,8 +666,8 @@ void ContentAutofillDriver::JavaScriptChangedAutofilledValue(
+          const FormFieldData& field, const std::u16string& old_value) {
+         target->GetAutofillManager().OnJavaScriptChangedAutofilledValue(
+             WithNewVersion(form), field, old_value);
+-        if (target->secondary_autofill_manager_) {
+-          target->secondary_autofill_manager_->OnJavaScriptChangedAutofilledValue(
++        if (target->secondary_autofill_manager()) {
++          target->secondary_autofill_manager()->OnJavaScriptChangedAutofilledValue(
+             WithNewVersion(form), field, old_value);
+         }
+       });
+@@ -682,8 +682,8 @@ void ContentAutofillDriver::OnContextMenuShownInField(
+          const FieldGlobalId& field_global_id) {
+         target->GetAutofillManager().OnContextMenuShownInField(form_global_id,
+                                                                field_global_id);
+-        if (target->secondary_autofill_manager_)
+-          target->secondary_autofill_manager_->OnContextMenuShownInField(form_global_id, field_global_id);
++        if (target->secondary_autofill_manager())
++          target->secondary_autofill_manager()->OnContextMenuShownInField(form_global_id, field_global_id);
+       });
+ }
+ 
+@@ -708,6 +708,10 @@ ContentAutofillDriver::GetAutofillAgent() {
+   return autofill_agent_;
+ }
+ 
++raw_ptr<AutofillManager> ContentAutofillDriver::secondary_autofill_manager() {
++  return secondary_autofill_manager_.get();
++}
++
+ void ContentAutofillDriver::SetFrameAndFormMetaData(
+     FormData& form,
+     FormFieldData* optional_field) const {
+diff --git a/components/autofill/content/browser/content_autofill_driver.h b/components/autofill/content/browser/content_autofill_driver.h
+--- a/components/autofill/content/browser/content_autofill_driver.h
++++ b/components/autofill/content/browser/content_autofill_driver.h
+@@ -132,7 +132,7 @@ class ContentAutofillDriver : public AutofillDriver,
+     autofill_manager_ = std::move(autofill_manager);
+     secondary_autofill_manager_ = std::move(secondary_autofill_manager);
+   }
+-  AutofillManager* secondary_autofill_manager() { return secondary_autofill_manager_.get(); }
++  raw_ptr<AutofillManager> secondary_autofill_manager() override;
+ 
+   content::RenderFrameHost* render_frame_host() { return &*render_frame_host_; }
+   const content::RenderFrameHost* render_frame_host() const {
+diff --git a/components/autofill/core/browser/autofill_driver.h b/components/autofill/core/browser/autofill_driver.h
+--- a/components/autofill/core/browser/autofill_driver.h
++++ b/components/autofill/core/browser/autofill_driver.h
+@@ -69,6 +69,8 @@ class AutofillDriver {
+   // Returns the AutofillManager owned by the AutofillDriver.
+   virtual AutofillManager& GetAutofillManager() = 0;
+ 
++  virtual raw_ptr<AutofillManager> secondary_autofill_manager() = 0;
++
+   // Returns whether the AutofillDriver instance is associated with an active
+   // frame in the MPArch sense.
+   virtual bool IsInActiveFrame() const = 0;
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/PermissionInfo.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/PermissionInfo.java
-index b396373609a2b..c9500b68f5678 100644
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/PermissionInfo.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/PermissionInfo.java
 @@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
@@ -256,27 +466,24 @@ index b396373609a2b..c9500b68f5678 100644
  
  import java.io.Serializable;
  
-@@ -20,19 +21,30 @@ public class PermissionInfo implements Serializable {
+@@ -20,9 +21,15 @@ public class PermissionInfo implements Serializable {
      private final String mEmbedder;
      private final String mOrigin;
      private final @ContentSettingsType int mContentSettingsType;
 +    private final @SessionModel int mSessionModel;
- 
-     public PermissionInfo(@ContentSettingsType int type, String origin, String embedder) {
-         this(type, origin, embedder, false);
-     }
- 
++
 +    public PermissionInfo(@ContentSettingsType int type, String origin, String embedder, boolean isEmbargoed) {
 +        this(type, origin, embedder, isEmbargoed, 0);
 +    }
-+
+ 
      public PermissionInfo(
 -            @ContentSettingsType int type, String origin, String embedder, boolean isEmbargoed) {
 +            @ContentSettingsType int type, String origin, String embedder, boolean isEmbargoed,
 +            @SessionModel int sessionModel) {
          assert WebsitePermissionsFetcher.getPermissionsType(type)
-                 == WebsitePermissionsFetcher.WebsitePermissionsType.PERMISSION_INFO;
-         mOrigin = origin;
+                 == WebsitePermissionsFetcher.WebsitePermissionsType.PERMISSION_INFO
+             : "invalid type: "
+@@ -31,6 +38,11 @@ public class PermissionInfo implements Serializable {
          mEmbedder = embedder;
          mContentSettingsType = type;
          mIsEmbargoed = isEmbargoed;
@@ -289,7 +496,6 @@ index b396373609a2b..c9500b68f5678 100644
  
      public @ContentSettingsType int getContentSettingsType() {
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
-index bca33587c1c7d..ae9bd5ad63ca9 100644
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 @@ -38,6 +38,7 @@ import org.chromium.components.browser_ui.settings.TextMessagePreference;
@@ -300,7 +506,7 @@ index bca33587c1c7d..ae9bd5ad63ca9 100644
  import org.chromium.components.embedder_support.util.Origin;
  import org.chromium.content_public.browser.BrowserContextHandle;
  
-@@ -546,6 +547,11 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
+@@ -558,6 +559,11 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          }
      }
  
@@ -312,7 +518,7 @@ index bca33587c1c7d..ae9bd5ad63ca9 100644
      private void setUpClearDataPreference() {
          ClearWebsiteStorage preference = findPreference(PREF_CLEAR_DATA);
          long usage = mSite.getTotalUsage();
-@@ -975,6 +981,10 @@ public class SingleWebsiteSettings extends SiteSettingsPreferenceFragment
+@@ -1024,6 +1030,10 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          if (contentType == mHighlightedPermission) {
              switchPreference.setBackgroundColor(mHighlightColor);
          }
@@ -324,7 +530,6 @@ index bca33587c1c7d..ae9bd5ad63ca9 100644
  
      /**
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
-index 5a076d74e90ee..56c555a49c34d 100644
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
 @@ -9,6 +9,7 @@ import org.chromium.base.annotations.CalledByNative;
@@ -355,7 +560,6 @@ index 5a076d74e90ee..56c555a49c34d 100644
  
      @CalledByNative
 diff --git a/components/browser_ui/site_settings/android/website_preference_bridge.cc b/components/browser_ui/site_settings/android/website_preference_bridge.cc
-index 0fa4e79185eea..9f88a0b4a7a0c 100644
 --- a/components/browser_ui/site_settings/android/website_preference_bridge.cc
 +++ b/components/browser_ui/site_settings/android/website_preference_bridge.cc
 @@ -131,7 +131,8 @@ typedef void (*InfoListInsertionFunction)(
@@ -387,7 +591,6 @@ index 0fa4e79185eea..9f88a0b4a7a0c 100644
    }
  }
 diff --git a/components/browser_ui/strings/android/browser_ui_strings.grd b/components/browser_ui/strings/android/browser_ui_strings.grd
-index becda89edd71c..c0ecc4f410d5e 100644
 --- a/components/browser_ui/strings/android/browser_ui_strings.grd
 +++ b/components/browser_ui/strings/android/browser_ui_strings.grd
 @@ -642,6 +642,11 @@
@@ -403,7 +606,6 @@ index becda89edd71c..c0ecc4f410d5e 100644
          Ad personalization
        </message>
 diff --git a/components/content_settings/android/BUILD.gn b/components/content_settings/android/BUILD.gn
-index 1501e0fdf459f..f9ef7f7b0b4b7 100644
 --- a/components/content_settings/android/BUILD.gn
 +++ b/components/content_settings/android/BUILD.gn
 @@ -60,6 +60,7 @@ java_cpp_enum("content_settings_enums_javagen") {
@@ -415,10 +617,9 @@ index 1501e0fdf459f..f9ef7f7b0b4b7 100644
    visibility = [ ":*" ]  # Depend on through :content_settings_enums_java
  }
 diff --git a/components/content_settings/core/browser/content_settings_utils.cc b/components/content_settings/core/browser/content_settings_utils.cc
-index ab48ce7c18779..6ddea11a0388f 100644
 --- a/components/content_settings/core/browser/content_settings_utils.cc
 +++ b/components/content_settings/core/browser/content_settings_utils.cc
-@@ -186,6 +186,42 @@ bool IsConstraintPersistent(const ContentSettingConstraints& constraints) {
+@@ -174,6 +174,42 @@ bool IsConstraintPersistent(const ContentSettingConstraints& constraints) {
    return constraints.session_model() == SessionModel::Durable;
  }
  
@@ -462,7 +663,6 @@ index ab48ce7c18779..6ddea11a0388f 100644
    // Last visit is not tracked for notification permission as it shouldn't be
    // auto-revoked.
 diff --git a/components/content_settings/core/browser/content_settings_utils.h b/components/content_settings/core/browser/content_settings_utils.h
-index 978fcb1b8f2ff..90db87a40c683 100644
 --- a/components/content_settings/core/browser/content_settings_utils.h
 +++ b/components/content_settings/core/browser/content_settings_utils.h
 @@ -73,6 +73,12 @@ bool IsConstraintPersistent(const ContentSettingConstraints& constraints);
@@ -479,7 +679,6 @@ index 978fcb1b8f2ff..90db87a40c683 100644
  base::Time GetCoarseVisitedTime(base::Time time);
  
 diff --git a/components/content_settings/core/common/content_settings_constraints.h b/components/content_settings/core/common/content_settings_constraints.h
-index dfb4fdf0f25be..e9b26eb99af07 100644
 --- a/components/content_settings/core/common/content_settings_constraints.h
 +++ b/components/content_settings/core/common/content_settings_constraints.h
 @@ -23,6 +23,8 @@ namespace content_settings {
@@ -508,7 +707,6 @@ index dfb4fdf0f25be..e9b26eb99af07 100644
  class ContentSettingConstraints {
   public:
 diff --git a/components/page_info/android/java/src/org/chromium/components/page_info/PageInfoController.java b/components/page_info/android/java/src/org/chromium/components/page_info/PageInfoController.java
-index 153dfc08bfc26..347ad127f07ef 100644
 --- a/components/page_info/android/java/src/org/chromium/components/page_info/PageInfoController.java
 +++ b/components/page_info/android/java/src/org/chromium/components/page_info/PageInfoController.java
 @@ -336,9 +336,9 @@ public class PageInfoController implements PageInfoMainController, ModalDialogPr
@@ -524,7 +722,6 @@ index 153dfc08bfc26..347ad127f07ef 100644
  
      /**
 diff --git a/components/page_info/android/java/src/org/chromium/components/page_info/PermissionParamsListBuilder.java b/components/page_info/android/java/src/org/chromium/components/page_info/PermissionParamsListBuilder.java
-index e2c68173872eb..c93058f16d59d 100644
 --- a/components/page_info/android/java/src/org/chromium/components/page_info/PermissionParamsListBuilder.java
 +++ b/components/page_info/android/java/src/org/chromium/components/page_info/PermissionParamsListBuilder.java
 @@ -44,8 +44,9 @@ public class PermissionParamsListBuilder {
@@ -550,7 +747,7 @@ index e2c68173872eb..c93058f16d59d 100644
              }
          }
  
-@@ -124,13 +129,15 @@ public class PermissionParamsListBuilder {
+@@ -123,13 +128,15 @@ public class PermissionParamsListBuilder {
          public final String nameMidSentence;
          public final int type;
          public final @ContentSettingValues int setting;
@@ -568,10 +765,9 @@ index e2c68173872eb..c93058f16d59d 100644
  
          @Override
 diff --git a/components/page_info/android/page_info_controller_android.cc b/components/page_info/android/page_info_controller_android.cc
-index 257104ea67a99..1c07407525d66 100644
 --- a/components/page_info/android/page_info_controller_android.cc
 +++ b/components/page_info/android/page_info_controller_android.cc
-@@ -158,6 +158,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
+@@ -154,6 +154,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
  
    std::map<ContentSettingsType, ContentSetting>
        user_specified_settings_to_display;
@@ -580,7 +776,7 @@ index 257104ea67a99..1c07407525d66 100644
  
    for (const auto& permission : permission_info_list) {
      if (base::Contains(permissions_to_display, permission.type)) {
-@@ -166,6 +168,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
+@@ -162,6 +164,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
        if (setting_to_display) {
          user_specified_settings_to_display[permission.type] =
              *setting_to_display;
@@ -589,7 +785,7 @@ index 257104ea67a99..1c07407525d66 100644
        }
      }
    }
-@@ -182,7 +186,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
+@@ -178,7 +182,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
            ConvertUTF16ToJavaString(env, setting_title),
            ConvertUTF16ToJavaString(env, setting_title_mid_sentence),
            static_cast<jint>(permission),
@@ -599,7 +795,7 @@ index 257104ea67a99..1c07407525d66 100644
      }
    }
  
-@@ -195,7 +200,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
+@@ -191,7 +196,8 @@ void PageInfoControllerAndroid::SetPermissionInfo(
          env, controller_jobject_, ConvertUTF16ToJavaString(env, object_title),
          ConvertUTF16ToJavaString(env, object_title),
          static_cast<jint>(chosen_object->ui_info->content_settings_type),
@@ -610,10 +806,9 @@ index 257104ea67a99..1c07407525d66 100644
  
    Java_PageInfoController_updatePermissionDisplay(env, controller_jobject_);
 diff --git a/components/page_info/page_info.cc b/components/page_info/page_info.cc
-index 0be5287fa5328..282aa89f992b5 100644
 --- a/components/page_info/page_info.cc
 +++ b/components/page_info/page_info.cc
-@@ -1172,6 +1172,8 @@ void PageInfo::PopulatePermissionInfo(PermissionInfo& permission_info,
+@@ -1184,6 +1184,8 @@ void PageInfo::PopulatePermissionInfo(PermissionInfo& permission_info,
    permission_info.source = info.source;
    permission_info.is_one_time = (info.metadata.session_model() ==
                                   content_settings::SessionModel::OneTime);
@@ -623,7 +818,6 @@ index 0be5287fa5328..282aa89f992b5 100644
    auto* page_specific_content_settings = GetPageSpecificContentSettings();
    if (page_specific_content_settings && setting == CONTENT_SETTING_ALLOW) {
 diff --git a/components/page_info/page_info.h b/components/page_info/page_info.h
-index 2a10d89b46a4d..8925c7ba766dd 100644
 --- a/components/page_info/page_info.h
 +++ b/components/page_info/page_info.h
 @@ -199,6 +199,7 @@ class PageInfo : private content_settings::CookieControlsObserver,
@@ -635,7 +829,6 @@ index 2a10d89b46a4d..8925c7ba766dd 100644
      // embedded origins.
      absl::optional<url::Origin> requesting_origin;
 diff --git a/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogDelegate.java b/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogDelegate.java
-index ad45ed899c63f..b4fc982b5b57d 100644
 --- a/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogDelegate.java
 +++ b/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogDelegate.java
 @@ -8,6 +8,7 @@ import org.chromium.base.annotations.CalledByNative;
@@ -646,7 +839,7 @@ index ad45ed899c63f..b4fc982b5b57d 100644
  
  /**
   * Delegate class for modal permission dialogs. Contains all of the data displayed in a prompt,
-@@ -43,6 +44,9 @@ public class PermissionDialogDelegate {
+@@ -46,6 +47,9 @@ public class PermissionDialogDelegate {
      /** The {@link ContentSettingsType}s requested in this dialog.  */
      private int[] mContentSettingsTypes;
  
@@ -656,7 +849,7 @@ index ad45ed899c63f..b4fc982b5b57d 100644
      public WindowAndroid getWindow() {
          return mWindow;
      }
-@@ -72,6 +76,15 @@ public class PermissionDialogDelegate {
+@@ -79,6 +83,15 @@ public class PermissionDialogDelegate {
          PermissionDialogDelegateJni.get().accept(mNativeDelegatePtr, PermissionDialogDelegate.this);
      }
  
@@ -673,7 +866,6 @@ index ad45ed899c63f..b4fc982b5b57d 100644
          assert mNativeDelegatePtr != 0;
          PermissionDialogDelegateJni.get().cancel(mNativeDelegatePtr, PermissionDialogDelegate.this);
 diff --git a/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogModel.java b/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogModel.java
-index 9b67228efb01d..ef57c286a5dec 100644
 --- a/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogModel.java
 +++ b/components/permissions/android/java/src/org/chromium/components/permissions/PermissionDialogModel.java
 @@ -16,6 +16,17 @@ import org.chromium.ui.UiUtils;
@@ -694,16 +886,16 @@ index 9b67228efb01d..ef57c286a5dec 100644
  /**
   * This class creates the model for permission dialog.
   */
-@@ -34,7 +45,7 @@ class PermissionDialogModel {
-         TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                 messageTextView, delegate.getDrawableId(), 0, 0, 0);
+@@ -41,7 +52,7 @@ class PermissionDialogModel {
+             secondaryTextView.setVisibility(View.VISIBLE);
+         }
  
 -        return new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
 +        PropertyModel pm = new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
                  .with(ModalDialogProperties.CONTROLLER, controller)
+                 .with(ModalDialogProperties.FOCUS_DIALOG, true)
                  .with(ModalDialogProperties.CUSTOM_VIEW, customView)
-                 .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, delegate.getPrimaryButtonText())
-@@ -45,6 +56,74 @@ class PermissionDialogModel {
+@@ -53,6 +64,74 @@ class PermissionDialogModel {
                  .with(ModalDialogProperties.BUTTON_TAP_PROTECTION_PERIOD_MS,
                          UiUtils.PROMPT_INPUT_PROTECTION_SHORT_DELAY_MS)
                  .build();
@@ -779,10 +971,9 @@ index 9b67228efb01d..ef57c286a5dec 100644
  
      private static View loadDialogView(Context context) {
 diff --git a/components/permissions/android/permission_prompt/permission_dialog_delegate.cc b/components/permissions/android/permission_prompt/permission_dialog_delegate.cc
-index 6e8491786f6d0..5931748e9bd81 100644
 --- a/components/permissions/android/permission_prompt/permission_dialog_delegate.cc
 +++ b/components/permissions/android/permission_prompt/permission_dialog_delegate.cc
-@@ -67,6 +67,11 @@ void PermissionDialogJavaDelegate::DismissDialog() {
+@@ -68,6 +68,11 @@ void PermissionDialogJavaDelegate::DismissDialog() {
    Java_PermissionDialogDelegate_dismissFromNative(env, j_delegate_);
  }
  
@@ -794,7 +985,7 @@ index 6e8491786f6d0..5931748e9bd81 100644
  // static
  void PermissionDialogDelegate::Create(
      content::WebContents* web_contents,
-@@ -95,12 +100,26 @@ PermissionDialogDelegate* PermissionDialogDelegate::CreateForTesting(
+@@ -96,12 +101,26 @@ PermissionDialogDelegate* PermissionDialogDelegate::CreateForTesting(
  void PermissionDialogDelegate::Accept(JNIEnv* env,
                                        const JavaParamRef<jobject>& obj) {
    DCHECK(permission_prompt_);
@@ -822,7 +1013,6 @@ index 6e8491786f6d0..5931748e9bd81 100644
  }
  
 diff --git a/components/permissions/android/permission_prompt/permission_dialog_delegate.h b/components/permissions/android/permission_prompt/permission_dialog_delegate.h
-index d0f1df73b7536..76c5685b7d613 100644
 --- a/components/permissions/android/permission_prompt/permission_dialog_delegate.h
 +++ b/components/permissions/android/permission_prompt/permission_dialog_delegate.h
 @@ -35,6 +35,7 @@ class PermissionDialogJavaDelegate {
@@ -834,10 +1024,9 @@ index d0f1df73b7536..76c5685b7d613 100644
   private:
    base::android::ScopedJavaGlobalRef<jobject> j_delegate_;
 diff --git a/components/permissions/android/permission_prompt/permission_prompt_android.cc b/components/permissions/android/permission_prompt/permission_prompt_android.cc
-index 40f263ea1e33f..59ec7c86e6866 100644
 --- a/components/permissions/android/permission_prompt/permission_prompt_android.cc
 +++ b/components/permissions/android/permission_prompt/permission_prompt_android.cc
-@@ -46,6 +46,14 @@ void PermissionPromptAndroid::Accept() {
+@@ -47,6 +47,14 @@ void PermissionPromptAndroid::Accept() {
    delegate_->Accept();
  }
  
@@ -853,7 +1042,6 @@ index 40f263ea1e33f..59ec7c86e6866 100644
    delegate_->Deny();
  }
 diff --git a/components/permissions/android/permission_prompt/permission_prompt_android.h b/components/permissions/android/permission_prompt/permission_prompt_android.h
-index 39e962f4e11d2..ae4252d2d5893 100644
 --- a/components/permissions/android/permission_prompt/permission_prompt_android.h
 +++ b/components/permissions/android/permission_prompt/permission_prompt_android.h
 @@ -46,7 +46,9 @@ class PermissionPromptAndroid : public PermissionPrompt {
@@ -867,7 +1055,6 @@ index 39e962f4e11d2..ae4252d2d5893 100644
    void SetLearnMoreClicked();
    bool ShouldCurrentRequestUseQuietUI();
 diff --git a/components/permissions/android/permissions_android_strings.grd b/components/permissions/android/permissions_android_strings.grd
-index 32d18773dfb46..1b610345f9f72 100644
 --- a/components/permissions/android/permissions_android_strings.grd
 +++ b/components/permissions/android/permissions_android_strings.grd
 @@ -264,6 +264,23 @@
@@ -895,10 +1082,9 @@ index 32d18773dfb46..1b610345f9f72 100644
        <message name="IDS_ITEM_CHOOSER_ITEM_NAME_WITH_ID" desc="To distinguish items with the same name, the item chooser shows the item name with id.">
          <ph name="ITEM_NAME">%1$s<ex>item_name</ex></ph> (<ph name="ITEM_ID">%2$s<ex>item id</ex></ph>)
 diff --git a/components/permissions/contexts/geolocation_permission_context_android.cc b/components/permissions/contexts/geolocation_permission_context_android.cc
-index f347db796304f..64b20371a62bc 100644
 --- a/components/permissions/contexts/geolocation_permission_context_android.cc
 +++ b/components/permissions/contexts/geolocation_permission_context_android.cc
-@@ -161,7 +161,20 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
+@@ -163,7 +163,20 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
      bool is_final_decision) {
    DCHECK(!is_one_time);
    DCHECK(is_final_decision);
@@ -919,7 +1105,7 @@ index f347db796304f..64b20371a62bc 100644
    bool is_default_search = IsRequestingOriginDSE(requesting_origin);
    if (content_setting == CONTENT_SETTING_ALLOW &&
        !location_settings_->IsSystemLocationSettingEnabled()) {
-@@ -174,7 +187,8 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
+@@ -176,7 +189,8 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
      if (IsInLocationSettingsBackOff(is_default_search)) {
        FinishNotifyPermissionSet(id, requesting_origin, embedding_origin,
                                  std::move(callback), false /* persist */,
@@ -929,7 +1115,7 @@ index f347db796304f..64b20371a62bc 100644
        return;
      }
  
-@@ -192,7 +206,8 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
+@@ -194,7 +208,8 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
          !location_settings_dialog_callback_.is_null()) {
        FinishNotifyPermissionSet(id, requesting_origin, embedding_origin,
                                  std::move(callback), false /* persist */,
@@ -939,7 +1125,7 @@ index f347db796304f..64b20371a62bc 100644
        return;
      }
  
-@@ -204,12 +219,13 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
+@@ -206,12 +221,13 @@ void GeolocationPermissionContextAndroid::NotifyPermissionSet(
          base::BindOnce(
              &GeolocationPermissionContextAndroid::OnLocationSettingsDialogShown,
              weak_factory_.GetWeakPtr(), requesting_origin, embedding_origin,
@@ -954,8 +1140,8 @@ index f347db796304f..64b20371a62bc 100644
 +                            is_one_time, lifetime_option);
  }
  
- PermissionResult
-@@ -376,6 +392,7 @@ void GeolocationPermissionContextAndroid::OnLocationSettingsDialogShown(
+ content::PermissionResult
+@@ -377,6 +393,7 @@ void GeolocationPermissionContextAndroid::OnLocationSettingsDialogShown(
      const GURL& embedding_origin,
      bool persist,
      ContentSetting content_setting,
@@ -963,7 +1149,7 @@ index f347db796304f..64b20371a62bc 100644
      LocationSettingsDialogOutcome prompt_outcome) {
    bool is_default_search = IsRequestingOriginDSE(requesting_origin);
    if (prompt_outcome == GRANTED) {
-@@ -393,7 +410,8 @@ void GeolocationPermissionContextAndroid::OnLocationSettingsDialogShown(
+@@ -394,7 +411,8 @@ void GeolocationPermissionContextAndroid::OnLocationSettingsDialogShown(
  
    FinishNotifyPermissionSet(
        location_settings_dialog_request_id_, requesting_origin, embedding_origin,
@@ -973,7 +1159,7 @@ index f347db796304f..64b20371a62bc 100644
  
    location_settings_dialog_request_id_ =
        PermissionRequestID(content::GlobalRenderFrameHostId(0, 0),
-@@ -406,10 +424,11 @@ void GeolocationPermissionContextAndroid::FinishNotifyPermissionSet(
+@@ -407,10 +425,11 @@ void GeolocationPermissionContextAndroid::FinishNotifyPermissionSet(
      const GURL& embedding_origin,
      BrowserPermissionCallback callback,
      bool persist,
@@ -989,10 +1175,9 @@ index f347db796304f..64b20371a62bc 100644
  
  void GeolocationPermissionContextAndroid::SetLocationSettingsForTesting(
 diff --git a/components/permissions/contexts/geolocation_permission_context_android.h b/components/permissions/contexts/geolocation_permission_context_android.h
-index c05093c1e2328..0ba67e184b7db 100644
 --- a/components/permissions/contexts/geolocation_permission_context_android.h
 +++ b/components/permissions/contexts/geolocation_permission_context_android.h
-@@ -91,6 +91,15 @@ class GeolocationPermissionContextAndroid
+@@ -89,6 +89,15 @@ class GeolocationPermissionContextAndroid
                             ContentSetting content_setting,
                             bool is_one_time,
                             bool is_final_decision) override;
@@ -1005,10 +1190,10 @@ index c05093c1e2328..0ba67e184b7db 100644
 +                           bool is_one_time,
 +                           bool is_final_decision,
 +                           content_settings::LifetimeMode lifetime_option) override;
-   PermissionResult UpdatePermissionStatusWithDeviceStatus(
-       PermissionResult result,
+   content::PermissionResult UpdatePermissionStatusWithDeviceStatus(
+       content::PermissionResult result,
        const GURL& requesting_origin,
-@@ -133,6 +142,7 @@ class GeolocationPermissionContextAndroid
+@@ -131,6 +140,7 @@ class GeolocationPermissionContextAndroid
        const GURL& embedding_origin,
        bool persist,
        ContentSetting content_setting,
@@ -1016,7 +1201,7 @@ index c05093c1e2328..0ba67e184b7db 100644
        LocationSettingsDialogOutcome prompt_outcome);
  
    void FinishNotifyPermissionSet(const PermissionRequestID& id,
-@@ -140,7 +150,9 @@ class GeolocationPermissionContextAndroid
+@@ -138,7 +148,9 @@ class GeolocationPermissionContextAndroid
                                   const GURL& embedding_origin,
                                   BrowserPermissionCallback callback,
                                   bool persist,
@@ -1028,31 +1213,26 @@ index c05093c1e2328..0ba67e184b7db 100644
    std::unique_ptr<LocationSettings> location_settings_;
  
 diff --git a/components/permissions/permission_context_base.cc b/components/permissions/permission_context_base.cc
-index 9bc4af3e1110f..7dcae884eb337 100644
 --- a/components/permissions/permission_context_base.cc
 +++ b/components/permissions/permission_context_base.cc
-@@ -249,6 +249,20 @@ PermissionContextBase::CreatePermissionRequest(
+@@ -262,6 +262,16 @@ PermissionContextBase::CreatePermissionRequest(
        std::move(delete_callback));
  }
  
-+std::unique_ptr<PermissionRequest>
-+PermissionContextBase::CreatePermissionRequest(
-+    const GURL& request_origin,
-+    ContentSettingsType content_settings_type,
-+    bool has_gesture,
++std::unique_ptr<PermissionRequest> PermissionContextBase::CreatePermissionRequest(
 +    content::WebContents* web_contents,
++    PermissionRequestData request_data,
 +    PermissionRequest::PermissionDecidedCallbackWithLifetime permission_decided_callback,
 +    base::OnceClosure delete_callback) const {
 +  return std::make_unique<PermissionRequest>(
-+      request_origin, ContentSettingsTypeToRequestType(content_settings_type),
-+      has_gesture, std::move(permission_decided_callback),
++      std::move(request_data), std::move(permission_decided_callback),
 +      std::move(delete_callback));
 +}
 +
- PermissionResult PermissionContextBase::GetPermissionStatus(
+ content::PermissionResult PermissionContextBase::GetPermissionStatus(
      content::RenderFrameHost* render_frame_host,
      const GURL& requesting_origin,
-@@ -428,7 +442,8 @@ void PermissionContextBase::PermissionDecided(const PermissionRequestID& id,
+@@ -506,7 +516,8 @@ void PermissionContextBase::PermissionDecided(const PermissionRequestID& id,
                                                const GURL& embedding_origin,
                                                ContentSetting content_setting,
                                                bool is_one_time,
@@ -1062,7 +1242,7 @@ index 9bc4af3e1110f..7dcae884eb337 100644
    DCHECK(content_setting == CONTENT_SETTING_ALLOW ||
           content_setting == CONTENT_SETTING_BLOCK ||
           content_setting == CONTENT_SETTING_DEFAULT);
-@@ -443,13 +458,14 @@ void PermissionContextBase::PermissionDecided(const PermissionRequestID& id,
+@@ -521,13 +532,14 @@ void PermissionContextBase::PermissionDecided(const PermissionRequestID& id,
    // missing if a permission prompt was preignored and we already notified an
    // origin about it.
    if (request->second.second) {
@@ -1081,7 +1261,7 @@ index 9bc4af3e1110f..7dcae884eb337 100644
    }
  }
  
-@@ -501,11 +517,27 @@ void PermissionContextBase::NotifyPermissionSet(
+@@ -573,11 +585,27 @@ void PermissionContextBase::NotifyPermissionSet(
      ContentSetting content_setting,
      bool is_one_time,
      bool is_final_decision) {
@@ -1110,7 +1290,7 @@ index 9bc4af3e1110f..7dcae884eb337 100644
    }
  
    if (is_final_decision) {
-@@ -535,6 +567,15 @@ void PermissionContextBase::UpdateContentSetting(const GURL& requesting_origin,
+@@ -607,6 +635,15 @@ void PermissionContextBase::UpdateContentSetting(const GURL& requesting_origin,
                                                   const GURL& embedding_origin,
                                                   ContentSetting content_setting,
                                                   bool is_one_time) {
@@ -1126,7 +1306,7 @@ index 9bc4af3e1110f..7dcae884eb337 100644
    DCHECK_EQ(requesting_origin, requesting_origin.DeprecatedGetOriginAsURL());
    DCHECK_EQ(embedding_origin, embedding_origin.DeprecatedGetOriginAsURL());
    DCHECK(content_setting == CONTENT_SETTING_ALLOW ||
-@@ -544,6 +585,8 @@ void PermissionContextBase::UpdateContentSetting(const GURL& requesting_origin,
+@@ -616,6 +653,8 @@ void PermissionContextBase::UpdateContentSetting(const GURL& requesting_origin,
    constraints.set_session_model(is_one_time
                                      ? content_settings::SessionModel::OneTime
                                      : content_settings::SessionModel::Durable);
@@ -1136,10 +1316,9 @@ index 9bc4af3e1110f..7dcae884eb337 100644
  #if !BUILDFLAG(IS_ANDROID)
    if (base::FeatureList::IsEnabled(
 diff --git a/components/permissions/permission_context_base.h b/components/permissions/permission_context_base.h
-index 35971997d12c7..a10e5b6fcebd2 100644
 --- a/components/permissions/permission_context_base.h
 +++ b/components/permissions/permission_context_base.h
-@@ -143,6 +143,15 @@ class PermissionContextBase : public content_settings::Observer {
+@@ -149,6 +149,15 @@ class PermissionContextBase : public content_settings::Observer {
  
    // Updates stored content setting if persist is set, updates tab indicators
    // and runs the callback to finish the request.
@@ -1155,7 +1334,7 @@ index 35971997d12c7..a10e5b6fcebd2 100644
    virtual void NotifyPermissionSet(const PermissionRequestID& id,
                                     const GURL& requesting_origin,
                                     const GURL& embedding_origin,
-@@ -164,6 +173,11 @@ class PermissionContextBase : public content_settings::Observer {
+@@ -170,6 +179,11 @@ class PermissionContextBase : public content_settings::Observer {
    // Store the decided permission as a content setting.
    // virtual since the permission might be stored with different restrictions
    // (for example for desktop notifications).
@@ -1167,22 +1346,20 @@ index 35971997d12c7..a10e5b6fcebd2 100644
    virtual void UpdateContentSetting(const GURL& requesting_origin,
                                      const GURL& embedding_origin,
                                      ContentSetting content_setting,
-@@ -196,6 +210,14 @@ class PermissionContextBase : public content_settings::Observer {
+@@ -200,6 +214,12 @@ class PermissionContextBase : public content_settings::Observer {
        PermissionRequest::PermissionDecidedCallback permission_decided_callback,
        base::OnceClosure delete_callback) const;
  
 +  virtual std::unique_ptr<PermissionRequest> CreatePermissionRequest(
-+      const GURL& request_origin,
-+      ContentSettingsType content_settings_type,
-+      bool has_gesture,
 +      content::WebContents* web_contents,
++      PermissionRequestData request_data,
 +      PermissionRequest::PermissionDecidedCallbackWithLifetime permission_decided_callback,
 +      base::OnceClosure delete_callback) const;
 +
-   ContentSettingsType content_settings_type() const {
-     return content_settings_type_;
-   }
-@@ -222,7 +244,8 @@ class PermissionContextBase : public content_settings::Observer {
+   base::ObserverList<permissions::Observer> permission_observers_;
+ 
+   // Set by subclasses to inform the base class that they will handle adding
+@@ -222,7 +242,8 @@ class PermissionContextBase : public content_settings::Observer {
                           const GURL& embedding_origin,
                           ContentSetting content_setting,
                           bool is_one_time,
@@ -1190,10 +1367,9 @@ index 35971997d12c7..a10e5b6fcebd2 100644
 +                         bool is_final_decision,
 +                         content_settings::LifetimeMode lifetime_option);
  
-   raw_ptr<content::BrowserContext> browser_context_;
-   const ContentSettingsType content_settings_type_;
+   void NotifyObservers(const ContentSettingsPattern& primary_pattern,
+                        const ContentSettingsPattern& secondary_pattern,
 diff --git a/components/permissions/permission_prompt.h b/components/permissions/permission_prompt.h
-index d61ebaee55c5d..8cec8785f4a08 100644
 --- a/components/permissions/permission_prompt.h
 +++ b/components/permissions/permission_prompt.h
 @@ -65,8 +65,9 @@ class PermissionPrompt {
@@ -1208,29 +1384,24 @@ index d61ebaee55c5d..8cec8785f4a08 100644
      virtual void Ignore() = 0;
  
 diff --git a/components/permissions/permission_request.cc b/components/permissions/permission_request.cc
-index 8baca976c0ac3..9cd4ccd4d33e6 100644
 --- a/components/permissions/permission_request.cc
 +++ b/components/permissions/permission_request.cc
-@@ -28,6 +28,18 @@ PermissionRequest::PermissionRequest(
+@@ -37,6 +37,14 @@ PermissionRequest::PermissionRequest(
        permission_decided_callback_(std::move(permission_decided_callback)),
        delete_callback_(std::move(delete_callback)) {}
  
 +PermissionRequest::PermissionRequest(
-+    const GURL& requesting_origin,
-+    RequestType request_type,
-+    bool has_gesture,
++    PermissionRequestData request_data,
 +    PermissionDecidedCallbackWithLifetime permission_decided_callback,
 +    base::OnceClosure delete_callback)
-+    : requesting_origin_(requesting_origin),
-+      request_type_(request_type),
-+      has_gesture_(has_gesture),
++    : data_(std::move(request_data)),
 +      permission_decided_callback_withlifetime_(std::move(permission_decided_callback)),
 +      delete_callback_(std::move(delete_callback)) {}
 +
  PermissionRequest::~PermissionRequest() {
    DCHECK(delete_callback_.is_null());
  }
-@@ -257,19 +269,37 @@ bool PermissionRequest::ShouldUseTwoOriginPrompt() const {
+@@ -276,19 +284,37 @@ bool PermissionRequest::ShouldUseTwoOriginPrompt() const {
               permissions::features::kPermissionStorageAccessAPI);
  }
  
@@ -1271,10 +1442,9 @@ index 8baca976c0ac3..9cd4ccd4d33e6 100644
                                     /*is_one_time=*/false, is_final_decision);
  }
 diff --git a/components/permissions/permission_request.h b/components/permissions/permission_request.h
-index aa585003b8458..e8e6ec6c55ae1 100644
 --- a/components/permissions/permission_request.h
 +++ b/components/permissions/permission_request.h
-@@ -43,6 +43,11 @@ class PermissionRequest {
+@@ -44,6 +44,11 @@ class PermissionRequest {
                                     bool /*is_one_time*/,
                                     bool /*is_final_decision*/)>;
  
@@ -1286,20 +1456,18 @@ index aa585003b8458..e8e6ec6c55ae1 100644
    // `permission_decided_callback` is called when the permission request is
    // resolved by the user (see comment on PermissionDecidedCallback above).
    // `delete_callback` is called when the permission request is no longer needed
-@@ -58,6 +63,12 @@ class PermissionRequest {
+@@ -63,6 +68,10 @@ class PermissionRequest {
                      PermissionDecidedCallback permission_decided_callback,
                      base::OnceClosure delete_callback);
  
-+  PermissionRequest(const GURL& requesting_origin,
-+                    RequestType request_type,
-+                    bool has_gesture,
++  PermissionRequest(PermissionRequestData request_data,
 +                    PermissionDecidedCallbackWithLifetime permission_decided_callback,
 +                    base::OnceClosure delete_callback);
 +
    PermissionRequest(const PermissionRequest&) = delete;
    PermissionRequest& operator=(const PermissionRequest&) = delete;
  
-@@ -119,10 +130,10 @@ class PermissionRequest {
+@@ -128,10 +137,10 @@ class PermissionRequest {
    // If |is_one_time| is true the permission will last until all tabs of
    // |origin| are closed or navigated away from, and then the permission will
    // automatically expire after 1 day.
@@ -1312,7 +1480,7 @@ index aa585003b8458..e8e6ec6c55ae1 100644
  
    // Called when the user has cancelled the permission request. This
    // corresponds to a denial, but is segregated in case the context needs to
-@@ -170,6 +181,9 @@ class PermissionRequest {
+@@ -174,6 +183,9 @@ class PermissionRequest {
    // Called once a decision is made about the permission.
    PermissionDecidedCallback permission_decided_callback_;
  
@@ -1323,7 +1491,6 @@ index aa585003b8458..e8e6ec6c55ae1 100644
    // caller.
    base::OnceClosure delete_callback_;
 diff --git a/components/permissions/permission_request_manager.cc b/components/permissions/permission_request_manager.cc
-index b77e176dd1b9a..2e4d5de971300 100644
 --- a/components/permissions/permission_request_manager.cc
 +++ b/components/permissions/permission_request_manager.cc
 @@ -155,7 +155,7 @@ void PermissionRequestManager::AddRequest(
@@ -1398,7 +1565,7 @@ index b77e176dd1b9a..2e4d5de971300 100644
    }
  
    NotifyRequestDecided(PermissionAction::DENIED);
-@@ -1162,32 +1173,32 @@ PermissionRequestManager::VisitDuplicateRequests(
+@@ -1165,32 +1176,32 @@ PermissionRequestManager::VisitDuplicateRequests(
  
  void PermissionRequestManager::PermissionGrantedIncludingDuplicates(
      PermissionRequest* request,
@@ -1441,17 +1608,16 @@ index b77e176dd1b9a..2e4d5de971300 100644
        request);
  }
  
-@@ -1436,7 +1447,7 @@ void PermissionRequestManager::LogWarningToConsole(const char* message) {
+@@ -1439,7 +1450,7 @@ void PermissionRequestManager::LogWarningToConsole(const char* message) {
  void PermissionRequestManager::DoAutoResponseForTesting() {
    switch (auto_response_for_test_) {
      case ACCEPT_ONCE:
 -      AcceptThisTime();
-+      AcceptThisTime(content_settings::LifetimeMode::Always);
++      AcceptThisTime(content_settings::LifetimeMode::OnlyThisTime);
        break;
      case ACCEPT_ALL:
        Accept();
 diff --git a/components/permissions/permission_request_manager.h b/components/permissions/permission_request_manager.h
-index 80505ee3af9db..2fc3c626205af 100644
 --- a/components/permissions/permission_request_manager.h
 +++ b/components/permissions/permission_request_manager.h
 @@ -159,8 +159,10 @@ class PermissionRequestManager
@@ -1481,6 +1647,5 @@ index 80505ee3af9db..2fc3c626205af 100644
    // Calls Cancelled on a request and all its duplicates.
    void CancelledIncludingDuplicates(PermissionRequest* request,
                                      bool is_final_decision = true);
--- 
-2.34.1
-
+--
+2.25.1

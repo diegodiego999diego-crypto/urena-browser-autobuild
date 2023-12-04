@@ -7,11 +7,13 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version="117.0.5938.156"
+chromium_version="119.0.6045.200"
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
+chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
+test=0
 arch=""
 
 usage() {
@@ -24,6 +26,7 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
+    echo "    -t Sign with AOSP test-key"
     echo
     exit 1
 }
@@ -48,6 +51,15 @@ build() {
     fi
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
+
+    if [ $test -eq 1 ]; then
+        echo ">> [$(date)] Using AOSP test-key to sign"
+        keystore_path="${root_dir}/platform.jks"
+        build_args+=' android_keystore_path="'$keystore_path'"'
+        build_args+=' android_keystore_name="platform"'
+        build_args+=' android_keystore_password="platform"'
+        build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
+    fi
 
     if [ $clean -eq 1 ]; then
         if [ -d "out/$1" ]; then
@@ -96,39 +108,48 @@ patch() {
 
     bromite_patches_list=$(cat "${root_dir}/build/bromite_patches_list.txt")
     for file in $bromite_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/build/bromite_patches/$file"
+        git am -C0 -3 --ignore-whitespace "${root_dir}/build/bromite_patches/$file"
     done
 
     e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
     for file in $e_patches_list; do
-        git am -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
+        git am -C0 -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
     done
 
     # Rename Chrome to Browser
     rename
+
+    # domain_substitution from ungoogled-chromium
+    domain_substitution
 }
 
 rename() {
     cd $chromium_dir/src
 
-    # Translation directories
-    dirs="components components/strings chrome/browser/ui/android/strings chrome/browser/ui/android/strings/translations"
+    replacements=("Chrome browser=Browser" "Chrome=Browser" "Bromite=Browser" "Cromite=Browser")
 
-    for dir in $dirs; do
-        grdp_files=$(ls $dir/*.grdp 2> /dev/null | wc -l)
-        if [ "$grdp_files" != "0" ]; then
-	    sed -i 's/Chrome browser/Browser/g' $dir/*.grd*
-	    sed -i 's/Chrome/Browser/g' $dir/*.grd*
-        fi
-        xtb_files=$(ls $dir/*.xtb 2> /dev/null | wc -l)
-        if [ "$xtb_files" != "0" ]; then
-	    sed -i 's/Chrome browser/Browser/g' $dir/*.xtb
-	    sed -i 's/Chrome/Browser/g' $dir/*.xtb
-        fi
+    for replacement in "${replacements[@]}"; do
+        replaced_string=${replacement%%=*}
+        replacement_string=${replacement#*=}
+
+        find . -type f -not -name 'foundation_e.grdp' -name '*.grd*' | while read -r filename; do
+            sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
+        done
+        find . -type f -name '*.xtb' | while read -r filename; do
+            sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
+        done
     done
 
     git add .
     git commit -m "Browser: Replace Chrome with Browser"
+}
+
+domain_substitution() {
+    cd "${root_dir}/domain_substitution"
+    python3 domain_substitution.py apply -r domain_regex.list -f domain_substitution.list $chromium_dir/src
+    cd $chromium_dir/src
+    git add .
+    git commit -m "Browser: Automated domain substitution"
 }
 
 sync() {
@@ -137,9 +158,13 @@ sync() {
     gclient_config
     if [ -d "$chromium_dir/src" ]; then
         cd $chromium_dir/src
-        git checkout main
         git fetch origin refs/tags/$chromium_version
-        git reset --hard FETCH_HEAD
+        if [ $clean -eq 1 ]; then
+            git checkout main
+            git reset --hard FETCH_HEAD
+        else
+            git reset --hard $chromium_commit_hash
+        fi
     fi
     if [ $history -eq 1 ]; then
         gclient sync -D --nohooks -R
@@ -151,11 +176,9 @@ sync() {
 }
 
 gclient_config() {
-    url=https://github.com/chromium/chromium.git
-    commit_hash=$(git ls-remote --refs $url refs/tags/$chromium_version | awk '{print $1}')
     cat <<EOF > "$chromium_dir/.gclient"
 solutions = [{
-    "url": "$url@$commit_hash",
+    "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
     "name": "src",
     "custom_deps": {},
@@ -177,13 +200,14 @@ init_repo(){
     fi
 }
 
-while getopts ":a:cur:sh" opt; do
+while getopts ":a:cur:sht" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
     s) gsync=1  ;;
     h) history=0 ;;
+    t) test=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
@@ -203,6 +227,8 @@ if [ ! -d "$chromium_dir/depot_tools" ]; then
     git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$chromium_dir/depot_tools"
 fi
 export PATH="$chromium_dir/depot_tools:$PATH"
+
+chromium_commit_hash=$(git ls-remote --refs $chromium_url refs/tags/$chromium_version | awk '{print $1}')
 
 if [ $clean -eq 1 ]; then
     echo ">> [$(date)] Cleaning chromium source code"

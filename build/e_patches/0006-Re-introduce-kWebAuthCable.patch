@@ -1,0 +1,259 @@
+From 8f8a4013922c31c202f07dcc1e88a15375629202 Mon Sep 17 00:00:00 2001
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Sun, 4 Sep 2022 18:47:58 +0200
+Subject: [PATCH] Re-introduce kWebAuthCable
+
+This reverts commit ebfd987a57bf4a58588760e8a4342b4fffef36f2.
+
+Feature is disabled by default.
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ .../org/chromium/chrome/browser/AppHooks.java |  8 ---
+ .../chrome/browser/app/ChromeActivity.java    | 66 -------------------
+ .../authenticator_dialog_view_browsertest.cc  |  7 ++
+ .../authenticator_dialog_browsertest.cc       |  7 ++
+ .../webauthn/chrome_webauthn_browsertest.cc   |  2 +
+ .../webauth/authenticator_impl_unittest.cc    |  7 +-
+ content/public/common/content_features.cc     |  7 ++
+ content/public/common/content_features.h      |  1 +
+ 8 files changed, 30 insertions(+), 75 deletions(-)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
+index 50e8fb5e86d7b..5ce21991d9aab 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
+@@ -108,14 +108,6 @@ public abstract class AppHooks {
+         return new GoogleActivityController();
+     }
+ 
+-    /**
+-     * @return An instance of {@link GSAHelper} that handles the start point of chrome's integration
+-     *         with GSA.
+-     */
+-    public GSAHelper createGsaHelper() {
+-        return new GSAHelper();
+-    }
+-
+     public InstantAppsHandler createInstantAppsHandler() {
+         return new InstantAppsHandler();
+     }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index 919e644702b37..0667c8617bf11 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -297,7 +297,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+     private TabContentManager mTabContentManager;
+ 
+     private UmaSessionStats mUmaSessionStats;
+-    private ContextReporter mContextReporter;
+ 
+     private boolean mPartnerBrowserRefreshNeeded;
+ 
+@@ -310,9 +309,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+     private boolean mNativeInitialized;
+     private boolean mRemoveWindowBackgroundDone;
+ 
+-    // Observes when sync becomes ready to create the mContextReporter.
+-    private SyncService.SyncStateChangedListener mSyncStateChangedListener;
+-
+     // The FullscreenVideoPictureInPictureController is initialized lazily https://crbug.com/729738.
+     private FullscreenVideoPictureInPictureController mFullscreenVideoPictureInPictureController;
+ 
+@@ -1094,59 +1090,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+         return StatusBarColorController.UNDEFINED_STATUS_BAR_COLOR;
+     }
+ 
+-    private void createContextReporterIfNeeded() {
+-        if (!mStarted) return; // Sync state reporting should work only in started state.
+-        if (mContextReporter != null || getActivityTab() == null) return;
+-
+-        final SyncService syncService = getSyncServiceForOriginalProfile();
+-
+-        if (syncService != null && syncService.isSyncingUnencryptedUrls()) {
+-            ContextReporter.SelectionReporter controller =
+-                    getContextualSearchManagerSupplier().hasValue() ? new ContextReporter.SelectionReporter() {
+-                        @Override
+-                        public void enable(Callback<GSAContextDisplaySelection> callback) {
+-                            getContextualSearchManagerSupplier().get().enableContextReporting(
+-                                    callback);
+-                        }
+-
+-                        @Override
+-                        public void disable() {
+-                            getContextualSearchManagerSupplier().get().disableContextReporting();
+-                        }
+-                    } : null;
+-            mContextReporter = AppHooks.get().createGsaHelper().getContextReporter(
+-                    getActivityTabProvider(), mTabModelSelectorSupplier, controller);
+-
+-            if (mSyncStateChangedListener != null) {
+-                syncService.removeSyncStateChangedListener(mSyncStateChangedListener);
+-                mSyncStateChangedListener = null;
+-            }
+-
+-            return;
+-        } else {
+-            reportSyncStatus(syncService);
+-        }
+-
+-        if (mSyncStateChangedListener == null && syncService != null) {
+-            mSyncStateChangedListener = () -> createContextReporterIfNeeded();
+-            syncService.addSyncStateChangedListener(mSyncStateChangedListener);
+-        }
+-    }
+-
+-    /** Records an appropriate status via UMA given the current sync status. */
+-    private static void reportSyncStatus(@Nullable SyncService syncService) {
+-        if (syncService == null || !syncService.isEngineInitialized()) {
+-            ContextReporter.reportStatus(ContextReporter.STATUS_SYNC_NOT_INITIALIZED);
+-        } else if (!syncService.getActiveDataTypes().contains(ModelType.HISTORY)) {
+-            ContextReporter.reportStatus(ContextReporter.STATUS_SYNC_NOT_SYNCING_URLS);
+-        } else if (syncService.getPassphraseType() != PassphraseType.KEYSTORE_PASSPHRASE
+-                && syncService.getPassphraseType() != PassphraseType.TRUSTED_VAULT_PASSPHRASE) {
+-            ContextReporter.reportStatus(ContextReporter.STATUS_SYNC_NOT_KEYSTORE_PASSPHRASE);
+-        } else {
+-            ContextReporter.reportStatus(ContextReporter.STATUS_SYNC_OTHER);
+-        }
+-    }
+-
+     @Override
+     public void onResumeWithNative() {
+         // First, update the activity type in order to have it properly captured in
+@@ -1271,15 +1214,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+ 
+     @Override
+     public void onStopWithNative() {
+-        if (mSyncStateChangedListener != null) {
+-            SyncService syncService = getSyncServiceForOriginalProfile();
+-            if (syncService != null) {
+-                syncService.removeSyncStateChangedListener(mSyncStateChangedListener);
+-            }
+-            mSyncStateChangedListener = null;
+-        }
+-        if (mContextReporter != null) mContextReporter.disable();
+-
+         super.onStopWithNative();
+     }
+ 
+diff --git a/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc b/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
+index a6a3ec4dfcc04..5d47d84fbde21 100644
+--- a/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
++++ b/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
+@@ -100,6 +100,12 @@ class TestSheetView : public AuthenticatorRequestSheetView {
+ 
+ class AuthenticatorDialogViewTest : public DialogBrowserTest {
+  public:
++  void SetUp() override {
++    // Enable all upcoming features to excerise them for tests.
++    scoped_feature_list_.InitWithFeatures({features::kWebAuthCable}, {});
++    DialogBrowserTest::SetUp();
++  }
++
+   // DialogBrowserTest:
+   void ShowUi(const std::string& name) override {
+     dialog_model_ = std::make_unique<AuthenticatorRequestDialogModel>(
+@@ -163,6 +169,7 @@ class AuthenticatorDialogViewTest : public DialogBrowserTest {
+     }
+   }
+ 
++  base::test::ScopedFeatureList scoped_feature_list_;
+   std::unique_ptr<AuthenticatorRequestDialogModel> dialog_model_;
+ };
+ 
+diff --git a/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc b/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
+index 92bbc694b8e3d..a02a7515eef87 100644
+--- a/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
++++ b/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
+@@ -44,6 +44,12 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
+   AuthenticatorDialogTest(const AuthenticatorDialogTest&) = delete;
+   AuthenticatorDialogTest& operator=(const AuthenticatorDialogTest&) = delete;
+ 
++  void SetUp() override {
++    // Enable all upcoming features so that people can see the UI.
++    scoped_feature_list_.InitWithFeatures({features::kWebAuthCable}, {});
++    DialogBrowserTest::SetUp();
++  }
++
+   // DialogBrowserTest:
+   void ShowUi(const std::string& name) override {
+     // Web modal dialogs' bounds may exceed the display's work area.
+@@ -341,6 +347,7 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
+   std::unique_ptr<AuthenticatorRequestDialogModel> model_;
+   base::RepeatingTimer timer_;
+   int bio_samples_remaining_ = 5;
++  base::test::ScopedFeatureList scoped_feature_list_;
+ };
+ 
+ IN_PROC_BROWSER_TEST_F(AuthenticatorDialogTest, InvokeUi_default) {
+diff --git a/chrome/browser/webauthn/chrome_webauthn_browsertest.cc b/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
+index 8b5a56337f0bc..3b996faa7f5b3 100644
+--- a/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
++++ b/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
+@@ -714,6 +714,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnCableExtension, ServerLink) {
+ class WebAuthnCableSecondFactor : public WebAuthnBrowserTest {
+  public:
+   WebAuthnCableSecondFactor() {
++    scoped_feature_list_.InitWithFeatures({features::kWebAuthCable}, {});
+     // This makes it a little easier to compare against.
+     trace_ << std::endl;
+   }
+@@ -956,6 +957,7 @@ class WebAuthnCableSecondFactor : public WebAuthnBrowserTest {
+   };
+ 
+  protected:
++  base::test::ScopedFeatureList scoped_feature_list_;
+   std::ostringstream trace_;
+   // This field is not a raw_ptr<> to avoid returning a reference to a temporary
+   // T* (result of implicitly casting raw_ptr<T> to T*).
+diff --git a/content/browser/webauth/authenticator_impl_unittest.cc b/content/browser/webauth/authenticator_impl_unittest.cc
+index 0cea1a420fc22..c53f512b0a2d0 100644
+--- a/content/browser/webauth/authenticator_impl_unittest.cc
++++ b/content/browser/webauth/authenticator_impl_unittest.cc
+@@ -1278,7 +1278,12 @@ TEST_F(AuthenticatorImplTest, OversizedCredentialId) {
+   }
+ }
+ 
+-TEST_F(AuthenticatorImplTest, NoSilentAuthenticationForCable) {
++class AuthenticatorImplCableFlagSetTest : public AuthenticatorImplTest {
++ private:
++  base::test::ScopedFeatureList scoped_feature_list_{features::kWebAuthCable};
++};
++
++TEST_F(AuthenticatorImplCableFlagSetTest, NoSilentAuthenticationForCable) {
+   // https://crbug.com/954355
+   NavigateAndCommit(GURL(kTestOrigin1));
+ 
+diff --git a/content/public/common/content_features.cc b/content/public/common/content_features.cc
+index 1e0250e65829b..9c5764d26cb99 100644
+--- a/content/public/common/content_features.cc
++++ b/content/public/common/content_features.cc
+@@ -1140,6 +1140,13 @@ BASE_FEATURE(kWebAssemblyTrapHandler,
+ #endif
+ );
+ 
++// Controls whether CTAP2 devices can communicate via the WebAuthentication API
++// using pairingless BLE protocol.
++// https://w3c.github.io/webauthn
++BASE_FEATURE(kWebAuthCable,
++             "WebAuthenticationCable",                 // must be disabled
++             base::FEATURE_DISABLED_BY_DEFAULT);       // by default in Bromite
++
+ // Controls whether the Web Bluetooth API is enabled:
+ // https://webbluetoothcg.github.io/web-bluetooth/
+ BASE_FEATURE(kWebBluetooth, "WebBluetooth", base::FEATURE_DISABLED_BY_DEFAULT);
+diff --git a/content/public/common/content_features.h b/content/public/common/content_features.h
+index 00370cf433f03..ed84d030303a5 100644
+--- a/content/public/common/content_features.h
++++ b/content/public/common/content_features.h
+@@ -291,6 +291,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebMidi);
+ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebOtpBackendAuto);
+ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebPayments);
+ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebUICodeCache);
++CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAuthCable);
+ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebUsb);
+ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebXr);
+ 
+-- 
+2.34.1
+

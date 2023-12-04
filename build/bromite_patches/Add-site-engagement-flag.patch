@@ -1,29 +1,27 @@
-From fcc9d8969aca34d7f82d0270de79a70a33ab30c9 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Mon, 2 May 2022 11:48:03 +0000
-Subject: [PATCH 170/192] Add site engagement flag
+Subject: Add site engagement flag
 
 Disabled by default.
 
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/about_flags.cc                 |  6 ++++
- chrome/browser/flag_descriptions.cc           |  5 +++
- chrome/browser/flag_descriptions.h            |  3 ++
+ chrome/browser/about_flags.cc                 |  1 +
  .../content/site_engagement_score.cc          |  5 +++
  components/site_engagement/core/BUILD.gn      |  6 ++++
- components/site_engagement/core/features.cc   | 29 ++++++++++++++++
+ components/site_engagement/core/features.cc   | 30 ++++++++++++++++
  components/site_engagement/core/features.h    | 34 +++++++++++++++++++
- 7 files changed, 88 insertions(+)
+ .../Add-site-engagement-flag.inc              | 10 ++++++
+ 6 files changed, 86 insertions(+)
  create mode 100644 components/site_engagement/core/features.cc
  create mode 100644 components/site_engagement/core/features.h
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-site-engagement-flag.inc
 
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index bc1a9f986ff8c..1a967fcb42c29 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -144,6 +144,7 @@
+@@ -148,6 +148,7 @@
  #include "components/segmentation_platform/public/features.h"
  #include "components/send_tab_to_self/features.h"
  #include "components/services/heap_profiling/public/cpp/switches.h"
@@ -31,50 +29,7 @@ index bc1a9f986ff8c..1a967fcb42c29 100644
  #include "components/shared_highlighting/core/common/shared_highlighting_features.h"
  #include "components/signin/core/browser/dice_account_reconcilor_delegate.h"
  #include "components/signin/public/base/signin_buildflags.h"
-@@ -9564,6 +9565,11 @@ const FeatureEntry kFeatureEntries[] = {
-                                     kLargeFaviconFromGoogleVariations,
-                                     "LargeFaviconFromGoogle")},
- 
-+    {"site-engagement",
-+     flag_descriptions::kSiteEngagementName,
-+     flag_descriptions::kSiteEngagementDescription, kOsAll,
-+     FEATURE_VALUE_TYPE(site_engagement::features::kSiteEngagement)},
-+
- #if BUILDFLAG(IS_ANDROID)
-     {"force-off-text-autosizing",
-      flag_descriptions::kForceOffTextAutosizingName,
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index 1c8b73b87da7f..df16e84247120 100644
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -3770,6 +3770,11 @@ const char kSkipServiceWorkerFetchHandlerDescription[] =
-     "Skips starting the service worker and run the fetch handler if the fetch "
-     "handler is recognized as skippable.";
- 
-+const char kSiteEngagementName[] =
-+    "Enable site engagement feature";
-+const char kSiteEngagementDescription[] =
-+    "Site Engagement Service provides information about how engaged a user is with a origin; this affects which NTP tiles are automatically created.";
-+
- const char kWebSQLAccessName[] = "Allows access to WebSQL APIs";
- const char kWebSQLAccessDescription[] =
-     "The WebSQL API is enabled by default, but can be disabled here.";
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index 39c1bc44ac2ef..269c8f89b2640 100644
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -2198,6 +2198,9 @@ extern const char kReduceAcceptLanguageDescription[];
- extern const char kSkipServiceWorkerFetchHandlerName[];
- extern const char kSkipServiceWorkerFetchHandlerDescription[];
- 
-+extern const char kSiteEngagementName[];
-+extern const char kSiteEngagementDescription[];
-+
- extern const char kWebSQLAccessName[];
- extern const char kWebSQLAccessDescription[];
- 
 diff --git a/components/site_engagement/content/site_engagement_score.cc b/components/site_engagement/content/site_engagement_score.cc
-index b5f8f39dca4b8..18b3ba8919005 100644
 --- a/components/site_engagement/content/site_engagement_score.cc
 +++ b/components/site_engagement/content/site_engagement_score.cc
 @@ -18,6 +18,7 @@
@@ -97,7 +52,6 @@ index b5f8f39dca4b8..18b3ba8919005 100644
        origin_, GURL(), ContentSettingsType::SITE_ENGAGEMENT,
        base::Value(std::move(*score_dict_)));
 diff --git a/components/site_engagement/core/BUILD.gn b/components/site_engagement/core/BUILD.gn
-index 4975a87fc555c..307b7a27c29a0 100644
 --- a/components/site_engagement/core/BUILD.gn
 +++ b/components/site_engagement/core/BUILD.gn
 @@ -4,8 +4,14 @@
@@ -117,10 +71,9 @@ index 4975a87fc555c..307b7a27c29a0 100644
  }
 diff --git a/components/site_engagement/core/features.cc b/components/site_engagement/core/features.cc
 new file mode 100644
-index 0000000000000..a8c8bed9df7b6
 --- /dev/null
 +++ b/components/site_engagement/core/features.cc
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,30 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -145,14 +98,14 @@ index 0000000000000..a8c8bed9df7b6
 +namespace site_engagement {
 +namespace features {
 +
-+const base::Feature kSiteEngagement{"SiteEngagement",
-+                                    base::FEATURE_DISABLED_BY_DEFAULT};
++CROMITE_FEATURE(kSiteEngagement,
++                "SiteEngagement",
++                base::FEATURE_DISABLED_BY_DEFAULT);
 +
 +}  // namespace features
 +}  // namespace site_engagement
 diff --git a/components/site_engagement/core/features.h b/components/site_engagement/core/features.h
 new file mode 100644
-index 0000000000000..2eaf1540dca6b
 --- /dev/null
 +++ b/components/site_engagement/core/features.h
 @@ -0,0 +1,34 @@
@@ -184,12 +137,26 @@ index 0000000000000..2eaf1540dca6b
 +namespace features {
 +
 +// Enable site engagement
-+extern const base::Feature kSiteEngagement;
++BASE_DECLARE_FEATURE(kSiteEngagement);
 +
 +}  // namespace features
 +}  // namespace site_engagement
 +
 +#endif  // SITE_ENGAGEMENT_CORE_FEATURES_H_
--- 
-2.34.1
-
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Add-site-engagement-flag.inc b/cromite_flags/chrome/browser/about_flags_cc/Add-site-engagement-flag.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Add-site-engagement-flag.inc
+@@ -0,0 +1,10 @@
++#ifdef FLAG_SECTION
++
++    {"site-engagement",
++     "Enable site engagement feature",
++     "Site Engagement Service provides information about how "
++     "engaged a user is with a origin; this affects which NTP "
++     "tiles are automatically created.", kOsAll,
++     FEATURE_VALUE_TYPE(site_engagement::features::kSiteEngagement)},
++
++#endif
+--
+2.25.1

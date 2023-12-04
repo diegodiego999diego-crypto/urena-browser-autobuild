@@ -1,7 +1,6 @@
-From 1dcf0cfbf7dbf7ffbc66f1ac14a345ecd39b1209 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 7 Dec 2022 20:32:15 +0100
-Subject: [PATCH 191/192] Restore adaptive-button-in-top-toolbar-customization
+Subject: Restore adaptive-button-in-top-toolbar-customization
 
 This reverts commit 18d03b9cca4e90d2a446ea28266876d8c5fdc4f0.
 Voice button and legacy share/voice functionality is not restored.
@@ -19,18 +18,17 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  8 files changed, 132 insertions(+), 10 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-index 8c6f868f88f0d..8d35eeda1ba21 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-@@ -38,6 +38,7 @@ import org.chromium.chrome.browser.signin.services.SigninManager;
- import org.chromium.chrome.browser.sync.SyncServiceFactory;
- import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+@@ -43,6 +43,7 @@ import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+ import org.chromium.chrome.browser.sync.settings.SignInPreference;
+ import org.chromium.chrome.browser.sync.settings.SyncPromoPreference;
  import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
 +import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
  import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarStatePredictor;
  import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
  import org.chromium.components.browser_ui.settings.ChromeBasePreference;
-@@ -202,7 +203,9 @@ public class MainSettings extends PreferenceFragmentCompat
+@@ -225,7 +226,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
  
          new AdaptiveToolbarStatePredictor(null).recomputeUiState(uiState -> {
              // We don't show the toolbar shortcut settings page if disabled from finch.
@@ -40,12 +38,11 @@ index 8c6f868f88f0d..8d35eeda1ba21 100644
 +            if (uiState.canShowUi && !AdaptiveToolbarFeatures.isSingleVariantModeEnabled()) return;
              getPreferenceScreen().removePreference(findPreference(PREF_TOOLBAR_SHORTCUT));
          });
-     }
+ 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/share/ShareButtonController.java b/chrome/android/java/src/org/chromium/chrome/browser/share/ShareButtonController.java
-index dfe9efb7c6199..4db39ce97c194 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/share/ShareButtonController.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/share/ShareButtonController.java
-@@ -98,6 +98,43 @@ public class ShareButtonController extends BaseButtonDataProvider {
+@@ -100,6 +100,43 @@ public class ShareButtonController extends BaseButtonDataProvider {
          return mShareUtils.shouldEnableShare(tab);
      }
  
@@ -90,10 +87,9 @@ index dfe9efb7c6199..4db39ce97c194 100644
       * Returns an IPH for this button. Only called once native is initialized and when {@code
       * AdaptiveToolbarFeatures.isCustomizationEnabled()} is true.
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index 44da6cb71e131..f2a3a74ad3e41 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -638,18 +638,12 @@ const FeatureEntry::FeatureParam kAdaptiveButtonCustomization_Share[] = {
+@@ -675,18 +675,12 @@ const FeatureEntry::FeatureParam kAdaptiveButtonCustomization_Share[] = {
      {"default_segment", "share"},
      {"show_ui_only_after_ready", "false"},
      {"ignore_segmentation_results", "true"}};
@@ -113,7 +109,6 @@ index 44da6cb71e131..f2a3a74ad3e41 100644
  
  const FeatureEntry::FeatureParam kContextualPageActionsUiParams_Quiet[] = {
 diff --git a/chrome/browser/flag-metadata.json b/chrome/browser/flag-metadata.json
-index 8bedcccd5854c..57180e15817a9 100644
 --- a/chrome/browser/flag-metadata.json
 +++ b/chrome/browser/flag-metadata.json
 @@ -49,9 +49,10 @@
@@ -129,10 +124,9 @@ index 8bedcccd5854c..57180e15817a9 100644
    {
      "name": "adaptive-button-in-top-toolbar-translate",
 diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarButtonController.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarButtonController.java
-index efe375dfee0c0..fdf9250b6336a 100644
 --- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarButtonController.java
 +++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarButtonController.java
-@@ -238,7 +238,11 @@ public class AdaptiveToolbarButtonController
+@@ -249,7 +249,11 @@ public class AdaptiveToolbarButtonController
  
      @Override
      public void onFinishNativeInitialization() {
@@ -146,7 +140,6 @@ index efe375dfee0c0..fdf9250b6336a 100644
                  mSessionButtonVariant = uiState.canShowUi ? uiState.toolbarButtonState
                                                            : AdaptiveToolbarButtonVariant.UNKNOWN;
 diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarFeatures.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarFeatures.java
-index 66ed013dd2fb5..dece44aaf0b18 100644
 --- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarFeatures.java
 +++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarFeatures.java
 @@ -16,8 +16,18 @@ import org.chromium.chrome.browser.signin.services.UnifiedConsentServiceBridge;
@@ -248,7 +241,6 @@ index 66ed013dd2fb5..dece44aaf0b18 100644
          if (sButtonVariant != null) return sButtonVariant;
          String defaultSegment = getDefaultSegment();
 diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictor.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictor.java
-index 87bb8018505d5..04c3f01ff1e5d 100644
 --- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictor.java
 +++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictor.java
 @@ -93,7 +93,12 @@ public class AdaptiveToolbarStatePredictor {
@@ -266,7 +258,6 @@ index 87bb8018505d5..04c3f01ff1e5d 100644
              return;
          }
 diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictorTest.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictorTest.java
-index e8b9ea86f8568..c2906184dd380 100644
 --- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictorTest.java
 +++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveToolbarStatePredictorTest.java
 @@ -68,6 +68,21 @@ public class AdaptiveToolbarStatePredictorTest {
@@ -291,6 +282,5 @@ index e8b9ea86f8568..c2906184dd380 100644
      @Test
      @SmallTest
      public void testManualOverride() {
--- 
-2.34.1
-
+--
+2.25.1

@@ -1,7 +1,6 @@
-From 389956a27ed64ab08072ef8eb1a8194cd4c6c96c Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Sun, 3 Oct 2021 16:18:24 +0000
-Subject: [PATCH 135/192] Enable share intent
+Subject: Enable share intent
 
 This patch allows to activate the management of android.intent.action.SEND
 with new flag "shared-intent-ui" default active.
@@ -19,22 +18,23 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/LaunchIntentDispatcher.java       |   2 +-
  .../init/ProcessInitializationHandler.java    |   3 +
  .../SharedIntentShareActivity.java            | 119 ++++++++++++++++++
- chrome/browser/about_flags.cc                 |   4 +
- chrome/browser/flag_descriptions.cc           |   5 +
- chrome/browser/flag_descriptions.h            |   3 +
- .../flags/android/chrome_feature_list.cc      |   5 +
- .../flags/android/chrome_feature_list.h       |   1 +
+ .../flags/android/chrome_feature_list.cc      |   1 +
  .../browser/flags/ChromeFeatureList.java      |   1 +
  .../strings/android_chrome_strings.grd        |  13 ++
- 15 files changed, 277 insertions(+), 8 deletions(-)
+ .../about_flags_cc/Enable-share-intent.inc    |  12 ++
+ .../Enable-share-intent.inc                   |   3 +
+ .../Enable-share-intent.inc                   |   1 +
+ 14 files changed, 276 insertions(+), 8 deletions(-)
  create mode 100644 chrome/android/java/res/layout/sharing_intent_content.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/sharing/shared_intent/SharedIntentShareActivity.java
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Enable-share-intent.inc
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Enable-share-intent.inc
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Enable-share-intent.inc
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index b421f571bf6d2..1d9fa5b9779f2 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -607,6 +607,7 @@ chrome_java_resources = [
+@@ -598,6 +598,7 @@ chrome_java_resources = [
    "java/res/layout/signin_activity.xml",
    "java/res/layout/status_indicator_container.xml",
    "java/res/layout/suggestions_tile_view_condensed.xml",
@@ -43,10 +43,9 @@ index b421f571bf6d2..1d9fa5b9779f2 100644
    "java/res/layout/sync_custom_passphrase.xml",
    "java/res/layout/sync_enter_passphrase.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index 4fff6772328e4..87ddc92e24f7e 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -1023,6 +1023,7 @@ chrome_java_sources = [
+@@ -1037,6 +1037,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/signin/SyncConsentActivity.java",
    "java/src/org/chromium/chrome/browser/signin/SyncConsentActivityLauncherImpl.java",
    "java/src/org/chromium/chrome/browser/signin/SyncConsentFragment.java",
@@ -55,10 +54,9 @@ index 4fff6772328e4..87ddc92e24f7e 100644
    "java/src/org/chromium/chrome/browser/site_settings/CookieControlsServiceBridge.java",
    "java/src/org/chromium/chrome/browser/site_settings/ManageSpaceActivity.java",
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
-index 8974f51e25548..8260fd5d4887b 100644
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
-@@ -241,12 +241,6 @@ by a child template that "extends" this file.
+@@ -242,12 +242,6 @@ by a child template that "extends" this file.
                  <data android:mimeType="text/plain"/>
                  <data android:mimeType="application/xhtml+xml"/>
              </intent-filter>
@@ -71,7 +69,7 @@ index 8974f51e25548..8260fd5d4887b 100644
              <!-- content URI support. -->
              <intent-filter>
                  <action android:name="android.intent.action.VIEW" />
-@@ -361,6 +355,24 @@ by a child template that "extends" this file.
+@@ -362,6 +356,24 @@ by a child template that "extends" this file.
              </intent-filter>
          </activity>
  
@@ -98,7 +96,6 @@ index 8974f51e25548..8260fd5d4887b 100644
                    android:noHistory="true"
 diff --git a/chrome/android/java/res/layout/sharing_intent_content.xml b/chrome/android/java/res/layout/sharing_intent_content.xml
 new file mode 100644
-index 0000000000000..2b80c2863b96f
 --- /dev/null
 +++ b/chrome/android/java/res/layout/sharing_intent_content.xml
 @@ -0,0 +1,87 @@
@@ -190,10 +187,9 @@ index 0000000000000..2b80c2863b96f
 +
 +</LinearLayout>
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
-index 060fb0b2e2265..4a0340b7dff77 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
-@@ -209,6 +209,9 @@ public class IntentHandler {
+@@ -196,6 +196,9 @@ public class IntentHandler {
      private static final String EXTRA_TAB_LAUNCH_TYPE =
              "org.chromium.chrome.browser.tab_launch_type";
  
@@ -203,7 +199,7 @@ index 060fb0b2e2265..4a0340b7dff77 100644
      /**
       * A hash code for the URL to verify intent data hasn't been modified.
       */
-@@ -1504,6 +1507,17 @@ public class IntentHandler {
+@@ -1264,6 +1267,17 @@ public class IntentHandler {
          return IntentUtils.safeGetSerializableExtra(intent, EXTRA_TAB_LAUNCH_TYPE);
      }
  
@@ -221,7 +217,7 @@ index 060fb0b2e2265..4a0340b7dff77 100644
      /**
       * Creates an Intent that will launch a ChromeTabbedActivity on the new tab page. The Intent
       * will be trusted and therefore able to launch Incognito tabs.
-@@ -1628,7 +1642,7 @@ public class IntentHandler {
+@@ -1395,7 +1409,7 @@ public class IntentHandler {
          String headers = getExtraHeadersFromIntent(intent);
          headers = maybeAddAdditionalContentHeaders(intent, url, headers);
  
@@ -231,10 +227,9 @@ index 060fb0b2e2265..4a0340b7dff77 100644
              String postDataType =
                      IntentUtils.safeGetStringExtra(intent, IntentHandler.EXTRA_POST_DATA_TYPE);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
-index f07514c71d290..7e06987625a3a 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
-@@ -425,8 +425,8 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
+@@ -429,8 +429,8 @@ public class LaunchIntentDispatcher {
                      /*incognito*/true);
                  newIntent.setData(mIntent.getData());
                  newIntent.setPackage(applicationContext.getPackageName());
@@ -245,18 +240,17 @@ index f07514c71d290..7e06987625a3a 100644
              if (!chromeTabbedTaskExists()) {
                  newIntent.putExtra(IntentHandler.EXTRA_STARTED_TABBED_CHROME_TASK, true);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-index 4f5e88c8a0160..2ca41ee6bc094 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-@@ -82,6 +82,7 @@ import org.chromium.chrome.browser.signin.SigninCheckerProvider;
- import org.chromium.chrome.browser.tab.state.PersistedTabData;
- import org.chromium.chrome.browser.tab.state.ShoppingPersistedTabData;
+@@ -86,6 +86,7 @@ import org.chromium.chrome.browser.tab.state.ShoppingPersistedTabData;
+ import org.chromium.chrome.browser.ui.cars.DrivingRestrictionsManager;
+ import org.chromium.chrome.browser.ui.hats.SurveyClientFactory;
  import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityPreferencesManager;
 +import org.chromium.chrome.browser.sharing.shared_intent.SharedIntentShareActivity;
  import org.chromium.chrome.browser.usb.UsbNotificationManager;
  import org.chromium.chrome.browser.util.AfterStartupTaskUtils;
  import org.chromium.chrome.browser.webapps.WebappRegistry;
-@@ -423,6 +424,8 @@ public class ProcessInitializationHandler {
+@@ -439,6 +440,8 @@ public class ProcessInitializationHandler {
                          .resolveClearDataDialogResultRecorder()::makeDeferredRecordings);
          deferredStartupHandler.addDeferredTask(WebApkUninstallUmaTracker::recordDeferredUma);
  
@@ -267,7 +261,6 @@ index 4f5e88c8a0160..2ca41ee6bc094 100644
          deferredStartupHandler.addDeferredTask(
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/sharing/shared_intent/SharedIntentShareActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/sharing/shared_intent/SharedIntentShareActivity.java
 new file mode 100644
-index 0000000000000..526a88ab0f607
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/sharing/shared_intent/SharedIntentShareActivity.java
 @@ -0,0 +1,119 @@
@@ -390,56 +383,10 @@ index 0000000000000..526a88ab0f607
 +        return false;
 +    }
 +}
-diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index f56710802c16a..adaf8a1350291 100644
---- a/chrome/browser/about_flags.cc
-+++ b/chrome/browser/about_flags.cc
-@@ -9895,6 +9895,10 @@ const FeatureEntry kFeatureEntries[] = {
-          features::kBrokerFileOperationsOnDiskCacheInNetworkService)},
- 
- #if BUILDFLAG(IS_ANDROID)
-+    {"shared-intent-ui", flag_descriptions::kSharedIntentUIName,
-+     flag_descriptions::kSharedIntentUIDescription, kOsAll,
-+     FEATURE_VALUE_TYPE(chrome::android::kSharedIntentUI)},
-+
-     {"enable-commerce-hint-android",
-      flag_descriptions::kCommerceHintAndroidName,
-      flag_descriptions::kCommerceHintAndroidDescription, kOsAndroid,
-diff --git a/chrome/browser/flag_descriptions.cc b/chrome/browser/flag_descriptions.cc
-index 8deefef5e23a4..a0754d0ed5723 100644
---- a/chrome/browser/flag_descriptions.cc
-+++ b/chrome/browser/flag_descriptions.cc
-@@ -3181,6 +3181,11 @@ const char kIsolateOriginsDescription[] =
-     "Requires dedicated processes for an additional set of origins, "
-     "specified as a comma-separated list.";
- 
-+const char kSharedIntentUIName[] =
-+    "Enable shared feature";
-+const char kSharedIntentUIDescription[] =
-+    "Enables shared feature";
-+
- const char kIsolationByDefaultName[] =
-     "Change web-facing behaviors that prevent origin-level isolation";
- const char kIsolationByDefaultDescription[] =
-diff --git a/chrome/browser/flag_descriptions.h b/chrome/browser/flag_descriptions.h
-index 978a9c4dcd81c..4bc4ddb5ce607 100644
---- a/chrome/browser/flag_descriptions.h
-+++ b/chrome/browser/flag_descriptions.h
-@@ -1828,6 +1828,9 @@ extern const char kIsolateOriginsDescription[];
- 
- extern const char kIsolationByDefaultName[];
- extern const char kIsolationByDefaultDescription[];
-+extern const char kSharedIntentUIName[];
-+extern const char kSharedIntentUIDescription[];
-+
- 
- extern const char kSiteIsolationOptOutName[];
- extern const char kSiteIsolationOptOutDescription[];
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index 45fb8f39dd1dd..a4df42cb6db67 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -278,6 +278,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -294,6 +294,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kReengagementNotification,
      &kSearchReadyOmniboxFeature,
      &kRelatedSearches,
@@ -447,34 +394,10 @@ index 45fb8f39dd1dd..a4df42cb6db67 100644
      &kReportParentalControlSitesChild,
      &kRequestDesktopSiteDefaults,
      &kRequestDesktopSiteDefaultsControl,
-@@ -992,6 +993,10 @@ BASE_FEATURE(kScrollToTLDOptimization,
-              "ScrollToTLDOptimization",
-              base::FEATURE_DISABLED_BY_DEFAULT);
- 
-+BASE_FEATURE(kSharedIntentUI,
-+             "SharedIntentUI",
-+             base::FEATURE_ENABLED_BY_DEFAULT);
-+
- BASE_FEATURE(kShowScrollableMVTOnNTPAndroid,
-              "ShowScrollableMVTOnNTPAndroid",
-              base::FEATURE_DISABLED_BY_DEFAULT);
-diff --git a/chrome/browser/flags/android/chrome_feature_list.h b/chrome/browser/flags/android/chrome_feature_list.h
-index f279afd2d62f0..2fedf540a3efb 100644
---- a/chrome/browser/flags/android/chrome_feature_list.h
-+++ b/chrome/browser/flags/android/chrome_feature_list.h
-@@ -164,6 +164,7 @@ BASE_DECLARE_FEATURE(kRequestDesktopSiteDefaultsDowngrade);
- BASE_DECLARE_FEATURE(kRequestDesktopSiteDefaultsLogging);
- BASE_DECLARE_FEATURE(kRestoreTabsOnFRE);
- BASE_DECLARE_FEATURE(kSearchReadyOmniboxFeature);
-+BASE_DECLARE_FEATURE(kSharedIntentUI);
- BASE_DECLARE_FEATURE(kSharingHubLinkToggle);
- BASE_DECLARE_FEATURE(kShowScrollableMVTOnNTPAndroid);
- BASE_DECLARE_FEATURE(kFeedPositionAndroid);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index d0d1a4271442a..21a3d8def69d6 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -391,6 +391,7 @@ public abstract class ChromeFeatureList {
+@@ -395,6 +395,7 @@ public abstract class ChromeFeatureList {
      public static final String REACHED_CODE_PROFILER = "ReachedCodeProfiler";
      public static final String READALOUD = "ReadAloud";
      public static final String READER_MODE_IN_CCT = "ReaderModeInCCT";
@@ -483,10 +406,9 @@ index d0d1a4271442a..21a3d8def69d6 100644
      public static final String RECOVER_FROM_NEVER_SAVE_ANDROID =
              "RecoverFromNeverSaveAndroid_LAUNCHED";
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 7b03fb86276ab..2d4640dd3b79b 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -5160,6 +5160,19 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+@@ -5312,6 +5312,19 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
          Copied to your clipboard
        </message>
  
@@ -506,6 +428,36 @@ index 7b03fb86276ab..2d4640dd3b79b 100644
        <!-- Sms Fetcher -->
        <message name="IDS_SMS_FETCHER_NOTIFICATION_TITLE" desc="Title text shown when the Android Chrome receives a ONE_TIME_CODE from an incoming SMS and ask users for permission to submit the code to their linked Desktop Chrome">
          Submit <ph name="ONE_TIME_CODE">%1$s<ex>123</ex></ph> on <ph name="CLIENT_NAME">%2$s<ex>Zoe's Macbook</ex></ph>?
--- 
-2.34.1
-
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Enable-share-intent.inc b/cromite_flags/chrome/browser/about_flags_cc/Enable-share-intent.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Enable-share-intent.inc
+@@ -0,0 +1,12 @@
++#if BUILDFLAG(IS_ANDROID)
++
++#ifdef FLAG_SECTION
++
++    {"share-intent-ui",
++     "Enable share feature",
++     "Enables share feature", kOsAndroid,
++     FEATURE_VALUE_TYPE(chrome::android::kSharedIntentUI)},
++
++#endif
++
++#endif
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Enable-share-intent.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Enable-share-intent.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Enable-share-intent.inc
+@@ -0,0 +1,3 @@
++CROMITE_FEATURE(kSharedIntentUI,
++                "SharedIntentUI",
++                base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Enable-share-intent.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Enable-share-intent.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Enable-share-intent.inc
+@@ -0,0 +1 @@
++BASE_DECLARE_FEATURE(kSharedIntentUI);
+--
+2.25.1

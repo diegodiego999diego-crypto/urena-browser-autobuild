@@ -1,0 +1,304 @@
+From e19e2df911e9c3ab2e7c969ab6cf637057df7f23 Mon Sep 17 00:00:00 2001
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Sun, 26 Sep 2021 11:17:53 +0200
+Subject: [PATCH] Disable AGSA by default
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/android/BUILD.gn                       |  2 --
+ .../org/chromium/chrome/browser/AppHooks.java |  1 -
+ .../chrome/browser/IntentHandler.java         |  5 ----
+ .../chrome/browser/app/ChromeActivity.java    | 27 -------------------
+ .../ChromeContextMenuPopulator.java           |  7 -----
+ ...stomTabActivityClientConnectionKeeper.java |  9 -------
+ .../init/ProcessInitializationHandler.java    |  8 ------
+ .../chrome/browser/share/LensUtils.java       | 17 ++----------
+ .../flags/android/chrome_feature_list.cc      |  4 +--
+ .../browser/flags/ChromeFeatureList.java      |  2 +-
+ chrome/browser/ui/android/omnibox/BUILD.gn    |  2 --
+ 11 files changed, 5 insertions(+), 79 deletions(-)
+
+diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index 9dd3012b3425b..4594740d3b6cc 100644
+--- a/chrome/android/BUILD.gn
++++ b/chrome/android/BUILD.gn
+@@ -988,7 +988,6 @@ if (current_toolchain == default_toolchain) {
+       "//chrome/browser/flags:flags_junit_tests",
+       "//chrome/browser/flags:java",
+       "//chrome/browser/fullscreen/android:java",
+-      "//chrome/browser/gsa:java",
+       "//chrome/browser/history_clusters:java",
+       "//chrome/browser/hub:factory_java",
+       "//chrome/browser/hub:java",
+@@ -1596,7 +1595,6 @@ if (current_toolchain == default_toolchain) {
+       "//chrome/browser/first_run/android:java",
+       "//chrome/browser/flags:java",
+       "//chrome/browser/fullscreen/android:java",
+-      "//chrome/browser/gsa:java",
+       "//chrome/browser/history_clusters:java",
+       "//chrome/browser/image_descriptions:javatests",
+       "//chrome/browser/incognito:incognito_java_tests",
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
+index d52c9a1de8642..50e8fb5e86d7b 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
+@@ -11,7 +11,6 @@ import org.chromium.base.PackageUtils;
+ import org.chromium.base.ResettersForTesting;
+ import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
+ import org.chromium.chrome.browser.directactions.DirectActionCoordinator;
+-import org.chromium.chrome.browser.gsa.GSAHelper;
+ import org.chromium.chrome.browser.historyreport.AppIndexingReporter;
+ import org.chromium.chrome.browser.init.ChromeStartupDelegate;
+ import org.chromium.chrome.browser.init.ProcessInitializationHandler;
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
+index 2d72afc45f1a2..ef703f130aca2 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
+@@ -38,7 +38,6 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
+ import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler;
+ import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler.RequestMetadata;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.gsa.GSAState;
+ import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteControllerProvider;
+ import org.chromium.chrome.browser.profiles.Profile;
+ import org.chromium.chrome.browser.renderer_host.ChromeNavigationUIData;
+@@ -264,8 +263,6 @@ public class IntentHandler {
+     private static int sReferrerId;
+     private static String sPendingIncognitoUrl;
+ 
+-    public static final String PACKAGE_GSA = GSAState.PACKAGE_NAME;
+-
+     private static final String PACKAGE_GMAIL = "com.google.android.gm";
+     private static final String PACKAGE_PLUS = "com.google.android.apps.plus";
+     private static final String PACKAGE_HANGOUTS = "com.google.android.talk";
+@@ -456,8 +453,6 @@ public class IntentHandler {
+             return ExternalAppId.LINE;
+         } else if (packageName.equals(PACKAGE_WHATSAPP)) {
+             return ExternalAppId.WHATSAPP;
+-        } else if (packageName.equals(PACKAGE_GSA)) {
+-            return ExternalAppId.GSA;
+         } else if (packageName.equals(ContextUtils.getApplicationContext().getPackageName())) {
+             return ExternalAppId.CHROME;
+         } else if (packageName.startsWith(WEBAPK_PACKAGE_PREFIX)) {
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index 3b6c78ef848fa..919e644702b37 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -112,10 +112,6 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+ import org.chromium.chrome.browser.fullscreen.BrowserControlsManagerSupplier;
+ import org.chromium.chrome.browser.fullscreen.FullscreenBackPressHandler;
+ import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+-import org.chromium.chrome.browser.gsa.ContextReporter;
+-import org.chromium.chrome.browser.gsa.GSAAccountChangeListener;
+-import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
+-import org.chromium.chrome.browser.gsa.GSAState;
+ import org.chromium.chrome.browser.history.HistoryManagerUtils;
+ import org.chromium.chrome.browser.init.AsyncInitializationActivity;
+ import org.chromium.chrome.browser.init.ProcessInitializationHandler;
+@@ -384,8 +380,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+ 
+     private LaunchCauseMetrics mLaunchCauseMetrics;
+ 
+-    private GSAAccountChangeListener mGSAAccountChangeListener;
+-
+     // TODO(972867): Pull MenuOrKeyboardActionController out of ChromeActivity.
+     private List<MenuOrKeyboardActionController.MenuOrKeyboardActionHandler> mMenuActionHandlers =
+             new ArrayList<>();
+@@ -1277,9 +1271,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+ 
+     @Override
+     public void onStopWithNative() {
+-        if (GSAState.getInstance().isGsaAvailable() && !SysUtils.isLowEndDevice()) {
+-            if (mGSAAccountChangeListener != null) mGSAAccountChangeListener.disconnect();
+-        }
+         if (mSyncStateChangedListener != null) {
+             SyncService syncService = getSyncServiceForOriginalProfile();
+             if (syncService != null) {
+@@ -1367,24 +1358,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+                     ChromeActivity.this, Profile.getLastUsedRegularProfile());
+         });
+ 
+-        // GSA connection is not needed on low-end devices because Icing is disabled.
+-        if (!SysUtils.isLowEndDevice()) {
+-            DeferredStartupHandler.getInstance().addDeferredTask(() -> {
+-                if (isActivityFinishingOrDestroyed()) return;
+-                if (!GSAState.getInstance().isGsaAvailable()) {
+-                    ContextReporter.reportStatus(ContextReporter.STATUS_GSA_NOT_AVAILABLE);
+-                    return;
+-                }
+-
+-                if (mGSAAccountChangeListener == null) {
+-                    mGSAAccountChangeListener =
+-                            GSAAccountChangeListener.create(AppHooks.get().createGsaHelper());
+-                }
+-                mGSAAccountChangeListener.connect();
+-                createContextReporterIfNeeded();
+-            });
+-        }
+-
+         DeferredStartupHandler.getInstance().addDeferredTask(
+                 () -> { MemoryPurgeManager.getInstance().start(); });
+     }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
+index 3680169398ef4..43e280e6e839d 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
+@@ -35,7 +35,6 @@ import org.chromium.chrome.browser.contextmenu.ContextMenuCoordinator.ListItemTy
+ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+ import org.chromium.chrome.browser.firstrun.FirstRunStatus;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.gsa.GSAState;
+ import org.chromium.chrome.browser.lens.LensController;
+ import org.chromium.chrome.browser.lens.LensEntryPoint;
+ import org.chromium.chrome.browser.lens.LensIntentParams;
+@@ -818,12 +817,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+                     LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE);
+             return false;
+         }
+-        if (GSAState.getInstance().isAgsaVersionBelowMinimum(
+-                    versionName, LensUtils.getMinimumAgsaVersionForLensSupport())) {
+-            LensMetrics.recordLensSupportStatus(
+-                    LENS_SUPPORT_STATUS_HISTOGRAM_NAME, LensMetrics.LensSupportStatus.OUT_OF_DATE);
+-            return false;
+-        }
+ 
+         if (LensUtils.isDeviceOsBelowMinimum()) {
+             LensMetrics.recordLensSupportStatus(
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
+index 8c222555b292c..8eb7340f20761 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
+@@ -11,7 +11,6 @@ import org.chromium.base.metrics.RecordHistogram;
+ import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
+ import org.chromium.chrome.browser.customtabs.content.CustomTabActivityTabProvider;
+ import org.chromium.chrome.browser.dependency_injection.ActivityScope;
+-import org.chromium.chrome.browser.gsa.GSAState;
+ import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+ import org.chromium.chrome.browser.lifecycle.StartStopWithNativeObserver;
+ import org.chromium.chrome.browser.tab.Tab;
+@@ -95,13 +94,5 @@ public class CustomTabActivityClientConnectionKeeper implements StartStopWithNat
+             }
+         }
+         assert status >= 0;
+-
+-        if (GSAState.isGsaPackageName(packageName)) {
+-            RecordHistogram.recordEnumeratedHistogram("CustomTabs.ConnectionStatusOnReturn.GSA",
+-                    status, ConnectionStatus.NUM_ENTRIES);
+-        } else {
+-            RecordHistogram.recordEnumeratedHistogram("CustomTabs.ConnectionStatusOnReturn.NonGSA",
+-                    status, ConnectionStatus.NUM_ENTRIES);
+-        }
+     }
+ }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
+index 8db4090429b56..f3254a08dde4f 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
+@@ -386,14 +386,6 @@ public class ProcessInitializationHandler {
+             }
+         });
+ 
+-        deferredStartupHandler.addDeferredTask(new Runnable() {
+-            @Override
+-            public void run() {
+-                // Starts syncing with GSA.
+-                AppHooks.get().createGsaHelper().startSync();
+-            }
+-        });
+-
+         deferredStartupHandler.addDeferredTask(new Runnable() {
+             @Override
+             public void run() {
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
+index 6220d80133333..2a90e2b7d49ef 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
+@@ -12,7 +12,6 @@ import org.chromium.base.ResettersForTesting;
+ import org.chromium.chrome.R;
+ import org.chromium.chrome.browser.IntentHandler;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.gsa.GSAState;
+ import org.chromium.components.externalauth.ExternalAuthUtils;
+ 
+ /**
+@@ -61,15 +60,7 @@ public class LensUtils {
+         if (sFakePassableLensEnvironmentForTesting) {
+             return MIN_AGSA_VERSION_NAME_FOR_LENS_POSTCAPTURE;
+         } else {
+-            if (context == null) {
+-                return "";
+-            }
+-            String agsaVersion = GSAState.getInstance().getAgsaVersionName();
+-            if (agsaVersion == null) {
+-                return "";
+-            } else {
+-                return agsaVersion;
+-            }
++            return "";
+         }
+     }
+ 
+@@ -121,11 +112,7 @@ public class LensUtils {
+      * @return Whether the package is valid.
+      */
+     public static boolean isValidAgsaPackage(final ExternalAuthUtils externalAuthUtils) {
+-        if (sFakePassableLensEnvironmentForTesting) {
+-            return true;
+-        }
+-
+-        return externalAuthUtils.isGoogleSigned(IntentHandler.PACKAGE_GSA);
++        return false;
+     }
+ 
+     public static boolean isGoogleLensFeatureEnabled(boolean isIncognito) {
+diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
+index 90bba6d7540ef..93088c1c1ddc6 100644
+--- a/chrome/browser/flags/android/chrome_feature_list.cc
++++ b/chrome/browser/flags/android/chrome_feature_list.cc
+@@ -805,8 +805,8 @@ BASE_FEATURE(kEarlyInitializeStartupMetrics,
+ BASE_FEATURE(kEmptyStates, "EmptyStates", base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE(kExperimentsForAgsa,
+-             "ExperimentsForAgsa",
+-             base::FEATURE_ENABLED_BY_DEFAULT);
++             "ExperimentsForAgsa",                 // disabled by default
++             base::FEATURE_DISABLED_BY_DEFAULT);   // in Bromite
+ 
+ BASE_FEATURE(kExploreSites, "ExploreSites", base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+index cde0cf08868d2..5af946d46d0f1 100644
+--- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
++++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+@@ -570,7 +570,7 @@ public abstract class ChromeFeatureList {
+     public static final CachedFlag sEarlyInitializeStartupMetrics =
+             new CachedFlag(EARLY_INITIALIZE_STARTUP_METRICS, false);
+     public static final CachedFlag sEmptyStates = new CachedFlag(EMPTY_STATES, true);
+-    public static final CachedFlag sExperimentsForAgsa = new CachedFlag(EXPERIMENTS_FOR_AGSA, true);
++    public static final CachedFlag sExperimentsForAgsa = new CachedFlag(EXPERIMENTS_FOR_AGSA, false);
+     public static final CachedFlag sFeedLoadingPlaceholder =
+             new CachedFlag(FEED_LOADING_PLACEHOLDER, false);
+     public static final CachedFlag sFriendlierSafeBrowsingSettingsEnhancedProtection =
+diff --git a/chrome/browser/ui/android/omnibox/BUILD.gn b/chrome/browser/ui/android/omnibox/BUILD.gn
+index 5a3b585ab6435..a5fadd374244b 100644
+--- a/chrome/browser/ui/android/omnibox/BUILD.gn
++++ b/chrome/browser/ui/android/omnibox/BUILD.gn
+@@ -158,7 +158,6 @@ android_library("java") {
+     "//chrome/browser/device:java",
+     "//chrome/browser/feature_engagement:java",
+     "//chrome/browser/flags:java",
+-    "//chrome/browser/gsa:java",
+     "//chrome/browser/history_clusters:java",
+     "//chrome/browser/language/android:java",
+     "//chrome/browser/lens:java",
+@@ -489,7 +488,6 @@ robolectric_library("junit") {
+     "//chrome/browser/commerce/merchant_viewer/android:java",
+     "//chrome/browser/device:java",
+     "//chrome/browser/flags:java",
+-    "//chrome/browser/gsa:java",
+     "//chrome/browser/lens:java",
+     "//chrome/browser/locale:java",
+     "//chrome/browser/preferences:java",
+-- 
+2.34.1
+
