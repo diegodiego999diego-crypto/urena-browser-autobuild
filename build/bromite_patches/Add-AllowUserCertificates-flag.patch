@@ -20,7 +20,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-@@ -227,6 +227,7 @@ import org.chromium.content_public.browser.ScreenOrientationProvider;
+@@ -228,6 +228,7 @@ import org.chromium.content_public.browser.ScreenOrientationProvider;
  import org.chromium.content_public.browser.SelectionPopupController;
  import org.chromium.content_public.browser.WebContents;
  import org.chromium.content_public.common.ContentSwitches;
@@ -28,7 +28,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActiv
  import org.chromium.printing.PrintManagerDelegateImpl;
  import org.chromium.printing.PrintingController;
  import org.chromium.printing.PrintingControllerImpl;
-@@ -984,6 +985,8 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -1097,6 +1098,8 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
          super.onStartWithNative();
          ChromeActivitySessionTracker.getInstance().onStartWithNative();
          ChromeCachedFlags.getInstance().cacheNativeFlags();
@@ -40,7 +40,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActiv
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -147,6 +147,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -144,6 +144,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &feed::kFeedShowSignInCommand,
      &feed::kFeedSignedOutViewDemotion,
      &feed::kFeedUserInteractionReliabilityReport,
@@ -51,7 +51,7 @@ diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browse
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -98,6 +98,7 @@ public abstract class ChromeFeatureList {
+@@ -103,6 +103,7 @@ public abstract class ChromeFeatureList {
      }
  
      /* Alphabetical: */
@@ -59,23 +59,23 @@ diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/f
      public static final String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR = "AdaptiveButtonInTopToolbar";
      public static final String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_TRANSLATE =
              "AdaptiveButtonInTopToolbarTranslate";
-@@ -501,6 +502,8 @@ public abstract class ChromeFeatureList {
-     /* Alphabetical: */
+@@ -522,6 +523,8 @@ public abstract class ChromeFeatureList {
      public static final CachedFlag sAndroidAppIntegration =
              new CachedFlag(ANDROID_APP_INTEGRATION, false);
+     public static final CachedFlag sAndroidHub = new CachedFlag(ANDROID_HUB, false);
 +    public static final CachedFlag sAllowUserCertificates =
 +            new CachedFlag(ALLOW_USER_CERTIFICATES, false);
      public static final CachedFlag sAppMenuMobileSiteOption =
              new CachedFlag(APP_MENU_MOBILE_SITE_OPTION, false);
-     public static final CachedFlag sBackGestureActivityTabProvider =
-@@ -642,6 +645,7 @@ public abstract class ChromeFeatureList {
-     public static final List<CachedFlag> sFlagsCachedFullBrowser = List.of(
-             // clang-format off
-         sAndroidAppIntegration,
-+        sAllowUserCertificates,
-         sAppMenuMobileSiteOption,
-         sBackGestureActivityTabProvider,
-         sBackGestureRefactorActivityAndroid,
+     public static final CachedFlag sArchiveTabService = new CachedFlag(ARCHIVE_TAB_SERVICE, false);
+@@ -662,6 +665,7 @@ public abstract class ChromeFeatureList {
+ 
+     public static final List<CachedFlag> sFlagsCachedFullBrowser =
+             List.of(
++                    sAllowUserCertificates,
+                     sAndroidAppIntegration,
+                     sAndroidHub,
+                     sAppMenuMobileSiteOption,
 diff --git a/cromite_flags/chrome/browser/about_flags_cc/Add-AllowUserCertificates-flag.inc b/cromite_flags/chrome/browser/about_flags_cc/Add-AllowUserCertificates-flag.inc
 new file mode 100644
 --- /dev/null
@@ -111,24 +111,23 @@ new file mode 100644
 diff --git a/net/android/java/src/org/chromium/net/X509Util.java b/net/android/java/src/org/chromium/net/X509Util.java
 --- a/net/android/java/src/org/chromium/net/X509Util.java
 +++ b/net/android/java/src/org/chromium/net/X509Util.java
-@@ -545,6 +545,8 @@ public class X509Util {
+@@ -525,6 +525,8 @@ public class X509Util {
          return userRootBytes.toArray(new byte[0][]);
      }
  
 +    public static boolean AllowUserCertificates = false;
 +
-     public static AndroidCertVerifyResult verifyServerCertificates(byte[][] certChain,
-                                                                    String authType,
-                                                                    String host)
-@@ -631,6 +633,9 @@ public class X509Util {
+     public static AndroidCertVerifyResult verifyServerCertificates(
+             byte[][] certChain, String authType, String host)
+             throws KeyStoreException, NoSuchAlgorithmException {
+@@ -613,6 +615,9 @@ public class X509Util {
                  isIssuedByKnownRoot = isKnownRoot(root);
              }
  
 +            if (AllowUserCertificates == false && isIssuedByKnownRoot == false)
 +                return new AndroidCertVerifyResult(CertVerifyStatusAndroid.NO_TRUSTED_ROOT);
 +
-             return new AndroidCertVerifyResult(CertVerifyStatusAndroid.OK,
-                                                isIssuedByKnownRoot, verifiedChain);
+             return new AndroidCertVerifyResult(
+                     CertVerifyStatusAndroid.OK, isIssuedByKnownRoot, verifiedChain);
          }
 --
-2.25.1

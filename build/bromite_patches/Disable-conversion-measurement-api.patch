@@ -11,34 +11,46 @@ being sent and being saved to disk, although it is currently in uncalled code.
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/android/java/AndroidManifest.xml       |   1 -
- components/attribution_reporting/features.cc  |   1 +
+ .../browser/aw_content_browser_client.cc      |   1 +
+ chrome/android/java/AndroidManifest.xml       |   4 -
+ components/attribution_reporting/features.cc  |   2 +
  .../origin_trials/features.cc                 |   2 +
  .../render_view_context_menu_base.cc          |   3 -
  .../aggregatable_report_sender.cc             |  15 +-
  .../aggregation_service_features.cc           |   1 +
- .../attribution_data_host_manager_impl.cc     |   5 +
+ .../attribution_data_host_manager_impl.cc     |   1 +
  .../attribution_reporting/attribution_host.cc |   1 +
- .../attribution_os_level_manager.cc           |   1 +
+ .../attribution_os_level_manager.cc           |   3 +-
  .../attribution_report_network_sender.cc      |   9 +
  .../attribution_storage_sql.cc                |   8 +-
  content/browser/storage_partition_impl.cc     |   9 -
  content/public/android/BUILD.gn               |   2 -
- .../browser/AttributionOsLevelManager.java    | 218 +-----------------
- .../public/browser/content_browser_client.cc  |   6 +-
+ .../browser/AttributionOsLevelManager.java    | 296 +-----------------
+ .../public/browser/content_browser_client.cc  |   7 +-
  .../public/browser/navigation_controller.cc   |   1 -
- content/renderer/render_thread_impl.cc        |   5 +-
  .../Disable-conversion-measurement-api.inc    |   1 +
  .../Disable-conversion-measurement-api.inc    |   1 +
  .../Disable-conversion-measurement-api.inc    |   9 +
  .../attribution/request_headers_internal.cc   |   1 +
  .../network/public/cpp/attribution_utils.cc   |   2 +
+ third_party/blink/renderer/core/page/page.cc  |   2 +-
  ui/events/android/motion_event_android.cc     |   6 +-
- 23 files changed, 67 insertions(+), 241 deletions(-)
+ 24 files changed, 64 insertions(+), 323 deletions(-)
  create mode 100644 cromite_flags/content/public/common/content_features_cc/Disable-conversion-measurement-api.inc
  create mode 100644 cromite_flags/services/network/public/cpp/features_cc/Disable-conversion-measurement-api.inc
  create mode 100644 cromite_flags/third_party/blink/common/features_cc/Disable-conversion-measurement-api.inc
 
+diff --git a/android_webview/browser/aw_content_browser_client.cc b/android_webview/browser/aw_content_browser_client.cc
+--- a/android_webview/browser/aw_content_browser_client.cc
++++ b/android_webview/browser/aw_content_browser_client.cc
+@@ -1216,6 +1216,7 @@ network::mojom::AttributionSupport
+ AwContentBrowserClient::GetAttributionSupport(
+     AttributionReportingOsApiState state,
+     content::WebContents* web_contents) {
++  if ((true)) return network::mojom::AttributionSupport::kNone;
+   AwSettings* aw_settings = AwSettings::FromWebContents(web_contents);
+   if (aw_settings && aw_settings->GetAttributionBehavior() ==
+                          AwSettings::AttributionBehavior::DISABLED) {
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
@@ -50,14 +62,25 @@ diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/Andro
      <uses-permission-sdk-23 android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
      <uses-permission-sdk-23 android:name="android.permission.BLUETOOTH_CONNECT"/>
      <!--
+@@ -1166,9 +1165,6 @@ by a child template that "extends" this file.
+             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize" >
+         </activity>
+ 
+-        <property android:name="android.adservices.AD_SERVICES_CONFIG"
+-            android:resource="@xml/ad_services_config" />
+-
+         {% set enable_openxr = enable_openxr|default(0) %}
+         {% if enable_openxr == "true" %}
+           <!-- launchMode is set to singleTask because there should never be multiple copies of the app running. -->
 diff --git a/components/attribution_reporting/features.cc b/components/attribution_reporting/features.cc
 --- a/components/attribution_reporting/features.cc
 +++ b/components/attribution_reporting/features.cc
-@@ -17,4 +17,5 @@ BASE_FEATURE(kAttributionReportingNullAggregatableReports,
-              "AttributionReportingNullAggregatableReports",
+@@ -21,4 +21,6 @@ BASE_FEATURE(kAttributionReportingTriggerContextId,
+              "AttributionReportingTriggerContextId",
               base::FEATURE_ENABLED_BY_DEFAULT);
  
 +SET_CROMITE_FEATURE_DISABLED(kConversionMeasurement);
++SET_CROMITE_FEATURE_DISABLED(kAttributionReportingTriggerContextId);
  }  // namespace attribution_reporting::features
 diff --git a/components/embedder_support/origin_trials/features.cc b/components/embedder_support/origin_trials/features.cc
 --- a/components/embedder_support/origin_trials/features.cc
@@ -72,7 +95,7 @@ diff --git a/components/embedder_support/origin_trials/features.cc b/components/
 diff --git a/components/renderer_context_menu/render_view_context_menu_base.cc b/components/renderer_context_menu/render_view_context_menu_base.cc
 --- a/components/renderer_context_menu/render_view_context_menu_base.cc
 +++ b/components/renderer_context_menu/render_view_context_menu_base.cc
-@@ -507,9 +507,6 @@ RenderViewContextMenuBase::GetOpenURLParamsWithExtraHeaders(
+@@ -510,9 +510,6 @@ RenderViewContextMenuBase::GetOpenURLParamsWithExtraHeaders(
  
    open_url_params.source_site_instance = site_instance_;
  
@@ -85,7 +108,7 @@ diff --git a/components/renderer_context_menu/render_view_context_menu_base.cc b
 diff --git a/content/browser/aggregation_service/aggregatable_report_sender.cc b/content/browser/aggregation_service/aggregatable_report_sender.cc
 --- a/content/browser/aggregation_service/aggregatable_report_sender.cc
 +++ b/content/browser/aggregation_service/aggregatable_report_sender.cc
-@@ -136,19 +136,18 @@ void AggregatableReportSender::SendReport(const GURL& url,
+@@ -137,19 +137,18 @@ void AggregatableReportSender::SendReport(const GURL& url,
    // Allow bodies of non-2xx responses to be returned.
    simple_url_loader_ptr->SetAllowHttpErrorResults(true);
  
@@ -111,7 +134,7 @@ diff --git a/content/browser/aggregation_service/aggregatable_report_sender.cc b
 +  }
    RequestStatus status;
  
-   absl::optional<int> http_response_code;
+   std::optional<int> http_response_code;
 diff --git a/content/browser/aggregation_service/aggregation_service_features.cc b/content/browser/aggregation_service/aggregation_service_features.cc
 --- a/content/browser/aggregation_service/aggregation_service_features.cc
 +++ b/content/browser/aggregation_service/aggregation_service_features.cc
@@ -124,22 +147,18 @@ diff --git a/content/browser/aggregation_service/aggregation_service_features.cc
 diff --git a/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc b/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
 --- a/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
 +++ b/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
-@@ -500,6 +500,11 @@ void AttributionDataHostManagerImpl::ParseSource(
+@@ -833,6 +833,7 @@ void AttributionDataHostManagerImpl::ParseHeader(
+     HeaderPendingDecode pending_decode,
      Registrar registrar) {
    DCHECK(it != registrations_.end());
++  if ((true)) return;
  
-+  if ((true)) {
-+    MaybeOnRegistrationsFinished(it);
-+    return;
-+  }
-+
-   switch (registrar) {
-     case Registrar::kWeb:
-       if (!network::HasAttributionWebSupport(
+   switch (it->eligibility()) {
+     case RegistrationEligibility::kSourceOrTrigger:
 diff --git a/content/browser/attribution_reporting/attribution_host.cc b/content/browser/attribution_reporting/attribution_host.cc
 --- a/content/browser/attribution_reporting/attribution_host.cc
 +++ b/content/browser/attribution_reporting/attribution_host.cc
-@@ -360,6 +360,7 @@ void AttributionHost::RegisterNavigationDataHost(
+@@ -361,6 +361,7 @@ void AttributionHost::RegisterNavigationDataHost(
      return;
    }
  
@@ -150,14 +169,23 @@ diff --git a/content/browser/attribution_reporting/attribution_host.cc b/content
 diff --git a/content/browser/attribution_reporting/attribution_os_level_manager.cc b/content/browser/attribution_reporting/attribution_os_level_manager.cc
 --- a/content/browser/attribution_reporting/attribution_os_level_manager.cc
 +++ b/content/browser/attribution_reporting/attribution_os_level_manager.cc
-@@ -51,6 +51,7 @@ ApiState GetApiState() {
+@@ -46,6 +46,7 @@ absl::optional<ApiState> g_state GUARDED_BY_CONTEXT(GetSequenceChecker());
+ // static
+ bool AttributionOsLevelManager::ShouldUseOsWebSource(
+     GlobalRenderFrameHostId render_frame_id) {
++  if ((true)) return false;
+   return GetContentClient()
+       ->browser()
+       ->ShouldUseOsWebSourceAttributionReporting(
+@@ -74,7 +75,7 @@ bool AttributionOsLevelManager::ShouldInitializeApiState() {
+ // static
+ ApiState AttributionOsLevelManager::GetApiState() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(GetSequenceChecker());
+-  return g_state.value_or(ApiState::kDisabled);
++  return ApiState::kDisabled;
+ }
  
  // static
- network::mojom::AttributionSupport AttributionOsLevelManager::GetSupport() {
-+  if ((true)) return network::mojom::AttributionSupport::kNone;
-   bool is_web_allowed =
-       GetContentClient()->browser()->IsWebAttributionReportingAllowed();
-   switch (GetApiState()) {
 diff --git a/content/browser/attribution_reporting/attribution_report_network_sender.cc b/content/browser/attribution_reporting/attribution_report_network_sender.cc
 --- a/content/browser/attribution_reporting/attribution_report_network_sender.cc
 +++ b/content/browser/attribution_reporting/attribution_report_network_sender.cc
@@ -187,8 +215,8 @@ diff --git a/content/browser/attribution_reporting/attribution_report_network_se
 diff --git a/content/browser/attribution_reporting/attribution_storage_sql.cc b/content/browser/attribution_reporting/attribution_storage_sql.cc
 --- a/content/browser/attribution_reporting/attribution_storage_sql.cc
 +++ b/content/browser/attribution_reporting/attribution_storage_sql.cc
-@@ -692,14 +692,16 @@ StorableSource::Result DestinationRateLimitResultToStorableSourceResult(
-   }
+@@ -398,14 +398,16 @@ base::FilePath DatabasePath(const base::FilePath& user_data_directory) {
+   return user_data_directory.Append(kDatabasePath);
  }
  
 +bool g_run_in_memory = true;
@@ -210,7 +238,7 @@ diff --git a/content/browser/attribution_reporting/attribution_storage_sql.cc b/
 diff --git a/content/browser/storage_partition_impl.cc b/content/browser/storage_partition_impl.cc
 --- a/content/browser/storage_partition_impl.cc
 +++ b/content/browser/storage_partition_impl.cc
-@@ -1500,15 +1500,6 @@ void StoragePartitionImpl::Initialize(
+@@ -1526,15 +1526,6 @@ void StoragePartitionImpl::Initialize(
  
    bucket_manager_ = std::make_unique<BucketManager>(this);
  
@@ -257,9 +285,9 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 -import com.google.common.util.concurrent.Futures;
 -import com.google.common.util.concurrent.ListenableFuture;
  
- import org.chromium.base.ContextUtils;
- import org.chromium.base.Log;
-@@ -51,6 +40,8 @@ import java.util.concurrent.TimeoutException;
+ import org.jni_zero.CalledByNative;
+ import org.jni_zero.JNINamespace;
+@@ -52,6 +41,8 @@ import java.util.concurrent.TimeoutException;
   */
  @JNINamespace("content")
  public class AttributionOsLevelManager {
@@ -268,149 +296,205 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
      private static final String TAG = "AttributionManager";
      // TODO: replace with constant in android.Manifest.permission once it becomes available in U.
      private static final String PERMISSION_ACCESS_ADSERVICES_ATTRIBUTION =
-@@ -98,21 +89,11 @@ public class AttributionOsLevelManager {
+@@ -116,62 +107,11 @@ public class AttributionOsLevelManager {
      }
  
      private static boolean supportsAttribution() {
 -        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
+-    }
+-
+-    private static @OperationResult int convertToOperationResult(Throwable thrown) {
+-        if (thrown instanceof IllegalArgumentException) {
+-            return OperationResult.ERROR_ILLEGAL_ARGUMENT;
+-        } else if (thrown instanceof IOException) {
+-            return OperationResult.ERROR_IO;
+-        } else if (thrown instanceof IllegalStateException) {
+-            // The Android API doesn't break out this error as a separate exception so we
+-            // are forced to inspect the message for now.
+-            if (thrown.getMessage().toLowerCase(Locale.US).contains("background")) {
+-                return OperationResult.ERROR_BACKGROUND_CALLER;
+-            } else {
+-                return OperationResult.ERROR_ILLEGAL_STATE;
+-            }
+-        } else if (thrown instanceof SecurityException) {
+-            return OperationResult.ERROR_SECURITY;
+-        } else if (thrown instanceof TimeoutException) {
+-            return OperationResult.ERROR_TIMEOUT;
+-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+-                && thrown instanceof LimitExceededException) {
+-            return OperationResult.ERROR_LIMIT_EXCEEDED;
+-        } else {
+-            return OperationResult.ERROR_UNKNOWN;
+-        }
 +        return false;
      }
  
+     private static void recordOperationResult(
+             @OperationType int type, @OperationResult int result) {
+-        String suffix = "";
+-        switch (type) {
+-            case OperationType.REGISTER_SOURCE:
+-                suffix = "RegisterSource";
+-                break;
+-            case OperationType.REGISTER_WEB_SOURCE:
+-                suffix = "RegisterWebSource";
+-                break;
+-            case OperationType.REGISTER_TRIGGER:
+-                suffix = "RegisterTrigger";
+-                break;
+-            case OperationType.REGISTER_WEB_TRIGGER:
+-                suffix = "RegisterWebTrigger";
+-                break;
+-            case OperationType.GET_MEASUREMENT_API_STATUS:
+-                suffix = "GetMeasurementApiStatus";
+-                break;
+-            case OperationType.DELETE_REGISTRATIONS:
+-                suffix = "DeleteRegistrations";
+-                break;
+-        }
+-
+-        assert suffix.length() > 0;
+-
+-        RecordHistogram.recordEnumeratedHistogram(
+-                "Conversions.AndroidOperationResult." + suffix, result, OperationResult.COUNT);
+     }
+ 
+     @CalledByNative
+@@ -180,22 +120,7 @@ public class AttributionOsLevelManager {
+     }
+ 
      private MeasurementManagerFutures getManager() {
+-        if (!supportsAttribution()) {
+-            return null;
+-        }
 -        if (sManagerForTesting != null) {
 -            return sManagerForTesting;
 -        }
 -        if (mManager != null) {
 -            return mManager;
 -        }
--        if (!supportsAttribution()) {
--            return null;
+-        try {
+-            mManager = MeasurementManagerFutures.from(ContextUtils.getApplicationContext());
+-        } catch (Throwable t) {
+-            // An error may be thrown if android.ext.adservices is not loaded.
+-            Log.i(TAG, "Failed to get measurement manager", t);
 -        }
--        mManager = MeasurementManagerFutures.from(ContextUtils.getApplicationContext());
 -        return mManager;
 +        return null;
      }
  
      private void onRegistrationCompleted(
-@@ -137,46 +118,6 @@ public class AttributionOsLevelManager {
+@@ -209,28 +134,6 @@ public class AttributionOsLevelManager {
          }
      }
  
 -    private void addRegistrationFutureCallback(
--            int requestId, @RegistrationType int type, ListenableFuture<?> future) {
+-            int requestId, @OperationType int type, ListenableFuture<?> future) {
 -        if (!supportsAttribution()) {
 -            return;
 -        }
--        Futures.addCallback(future, new FutureCallback<Object>() {
--            @Override
--            public void onSuccess(Object result) {
--                onRegistrationCompleted(requestId, type, RegistrationResult.SUCCESS);
--            }
--            @Override
--            public void onFailure(Throwable thrown) {
--                Log.w(TAG, "Failed to register", thrown);
--                @RegistrationResult
--                int result = RegistrationResult.ERROR_UNKNOWN;
--                if (thrown instanceof IllegalArgumentException) {
--                    result = RegistrationResult.ERROR_ILLEGAL_ARGUMENT;
--                } else if (thrown instanceof IOException) {
--                    result = RegistrationResult.ERROR_IO;
--                } else if (thrown instanceof IllegalStateException) {
--                    // The Android API doesn't break out this error as a separate exception so we
--                    // are forced to inspect the message for now.
--                    if (thrown.getMessage().toLowerCase(Locale.US).contains("background")) {
--                        result = RegistrationResult.ERROR_BACKGROUND_CALLER;
--                    } else {
--                        result = RegistrationResult.ERROR_ILLEGAL_STATE;
+-        Futures.addCallback(
+-                future,
+-                new FutureCallback<Object>() {
+-                    @Override
+-                    public void onSuccess(Object result) {
+-                        onRegistrationCompleted(requestId, type, OperationResult.SUCCESS);
 -                    }
--                } else if (thrown instanceof SecurityException) {
--                    result = RegistrationResult.ERROR_SECURITY;
--                } else if (thrown instanceof TimeoutException) {
--                    result = RegistrationResult.ERROR_TIMEOUT;
--                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
--                        && thrown instanceof LimitExceededException) {
--                    result = RegistrationResult.ERROR_LIMIT_EXCEEDED;
--                }
--                onRegistrationCompleted(requestId, type, result);
--            }
--        }, ContextUtils.getApplicationContext().getMainExecutor());
+-
+-                    @Override
+-                    public void onFailure(Throwable thrown) {
+-                        Log.w(TAG, "Failed to register", thrown);
+-                        onRegistrationCompleted(requestId, type, convertToOperationResult(thrown));
+-                    }
+-                },
+-                ContextUtils.getApplicationContext().getMainExecutor());
 -    }
 -
      /**
       * Registers a web attribution source with native, see `registerWebSourceAsync()`:
       * https://developer.android.com/reference/androidx/privacysandbox/ads/adservices/java/measurement/MeasurementManagerFutures.
-@@ -189,19 +130,6 @@ public class AttributionOsLevelManager {
-                     requestId, RegistrationType.SOURCE, RegistrationResult.ERROR_INTERNAL);
+@@ -249,25 +152,6 @@ public class AttributionOsLevelManager {
+                     OperationResult.ERROR_VERSION_UNSUPPORTED);
              return;
          }
 -        MeasurementManagerFutures mm = getManager();
 -        if (mm == null) {
 -            onRegistrationCompleted(
--                    requestId, RegistrationType.SOURCE, RegistrationResult.ERROR_INTERNAL);
+-                    requestId, OperationType.REGISTER_WEB_SOURCE, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
--        ListenableFuture<?> future = mm.registerWebSourceAsync(new WebSourceRegistrationRequest(
--                Arrays.asList(new WebSourceParams(
--                        Uri.parse(registrationUrl.getSpec()), isDebugKeyAllowed)),
--                Uri.parse(topLevelOrigin.getSpec()), /*inputEvent=*/event,
--                /*appDestination=*/null, /*webDestination=*/null,
--                /*verifiedDestination=*/null));
--        addRegistrationFutureCallback(requestId, RegistrationType.SOURCE, future);
+-        ListenableFuture<?> future =
+-                mm.registerWebSourceAsync(
+-                        new WebSourceRegistrationRequest(
+-                                Arrays.asList(
+-                                        new WebSourceParams(
+-                                                Uri.parse(registrationUrl.getSpec()),
+-                                                isDebugKeyAllowed)),
+-                                Uri.parse(topLevelOrigin.getSpec()),
+-                                /* inputEvent= */ event,
+-                                /* appDestination= */ null,
+-                                /* webDestination= */ null,
+-                                /* verifiedDestination= */ null));
+-        addRegistrationFutureCallback(requestId, OperationType.REGISTER_WEB_SOURCE, future);
      }
  
      /**
-@@ -215,15 +143,6 @@ public class AttributionOsLevelManager {
-                     requestId, RegistrationType.SOURCE, RegistrationResult.ERROR_INTERNAL);
+@@ -283,15 +167,6 @@ public class AttributionOsLevelManager {
+                     OperationResult.ERROR_VERSION_UNSUPPORTED);
              return;
          }
 -        MeasurementManagerFutures mm = getManager();
 -        if (mm == null) {
 -            onRegistrationCompleted(
--                    requestId, RegistrationType.SOURCE, RegistrationResult.ERROR_INTERNAL);
+-                    requestId, OperationType.REGISTER_SOURCE, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
 -        ListenableFuture<?> future =
 -                mm.registerSourceAsync(Uri.parse(registrationUrl.getSpec()), event);
--        addRegistrationFutureCallback(requestId, RegistrationType.SOURCE, future);
+-        addRegistrationFutureCallback(requestId, OperationType.REGISTER_SOURCE, future);
      }
  
      /**
-@@ -238,18 +157,6 @@ public class AttributionOsLevelManager {
-                     requestId, RegistrationType.TRIGGER, RegistrationResult.ERROR_INTERNAL);
+@@ -308,22 +183,6 @@ public class AttributionOsLevelManager {
+                     OperationResult.ERROR_VERSION_UNSUPPORTED);
              return;
          }
 -
 -        MeasurementManagerFutures mm = getManager();
 -        if (mm == null) {
 -            onRegistrationCompleted(
--                    requestId, RegistrationType.TRIGGER, RegistrationResult.ERROR_INTERNAL);
+-                    requestId, OperationType.REGISTER_WEB_TRIGGER, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
--        ListenableFuture<?> future = mm.registerWebTriggerAsync(new WebTriggerRegistrationRequest(
--                Arrays.asList(new WebTriggerParams(
--                        Uri.parse(registrationUrl.getSpec()), isDebugKeyAllowed)),
--                Uri.parse(topLevelOrigin.getSpec())));
--        addRegistrationFutureCallback(requestId, RegistrationType.TRIGGER, future);
+-        ListenableFuture<?> future =
+-                mm.registerWebTriggerAsync(
+-                        new WebTriggerRegistrationRequest(
+-                                Arrays.asList(
+-                                        new WebTriggerParams(
+-                                                Uri.parse(registrationUrl.getSpec()),
+-                                                isDebugKeyAllowed)),
+-                                Uri.parse(topLevelOrigin.getSpec())));
+-        addRegistrationFutureCallback(requestId, OperationType.REGISTER_WEB_TRIGGER, future);
      }
  
      /**
-@@ -263,15 +170,6 @@ public class AttributionOsLevelManager {
-                     requestId, RegistrationType.TRIGGER, RegistrationResult.ERROR_INTERNAL);
+@@ -339,15 +198,6 @@ public class AttributionOsLevelManager {
+                     OperationResult.ERROR_VERSION_UNSUPPORTED);
              return;
          }
 -
 -        MeasurementManagerFutures mm = getManager();
 -        if (mm == null) {
 -            onRegistrationCompleted(
--                    requestId, RegistrationType.TRIGGER, RegistrationResult.ERROR_INTERNAL);
+-                    requestId, OperationType.REGISTER_TRIGGER, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
 -        ListenableFuture<?> future = mm.registerTriggerAsync(Uri.parse(registrationUrl.getSpec()));
--        addRegistrationFutureCallback(requestId, RegistrationType.TRIGGER, future);
+-        addRegistrationFutureCallback(requestId, OperationType.REGISTER_TRIGGER, future);
      }
  
      private void onDataDeletionCompleted(int requestId) {
-@@ -296,77 +194,7 @@ public class AttributionOsLevelManager {
+@@ -382,96 +232,7 @@ public class AttributionOsLevelManager {
              onDataDeletionCompleted(requestId);
              return;
          }
@@ -430,14 +514,20 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 -        if (origins.length == 0 && domains.length == 0) {
 -            switch (matchBehavior) {
 -                case DeletionRequest.MATCH_BEHAVIOR_DELETE:
+-                    recordOperationResult(
+-                            OperationType.DELETE_REGISTRATIONS, OperationResult.SUCCESS);
 -                    onDataDeletionCompleted(requestId);
 -                    return;
 -                case DeletionRequest.MATCH_BEHAVIOR_PRESERVE:
--                    matchBehaviors = ImmutableList.of(DeletionRequest.MATCH_BEHAVIOR_DELETE,
--                            DeletionRequest.MATCH_BEHAVIOR_PRESERVE);
+-                    matchBehaviors =
+-                            ImmutableList.of(
+-                                    DeletionRequest.MATCH_BEHAVIOR_DELETE,
+-                                    DeletionRequest.MATCH_BEHAVIOR_PRESERVE);
 -                    break;
 -                default:
 -                    Log.e(TAG, "Received invalid match behavior: ", matchBehavior);
+-                    recordOperationResult(
+-                            OperationType.DELETE_REGISTRATIONS, OperationResult.ERROR_UNKNOWN);
 -                    onDataDeletionCompleted(requestId);
 -                    return;
 -            }
@@ -457,30 +547,43 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 -
 -        int numCalls = matchBehaviors.size();
 -
--        FutureCallback<Object> callback = new FutureCallback<Object>() {
--            private int mNumPendingCalls = numCalls;
+-        FutureCallback<Object> callback =
+-                new FutureCallback<Object>() {
+-                    private int mNumPendingCalls = numCalls;
 -
--            private void onCall() {
--                if (--mNumPendingCalls == 0) {
--                    onDataDeletionCompleted(requestId);
--                }
--            }
+-                    private void onCall() {
+-                        if (--mNumPendingCalls == 0) {
+-                            onDataDeletionCompleted(requestId);
+-                        }
+-                    }
 -
--            @Override
--            public void onSuccess(Object result) {
--                onCall();
--            }
--            @Override
--            public void onFailure(Throwable thrown) {
--                Log.w(TAG, "Failed to delete measurement API data", thrown);
--                onCall();
--            }
--        };
+-                    @Override
+-                    public void onSuccess(Object result) {
+-                        recordOperationResult(
+-                                OperationType.DELETE_REGISTRATIONS, OperationResult.SUCCESS);
+-                        onCall();
+-                    }
+-
+-                    @Override
+-                    public void onFailure(Throwable thrown) {
+-                        Log.w(TAG, "Failed to delete measurement API data", thrown);
+-                        recordOperationResult(
+-                                OperationType.DELETE_REGISTRATIONS,
+-                                convertToOperationResult(thrown));
+-                        onCall();
+-                    }
+-                };
 -
 -        for (int currMatchBehavior : matchBehaviors) {
--            ListenableFuture<?> future = mm.deleteRegistrationsAsync(new DeletionRequest(
--                    deletionMode, currMatchBehavior, Instant.ofEpochMilli(startMs),
--                    Instant.ofEpochMilli(endMs), originUris, domainUris));
+-            ListenableFuture<?> future =
+-                    mm.deleteRegistrationsAsync(
+-                            new DeletionRequest(
+-                                    deletionMode,
+-                                    currMatchBehavior,
+-                                    Instant.ofEpochMilli(startMs),
+-                                    Instant.ofEpochMilli(endMs),
+-                                    originUris,
+-                                    domainUris));
 -
 -            Futures.addCallback(
 -                    future, callback, ContextUtils.getApplicationContext().getMainExecutor());
@@ -488,8 +591,8 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 +        onDataDeletionCompleted(requestId);
      }
  
-     /**
-@@ -377,6 +205,10 @@ public class AttributionOsLevelManager {
+     private static void onMeasurementStateReturned(int status, @OperationResult int result) {
+@@ -487,6 +248,10 @@ public class AttributionOsLevelManager {
      private static void getMeasurementApiStatus() {
          ThreadUtils.assertOnBackgroundThread();
  
@@ -500,14 +603,20 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
          if (sManagerForTesting != null) {
              AttributionOsLevelManagerJni.get().onMeasurementStateReturned(1);
              return;
-@@ -393,38 +225,6 @@ public class AttributionOsLevelManager {
-             AttributionOsLevelManagerJni.get().onMeasurementStateReturned(0);
+@@ -506,49 +271,6 @@ public class AttributionOsLevelManager {
+             onMeasurementStateReturned(/* status= */ 0, OperationResult.ERROR_PERMISSION_UNGRANTED);
              return;
          }
--        MeasurementManagerFutures mm =
--                MeasurementManagerFutures.from(ContextUtils.getApplicationContext());
+-        MeasurementManagerFutures mm = null;
+-        try {
+-            mm = MeasurementManagerFutures.from(ContextUtils.getApplicationContext());
+-        } catch (Throwable t) {
+-            // An error may be thrown if android.ext.adservices is not loaded.
+-            Log.i(TAG, "Failed to get measurement manager", t);
+-        }
+-
 -        if (mm == null) {
--            AttributionOsLevelManagerJni.get().onMeasurementStateReturned(0);
+-            onMeasurementStateReturned(/* status= */ 0, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
 -
@@ -521,31 +630,44 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 -        }
 -
 -        if (future == null) {
--            AttributionOsLevelManagerJni.get().onMeasurementStateReturned(0);
+-            onMeasurementStateReturned(/* status= */ 0, OperationResult.ERROR_INTERNAL);
 -            return;
 -        }
 -
--        Futures.addCallback(future, new FutureCallback<Integer>() {
--            @Override
--            public void onSuccess(Integer status) {
--                AttributionOsLevelManagerJni.get().onMeasurementStateReturned(status);
--            }
--            @Override
--            public void onFailure(Throwable thrown) {
--                Log.w(TAG, "Failed to get measurement API status", thrown);
--                AttributionOsLevelManagerJni.get().onMeasurementStateReturned(0);
--            }
--        }, ContextUtils.getApplicationContext().getMainExecutor());
+-        Futures.addCallback(
+-                future,
+-                new FutureCallback<Integer>() {
+-                    @Override
+-                    public void onSuccess(Integer status) {
+-                        onMeasurementStateReturned(status, OperationResult.SUCCESS);
+-                    }
+-
+-                    @Override
+-                    public void onFailure(Throwable thrown) {
+-                        Log.w(TAG, "Failed to get measurement API status", thrown);
+-                        onMeasurementStateReturned(
+-                                /* status= */ 0, convertToOperationResult(thrown));
+-                    }
+-                },
+-                ContextUtils.getApplicationContext().getMainExecutor());
      }
  
      @CalledByNative
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -560,17 +560,17 @@ bool ContentBrowserClient::IsAttributionReportingOperationAllowed(
- }
- 
- bool ContentBrowserClient::IsWebAttributionReportingAllowed() {
+@@ -554,6 +554,7 @@ void ContentBrowserClient::OnAuctionComplete(
+ network::mojom::AttributionSupport ContentBrowserClient::GetAttributionSupport(
+     AttributionReportingOsApiState state,
+     content::WebContents* web_contents) {
++  if ((true)) return network::mojom::AttributionSupport::kNone;
+   switch (state) {
+     case AttributionReportingOsApiState::kDisabled:
+       return network::mojom::AttributionSupport::kWeb;
+@@ -570,17 +571,17 @@ bool ContentBrowserClient::IsAttributionReportingOperationAllowed(
+     const url::Origin* destination_origin,
+     const url::Origin* reporting_origin,
+     bool* can_bypass) {
 -  return true;
 +  return false;
  }
@@ -574,28 +696,6 @@ diff --git a/content/public/browser/navigation_controller.cc b/content/public/br
        is_pdf(input.is_pdf) {
  #if DCHECK_IS_ON()
    DCHECK(input.Valid());
-diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
---- a/content/renderer/render_thread_impl.cc
-+++ b/content/renderer/render_thread_impl.cc
-@@ -885,6 +885,9 @@ void RenderThreadImpl::InitializeRenderer(
-   GetContentClient()->renderer()->DidSetUserAgent(user_agent);
-   user_agent_metadata_ = user_agent_metadata;
-   cors_exempt_header_list_ = cors_exempt_header_list;
-+#if BUILDFLAG(IS_ANDROID)
-+  attribution_support = network::mojom::AttributionSupport::kNone;
-+#endif
-   attribution_support_ = attribution_support;
- 
-   blink::WebVector<blink::WebString> web_cors_exempt_header_list(
-@@ -1789,7 +1792,7 @@ RenderThreadImpl::GetAttributionReportingSupport() {
- 
- void RenderThreadImpl::SetAttributionReportingSupport(
-     network::mojom::AttributionSupport attribution_support) {
--  attribution_support_ = attribution_support;
-+  attribution_support_ = network::mojom::AttributionSupport::kNone;
- }
- 
- std::unique_ptr<CodecFactory> RenderThreadImpl::CreateMediaCodecFactory(
 diff --git a/cromite_flags/content/public/common/content_features_cc/Disable-conversion-measurement-api.inc b/cromite_flags/content/public/common/content_features_cc/Disable-conversion-measurement-api.inc
 new file mode 100644
 --- /dev/null
@@ -652,6 +752,18 @@ diff --git a/services/network/public/cpp/attribution_utils.cc b/services/network
    switch (attribution_support) {
      case mojom::AttributionSupport::kWeb:
      case mojom::AttributionSupport::kWebAndOs:
+diff --git a/third_party/blink/renderer/core/page/page.cc b/third_party/blink/renderer/core/page/page.cc
+--- a/third_party/blink/renderer/core/page/page.cc
++++ b/third_party/blink/renderer/core/page/page.cc
+@@ -1303,7 +1303,7 @@ void Page::UpdateBrowsingContextGroup(
+ 
+ void Page::SetAttributionSupport(
+     network::mojom::AttributionSupport attribution_support) {
+-  attribution_support_ = attribution_support;
++  attribution_support_ = network::mojom::AttributionSupport::kNone;
+ }
+ 
+ template class CORE_TEMPLATE_EXPORT Supplement<Page>;
 diff --git a/ui/events/android/motion_event_android.cc b/ui/events/android/motion_event_android.cc
 --- a/ui/events/android/motion_event_android.cc
 +++ b/ui/events/android/motion_event_android.cc
@@ -669,4 +781,3 @@ diff --git a/ui/events/android/motion_event_android.cc b/ui/events/android/motio
  }
  
 --
-2.25.1

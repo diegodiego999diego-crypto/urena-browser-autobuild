@@ -23,25 +23,25 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -287,6 +287,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -281,6 +281,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kReaderModeInCCT,
      &kRecordSuppressionMetrics,
      &kReengagementNotification,
 +    &kSearchReadyOmniboxFeature,
      &kRelatedSearches,
+     &kRelatedSearchesAllLanguage,
      &kReportParentalControlSitesChild,
-     &kRequestDesktopSiteDefaults,
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -320,6 +320,7 @@ public abstract class ChromeFeatureList {
+@@ -316,6 +316,7 @@ public abstract class ChromeFeatureList {
+     public static final String MESSAGES_FOR_ANDROID_ADS_BLOCKED = "MessagesForAndroidAdsBlocked";
+     public static final String MESSAGES_FOR_ANDROID_INFRASTRUCTURE =
              "MessagesForAndroidInfrastructure";
++    public static final String SEARCH_READY_OMNIBOX = "SearchReadyOmnibox";
      public static final String MESSAGES_FOR_ANDROID_PERMISSION_UPDATE =
              "MessagesForAndroidPermissionUpdate";
-+    public static final String SEARCH_READY_OMNIBOX = "SearchReadyOmnibox";
-     public static final String METRICS_SETTINGS_ANDROID = "MetricsSettingsAndroid";
      public static final String NEW_TAB_SEARCH_ENGINE_URL_ANDROID = "NewTabSearchEngineUrlAndroid";
-     public static final String NOTIFICATION_PERMISSION_VARIANT = "NotificationPermissionVariant";
 diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/DropdownItemViewInfoListBuilder.java b/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/DropdownItemViewInfoListBuilder.java
 --- a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/DropdownItemViewInfoListBuilder.java
 +++ b/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/DropdownItemViewInfoListBuilder.java
@@ -53,28 +53,29 @@ diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/brow
  import org.chromium.base.supplier.Supplier;
  import org.chromium.chrome.browser.omnibox.OmniboxFeatures;
  import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
-@@ -56,6 +57,7 @@ class DropdownItemViewInfoListBuilder {
-     @Px
-     private int mDropdownHeight;
+@@ -55,6 +56,7 @@ class DropdownItemViewInfoListBuilder {
+     private @NonNull BookmarkState mBookmarkState;
+     @Px private int mDropdownHeight;
      private OpenHistoryClustersDelegate mOpenHistoryClustersDelegate;
 +    private EditUrlSuggestionProcessor mEditUrlSuggestionProcessor;
  
-     DropdownItemViewInfoListBuilder(@NonNull Supplier<Tab> tabSupplier, BookmarkState bookmarkState,
-             OpenHistoryClustersDelegate openHistoryClustersDelegate) {
-@@ -91,8 +93,10 @@ class DropdownItemViewInfoListBuilder {
+     DropdownItemViewInfoListBuilder(
+             @NonNull Supplier<Tab> tabSupplier,
+@@ -92,9 +94,11 @@ class DropdownItemViewInfoListBuilder {
              mDividerLineProcessor = new DividerLineProcessor(context);
          }
          mHeaderProcessor = new HeaderProcessor(context);
--        registerSuggestionProcessor(new EditUrlSuggestionProcessor(
--                context, host, mImageSupplier, mActivityTabSupplier, shareSupplier));
-+        mEditUrlSuggestionProcessor = new EditUrlSuggestionProcessor(
-+                context, host, mImageSupplier, mActivityTabSupplier, shareSupplier);
+-        registerSuggestionProcessor(
++        mEditUrlSuggestionProcessor =
+                 new EditUrlSuggestionProcessor(
+-                        context, host, mImageSupplier, mActivityTabSupplier, shareSupplier));
++                        context, host, mImageSupplier, mActivityTabSupplier, shareSupplier);
 +        registerSuggestionProcessor(mEditUrlSuggestionProcessor);
 +
          registerSuggestionProcessor(
                  new AnswerSuggestionProcessor(context, host, textProvider, mImageSupplier));
          registerSuggestionProcessor(
-@@ -201,6 +205,9 @@ class DropdownItemViewInfoListBuilder {
+@@ -211,6 +215,9 @@ class DropdownItemViewInfoListBuilder {
      /** Signals that native initialization has completed. */
      void onNativeInitialized() {
          mHeaderProcessor.onNativeInitialized();
@@ -117,4 +118,3 @@ new file mode 100644
 @@ -0,0 +1 @@
 +BASE_DECLARE_FEATURE(kSearchReadyOmniboxFeature);
 --
-2.25.1

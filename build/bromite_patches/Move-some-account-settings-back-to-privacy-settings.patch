@@ -6,18 +6,18 @@ Search suggestions, autofill assistant and contextual search
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../java/res/xml/privacy_preferences.xml      | 13 ++++++++
- .../privacy/settings/PrivacySettings.java     | 33 +++++++++++++++++++
+ .../java/res/xml/privacy_preferences.xml      | 13 +++++++
+ .../privacy/settings/PrivacySettings.java     | 34 +++++++++++++++++++
  .../strings/android_chrome_strings.grd        |  4 +++
- 3 files changed, 50 insertions(+)
+ 3 files changed, 51 insertions(+)
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -64,6 +64,19 @@ found in the LICENSE file.
-         android:key="privacy_sandbox"
-         android:title="@string/prefs_privacy_sandbox"
-         android:fragment="org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxSettingsFragmentV3"/>
+@@ -66,6 +66,19 @@ found in the LICENSE file.
+         android:key="secure_dns"
+         android:title="@string/settings_secure_dns_title"
+         android:fragment="org.chromium.chrome.browser.privacy.secure_dns.SecureDnsSettings" />
 +    <PreferenceCategory
 +        android:key="services_category"
 +        android:title="@string/services_category_title">
@@ -29,7 +29,7 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
 +      <org.chromium.components.browser_ui.settings.ChromeBasePreference
 +          android:key="contextual_search"
 +          android:title="@string/contextual_search_title"
-+          android:fragment="org.chromium.chrome.browser.contextualsearch.ContextualSearchPreferenceFragment"/>
++          android:fragment="org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment"/>
 +    </PreferenceCategory>
      <Preference
          android:key="phone_as_a_security_key"
@@ -37,21 +37,22 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -53,6 +53,13 @@ import org.chromium.components.user_prefs.UserPrefs;
+@@ -53,6 +53,14 @@ import org.chromium.components.user_prefs.UserPrefs;
  import org.chromium.ui.text.NoUnderlineClickableSpan;
  import org.chromium.ui.text.SpanApplier;
  
 +import androidx.annotation.Nullable;
 +import androidx.preference.PreferenceCategory;
 +import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
-+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
++import org.chromium.base.shared_preferences.SharedPreferencesManager;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 +import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 +import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
 +
- /**
-  * Fragment to keep track of the all the privacy related preferences.
-  */
-@@ -72,6 +79,16 @@ public class PrivacySettings
+ /** Fragment to keep track of the all the privacy related preferences. */
+ public class PrivacySettings extends ChromeBaseSettingsFragment
+         implements Preference.OnPreferenceChangeListener {
+@@ -70,6 +78,16 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
      private static final String PREF_THIRD_PARTY_COOKIES = "third_party_cookies";
      private static final String PREF_TRACKING_PROTECTION = "tracking_protection";
  
@@ -62,13 +63,13 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 +    private ChromeSwitchPreference mSearchSuggestions;
 +    private @Nullable Preference mContextualSearch;
 +    private final SharedPreferencesManager mSharedPreferencesManager =
-+            SharedPreferencesManager.getInstance();
++            ChromeSharedPreferences.getInstance();
 +
 +    private ManagedPreferenceDelegate mManagedPreferenceDelegate;
      private IncognitoLockSettings mIncognitoLockSettings;
  
      @Override
-@@ -136,6 +153,16 @@ public class PrivacySettings
+@@ -143,6 +161,16 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
          setHasOptionsMenu(true);
  
@@ -85,7 +86,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
          ChromeSwitchPreference canMakePaymentPref =
                  (ChromeSwitchPreference) findPreference(PREF_CAN_MAKE_PAYMENT);
          canMakePaymentPref.setOnPreferenceChangeListener(this);
-@@ -223,6 +250,9 @@ public class PrivacySettings
+@@ -251,6 +279,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          } else if (PREF_HTTPS_FIRST_MODE.equals(key)) {
              UserPrefs.get(getProfile())
                      .setBoolean(Pref.HTTPS_ONLY_MODE_ENABLED, (boolean) newValue);
@@ -95,9 +96,9 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
          }
          return true;
      }
-@@ -237,6 +267,9 @@ public class PrivacySettings
-      * Updates the preferences.
-      */
+@@ -263,6 +294,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+ 
+     /** Updates the preferences. */
      public void updatePreferences() {
 +        mSearchSuggestions.setChecked(
 +            UserPrefs.get(getProfile()).getBoolean(Pref.SEARCH_SUGGEST_ENABLED));
@@ -108,8 +109,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -464,6 +464,10 @@ CHAR_LIMIT guidelines:
-         No statistics or crash reports are sent to Google
+@@ -438,6 +438,10 @@ CHAR_LIMIT guidelines:
+         Automatically sends usage statistics and crash reports to Google
        </message>
  
 +      <message name="IDS_SERVICES_CATEGORY_TITLE" desc="Title for the group of preferences that control non-personalized Google services. This group contains preferences for data that is not tied to user's Google Account.">
@@ -120,4 +121,3 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
        <message name="IDS_SEARCH_ENGINE_SETTINGS" desc="Title for Search Engine settings. [CHAR_LIMIT=32]">
          Search engine
 --
-2.25.1

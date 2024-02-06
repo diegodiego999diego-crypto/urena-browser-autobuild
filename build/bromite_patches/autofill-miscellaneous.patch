@@ -10,20 +10,20 @@ Do not skip google.com domains for password generation (csagan5)
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/prefs/browser_prefs.cc         |  6 +--
- .../ui/autofill/chrome_autofill_client.cc     |  7 +--
- .../core/browser/autofill_download_manager.cc | 43 +++----------------
- .../core/browser/autofill_download_manager.h  |  2 -
+ chrome/browser/prefs/browser_prefs.cc         |  6 +-
+ .../ui/autofill/chrome_autofill_client.cc     |  7 +-
  .../core/browser/browser_autofill_manager.h   |  4 +-
+ .../autofill_crowdsourcing_manager.cc         | 66 ++-----------------
+ .../autofill_crowdsourcing_manager.h          |  2 -
  .../autofill/core/common/autofill_features.cc |  1 +
- .../autofill/core/common/autofill_prefs.cc    | 10 ++---
+ .../autofill/core/common/autofill_prefs.cc    | 10 +--
  .../password_generation_frame_helper.cc       |  4 --
- 8 files changed, 19 insertions(+), 58 deletions(-)
+ 8 files changed, 17 insertions(+), 83 deletions(-)
 
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -1133,11 +1133,11 @@ void RegisterProfilePrefsForMigration(
+@@ -1150,11 +1150,11 @@ void RegisterProfilePrefsForMigration(
                                     PrefRegistry::LOSSY_PREF);
  
    // Deprecated 11/2022.
@@ -41,24 +41,39 @@ diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browse
 diff --git a/chrome/browser/ui/autofill/chrome_autofill_client.cc b/chrome/browser/ui/autofill/chrome_autofill_client.cc
 --- a/chrome/browser/ui/autofill/chrome_autofill_client.cc
 +++ b/chrome/browser/ui/autofill/chrome_autofill_client.cc
-@@ -215,12 +215,7 @@ ChromeAutofillClient::GetURLLoaderFactory() {
+@@ -218,12 +218,7 @@ ChromeAutofillClient::GetURLLoaderFactory() {
  }
  
- AutofillDownloadManager* ChromeAutofillClient::GetDownloadManager() {
--  if (!download_manager_) {
+ AutofillCrowdsourcingManager* ChromeAutofillClient::GetCrowdsourcingManager() {
+-  if (!crowdsourcing_manager_) {
 -    // Lazy initialization to avoid virtual function calls in the constructor.
--    download_manager_ = std::make_unique<AutofillDownloadManager>(
+-    crowdsourcing_manager_ = std::make_unique<AutofillCrowdsourcingManager>(
 -        this, GetChannel(), GetLogManager());
 -  }
--  return download_manager_.get();
+-  return crowdsourcing_manager_.get();
 +  return nullptr;
  }
  
  AutofillOptimizationGuide* ChromeAutofillClient::GetAutofillOptimizationGuide()
-diff --git a/components/autofill/core/browser/autofill_download_manager.cc b/components/autofill/core/browser/autofill_download_manager.cc
---- a/components/autofill/core/browser/autofill_download_manager.cc
-+++ b/components/autofill/core/browser/autofill_download_manager.cc
-@@ -458,29 +458,6 @@ absl::optional<std::string> GetUploadPayloadForApi(
+diff --git a/components/autofill/core/browser/browser_autofill_manager.h b/components/autofill/core/browser/browser_autofill_manager.h
+--- a/components/autofill/core/browser/browser_autofill_manager.h
++++ b/components/autofill/core/browser/browser_autofill_manager.h
+@@ -710,9 +710,9 @@ class BrowserAutofillManager : public AutofillManager {
+       autocomplete_unrecognized_fallback_logger_;
+ 
+   // Have we logged whether Autofill is enabled for this page load?
+-  bool has_logged_autofill_enabled_ = false;
++  bool has_logged_autofill_enabled_ = true;
+   // Have we shown Autofill suggestions at least once?
+-  bool did_show_suggestions_ = false;
++  bool did_show_suggestions_ = true;
+   // Has the user manually edited at least one form field among the autofillable
+   // ones?
+   bool user_did_type_ = false;
+diff --git a/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.cc b/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.cc
+--- a/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.cc
++++ b/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.cc
+@@ -465,30 +465,6 @@ std::optional<std::string> GetUploadPayloadForApi(
    return std::move(payload);
  }
  
@@ -68,14 +83,14 @@ diff --git a/components/autofill/core/browser/autofill_download_manager.cc b/com
 -// * GetAPIMethodUrl(REQUEST_QUERY, "1234", "GET") will return "/v1/pages/1234".
 -// * GetAPIMethodUrl(REQUEST_QUERY, "1234", "POST") will return "/v1/pages:get".
 -// * GetAPIMethodUrl(REQUEST_UPLOAD, "", "POST") will return "/v1/forms:vote".
--std::string GetAPIMethodUrl(AutofillDownloadManager::RequestType type,
+-std::string GetAPIMethodUrl(AutofillCrowdsourcingManager::RequestType type,
 -                            base::StringPiece resource_id,
 -                            base::StringPiece method) {
 -  const char* api_method_url = [&] {
 -    switch (type) {
--      case AutofillDownloadManager::REQUEST_QUERY:
+-      case AutofillCrowdsourcingManager::REQUEST_QUERY:
 -        return method == "POST" ? "/v1/pages:get" : "/v1/pages";
--      case AutofillDownloadManager::REQUEST_UPLOAD:
+-      case AutofillCrowdsourcingManager::REQUEST_UPLOAD:
 -        return "/v1/forms:vote";
 -    }
 -    NOTREACHED_NORETURN();
@@ -85,10 +100,11 @@ diff --git a/components/autofill/core/browser/autofill_download_manager.cc b/com
 -  }
 -  return base::StrCat({api_method_url, "/", resource_id});
 -}
- 
+-
  // Gets HTTP body payload for API POST request.
- absl::optional<std::string> GetAPIBodyPayload(
-@@ -521,18 +498,7 @@ bool IsRawMetadataUploadingEnabled(version_info::Channel channel) {
+ std::optional<std::string> GetAPIBodyPayload(
+     std::string payload,
+@@ -521,18 +497,7 @@ std::optional<std::string> GetAPIQueryPayload(
  }
  
  std::string GetAPIKeyForUrl(version_info::Channel channel) {
@@ -108,62 +124,61 @@ diff --git a/components/autofill/core/browser/autofill_download_manager.cc b/com
  }
  
  }  // namespace
-@@ -744,6 +710,7 @@ std::tuple<GURL, std::string> AutofillDownloadManager::GetRequestURLAndMethod(
-   // ID of the resource to add to the API request URL. Nothing will be added if
-   // |resource_id| is empty.
-   std::string resource_id;
-+#if 0
-   std::string method = "POST";
+@@ -732,34 +697,13 @@ size_t AutofillCrowdsourcingManager::GetPayloadLength(
  
-   if (request_data.request_type == AutofillDownloadManager::REQUEST_QUERY) {
-@@ -764,11 +731,15 @@ std::tuple<GURL, std::string> AutofillDownloadManager::GetRequestURLAndMethod(
- 
-   // Add the query parameter to set the response format to a serialized proto.
-   url = net::AppendQueryParameter(url, "alt", "proto");
+ std::tuple<GURL, std::string> AutofillCrowdsourcingManager::GetRequestURLAndMethod(
+     const FormRequestData& request_data) const {
+-  // ID of the resource to add to the API request URL. Nothing will be added if
+-  // `resource_id` is empty.
+-  std::string resource_id;
+-  std::string method = "POST";
 -
-+#else
-+  std::string method("GET");
-+  GURL url = GURL("about:blank");
-+#endif
-   return std::make_tuple(std::move(url), std::move(method));
+-  if (request_data.request_type == AutofillCrowdsourcingManager::REQUEST_QUERY) {
+-    if (GetPayloadLength(request_data.payload) <= kMaxQueryGetSize) {
+-      resource_id = request_data.payload;
+-      method = "GET";
+-      base::UmaHistogramBoolean(kUmaApiUrlIsTooLong, false);
+-    } else {
+-      base::UmaHistogramBoolean(kUmaApiUrlIsTooLong, true);
+-    }
+-    base::UmaHistogramBoolean(kUmaMethod, method != "GET");
+-  }
+-
+-  // Make the canonical URL to query the API, e.g.,
+-  // https://autofill.googleapis.com/v1/forms/1234?alt=proto.
+-  GURL url = autofill_server_url_.Resolve(
+-      GetAPIMethodUrl(request_data.request_type, resource_id, method));
+-
+-  // Add the query parameter to set the response format to a serialized proto.
+-  url = net::AppendQueryParameter(url, "alt", "proto");
+-
+-  return std::make_tuple(std::move(url), std::move(method));
++  std::string method2("GET");
++  GURL url2 = GURL("about:blank");
++  return std::make_tuple(std::move(url2), std::move(method2));
  }
  
- bool AutofillDownloadManager::StartRequest(FormRequestData request_data) {
+ bool AutofillCrowdsourcingManager::StartRequest(FormRequestData request_data) {
 +  if ((true)) return false;
    // REQUEST_UPLOADs take no IsolationInfo because Password Manager uploads when
    // RenderFrameHostImpl::DidCommitNavigation() is called, in which case
    // AutofillDriver::IsolationInfo() may crash because there is no committing
-diff --git a/components/autofill/core/browser/autofill_download_manager.h b/components/autofill/core/browser/autofill_download_manager.h
---- a/components/autofill/core/browser/autofill_download_manager.h
-+++ b/components/autofill/core/browser/autofill_download_manager.h
-@@ -38,8 +38,6 @@ namespace autofill {
+diff --git a/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h b/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h
+--- a/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h
++++ b/components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h
+@@ -36,8 +36,6 @@ namespace autofill {
  class AutofillClient;
  class LogManager;
  
--constexpr size_t kMaxQueryGetSize = 10240;  // 10 KiB
+-inline constexpr size_t kMaxQueryGetSize = 10240;  // 10 KiB
 -
  // A helper to make sure that tests which modify the set of active autofill
  // experiments do not interfere with one another.
  struct ScopedActiveAutofillExperiments {
-diff --git a/components/autofill/core/browser/browser_autofill_manager.h b/components/autofill/core/browser/browser_autofill_manager.h
---- a/components/autofill/core/browser/browser_autofill_manager.h
-+++ b/components/autofill/core/browser/browser_autofill_manager.h
-@@ -766,9 +766,9 @@ class BrowserAutofillManager : public AutofillManager,
-       autocomplete_unrecognized_fallback_logger_;
- 
-   // Have we logged whether Autofill is enabled for this page load?
--  bool has_logged_autofill_enabled_ = false;
-+  bool has_logged_autofill_enabled_ = true;
-   // Have we logged an address suggestions count metric for this page?
--  bool has_logged_address_suggestions_count_ = false;
-+  bool has_logged_address_suggestions_count_ = true;
-   // Have we shown Autofill suggestions at least once?
-   bool did_show_suggestions_ = false;
-   // Has the user manually edited at least one form field among the autofillable
 diff --git a/components/autofill/core/common/autofill_features.cc b/components/autofill/core/common/autofill_features.cc
 --- a/components/autofill/core/common/autofill_features.cc
 +++ b/components/autofill/core/common/autofill_features.cc
-@@ -811,6 +811,7 @@ BASE_FEATURE(kAutofillUploadThrottling,
+@@ -861,6 +861,7 @@ BASE_FEATURE(kAutofillUploadThrottling,
               "AutofillUploadThrottling",
               base::FEATURE_ENABLED_BY_DEFAULT);
  
@@ -183,8 +198,8 @@ diff --git a/components/autofill/core/common/autofill_prefs.cc b/components/auto
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    registry->RegisterIntegerPref(
        prefs::kAutofillLastVersionDeduped, 0,
-@@ -156,10 +156,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
-       prefs::kAutofillLastVersionDisusedAddressesDeleted, 0,
+@@ -153,10 +153,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+       prefs::kAutofillHasSeenIban, false,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    registry->RegisterBooleanPref(
 -      prefs::kAutofillCreditCardEnabled, true,
@@ -196,7 +211,7 @@ diff --git a/components/autofill/core/common/autofill_prefs.cc b/components/auto
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
  
    // Non-synced prefs. Used for per-device choices, e.g., signin promo.
-@@ -201,9 +201,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -196,9 +196,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
  #endif
  
    // Deprecated prefs registered for migration.
@@ -205,13 +220,13 @@ diff --git a/components/autofill/core/common/autofill_prefs.cc b/components/auto
    registry->RegisterBooleanPref(prefs::kAutofillOrphanRowsRemoved, false);
 -  registry->RegisterBooleanPref(prefs::kAutofillIbanEnabled, true);
 +  registry->RegisterBooleanPref(prefs::kAutofillIbanEnabled, false);
- 
- #if BUILDFLAG(IS_ANDROID)
-   registry->RegisterBooleanPref(prefs::kAutofillUsingVirtualViewStructure,
+   registry->RegisterIntegerPref(
+       prefs::kAutofillLastVersionDisusedAddressesDeleted, 0);
+   registry->RegisterIntegerPref(
 diff --git a/components/password_manager/core/browser/password_generation_frame_helper.cc b/components/password_manager/core/browser/password_generation_frame_helper.cc
 --- a/components/password_manager/core/browser/password_generation_frame_helper.cc
 +++ b/components/password_manager/core/browser/password_generation_frame_helper.cc
-@@ -95,7 +95,6 @@ void PasswordGenerationFrameHelper::ProcessPasswordRequirements(
+@@ -94,7 +94,6 @@ void PasswordGenerationFrameHelper::ProcessPasswordRequirements(
  // In order for password generation to be enabled, we need to make sure:
  // (1) Password sync is enabled, and
  // (2) Password saving is enabled
@@ -219,7 +234,7 @@ diff --git a/components/password_manager/core/browser/password_generation_frame_
  bool PasswordGenerationFrameHelper::IsGenerationEnabled(
      bool log_debug_data) const {
    std::unique_ptr<Logger> logger;
-@@ -105,9 +104,6 @@ bool PasswordGenerationFrameHelper::IsGenerationEnabled(
+@@ -104,9 +103,6 @@ bool PasswordGenerationFrameHelper::IsGenerationEnabled(
    }
  
    GURL url = driver_->GetLastCommittedURL();
@@ -230,4 +245,3 @@ diff --git a/components/password_manager/core/browser/password_generation_frame_
      if (logger)
        logger->LogMessage(Logger::STRING_GENERATION_DISABLED_SAVING_DISABLED);
 --
-2.25.1

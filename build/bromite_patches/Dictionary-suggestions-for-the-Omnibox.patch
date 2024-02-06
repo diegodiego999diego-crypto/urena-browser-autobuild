@@ -10,9 +10,9 @@ Original License: BSD-3-Clause - https://spdx.org/licenses/BSD-3-Clause.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  chrome/android/java/res/layout/url_bar.xml    |  1 +
- .../browser/omnibox/LocationBarMediator.java  | 12 ++++++++--
+ .../browser/omnibox/LocationBarMediator.java  | 13 +++++++++--
  .../chrome/browser/omnibox/UrlBar.java        | 23 +++++++++++++++++++
- 3 files changed, 34 insertions(+), 2 deletions(-)
+ 3 files changed, 35 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/android/java/res/layout/url_bar.xml b/chrome/android/java/res/layout/url_bar.xml
 --- a/chrome/android/java/res/layout/url_bar.xml
@@ -27,7 +27,7 @@ diff --git a/chrome/android/java/res/layout/url_bar.xml b/chrome/android/java/re
 diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/LocationBarMediator.java b/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/LocationBarMediator.java
 --- a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/LocationBarMediator.java
 +++ b/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/LocationBarMediator.java
-@@ -278,8 +278,16 @@ class LocationBarMediator
+@@ -288,8 +288,17 @@ class LocationBarMediator
              if (mNativeInitialized) RecordUserAction.record("FocusLocation");
              // Don't clear Omnibox if the user just pasted text to NTP Omnibox.
              if (mShouldClearOmniboxOnFocus) {
@@ -35,9 +35,10 @@ diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/brow
 -                        UrlBarData.EMPTY, UrlBar.ScrollType.NO_SCROLL, SelectionState.SELECT_END);
 +                UrlBarData data = mLocationBarDataProvider.getUrlBarData();
 +                @SelectionState int selectionState = SelectionState.SELECT_ALL;
-+                if (mTemplateUrlServiceSupplier.hasValue()) {
-+                    String searchParams = mTemplateUrlServiceSupplier.get().getSearchQueryForUrl(
-+                                                mLocationBarDataProvider.getUrlBarData().url);
++                GURL url = mLocationBarDataProvider.getUrlBarData().url;
++                if (url != null && mTemplateUrlServiceSupplier.hasValue()) {
++                    String searchParams =
++                        mTemplateUrlServiceSupplier.get().getSearchQueryForUrl(url);
 +                    if (searchParams != null && !searchParams.isEmpty()) {
 +                        data = UrlBarData.forUrlAndText(data.url, data.displayText, searchParams);
 +                    }
@@ -57,15 +58,15 @@ diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/brow
  import android.os.SystemClock;
  import android.text.Editable;
  import android.text.InputType;
-@@ -106,6 +107,7 @@ public abstract class UrlBar extends AutocompleteEditText {
+@@ -100,6 +101,7 @@ public abstract class UrlBar extends AutocompleteEditText {
+     private boolean mFocused;
      private boolean mAllowFocus = true;
  
-     private boolean mPendingScroll;
 +    private boolean mPendingSelectAll;
-     private int mPreviousWidth;
+     private boolean mPendingScroll;
  
-     @ScrollType
-@@ -307,6 +309,27 @@ public abstract class UrlBar extends AutocompleteEditText {
+     // Captures the current intended text scroll type.
+@@ -299,6 +301,27 @@ public abstract class UrlBar extends AutocompleteEditText {
              mPendingScroll = false;
          }
          fixupTextDirection();
@@ -94,4 +95,3 @@ diff --git a/chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/brow
  
      @Override
 --
-2.25.1

@@ -4,33 +4,67 @@ Subject: Disable idle detection
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../common/content_features_cc/Disable-idle-detection.inc  | 1 +
- .../blink/renderer/platform/runtime_enabled_features.json5 | 7 +++----
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ .../common/content_features_cc/Disable-idle-detection.inc    | 4 ++++
+ .../common/content_features_h/Disable-idle-detection.inc     | 1 +
+ .../permissions_policy/permissions_policy_features.json5     | 1 +
+ third_party/blink/renderer/modules/idle/idle_detector.idl    | 3 ++-
+ .../blink/renderer/platform/runtime_enabled_features.json5   | 5 +++++
+ 5 files changed, 13 insertions(+), 1 deletion(-)
  create mode 100644 cromite_flags/content/public/common/content_features_cc/Disable-idle-detection.inc
+ create mode 100644 cromite_flags/content/public/common/content_features_h/Disable-idle-detection.inc
 
 diff --git a/cromite_flags/content/public/common/content_features_cc/Disable-idle-detection.inc b/cromite_flags/content/public/common/content_features_cc/Disable-idle-detection.inc
 new file mode 100644
 --- /dev/null
 +++ b/cromite_flags/content/public/common/content_features_cc/Disable-idle-detection.inc
+@@ -0,0 +1,4 @@
++// This is intended as a kill switch for the Idle Detection feature. To enable
++// this feature, the experimental web platform features flag should be set,
++// or the site should obtain an Origin Trial token.
++CROMITE_FEATURE(kIdleDetection, "IdleDetection", base::FEATURE_DISABLED_BY_DEFAULT);
+diff --git a/cromite_flags/content/public/common/content_features_h/Disable-idle-detection.inc b/cromite_flags/content/public/common/content_features_h/Disable-idle-detection.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/content/public/common/content_features_h/Disable-idle-detection.inc
 @@ -0,0 +1 @@
-+SET_CROMITE_FEATURE_DISABLED(kIdleDetection);
++CONTENT_EXPORT BASE_DECLARE_FEATURE(kIdleDetection);
+diff --git a/third_party/blink/renderer/core/permissions_policy/permissions_policy_features.json5 b/third_party/blink/renderer/core/permissions_policy/permissions_policy_features.json5
+--- a/third_party/blink/renderer/core/permissions_policy/permissions_policy_features.json5
++++ b/third_party/blink/renderer/core/permissions_policy/permissions_policy_features.json5
+@@ -275,6 +275,7 @@
+     {
+       name: "IdleDetection",
+       permissions_policy_name: "idle-detection",
++      depends_on: ["IdleDetection"],
+     },
+     {
+       name: "JoinAdInterestGroup",
+diff --git a/third_party/blink/renderer/modules/idle/idle_detector.idl b/third_party/blink/renderer/modules/idle/idle_detector.idl
+--- a/third_party/blink/renderer/modules/idle/idle_detector.idl
++++ b/third_party/blink/renderer/modules/idle/idle_detector.idl
+@@ -17,7 +17,8 @@ enum ScreenIdleState {
+ [
+   SecureContext,
+   Exposed=(Window,DedicatedWorker),
+-  ActiveScriptWrappable
++  ActiveScriptWrappable,
++  RuntimeEnabled=IdleDetection
+ ] interface IdleDetector : EventTarget {
+   [CallWith=ScriptState] constructor();
+   readonly attribute UserIdleState? userState;
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -2068,10 +2068,9 @@
-       base_feature: "none",
+@@ -2068,6 +2068,11 @@
+       name: "HTMLUnsafeMethods",
+       status: "experimental",
      },
-     {
--      name: "IdleDetection",
--      public: true,
--      status: "stable",
--      base_feature: "none",
++    {
 +      name: "IdleDetection",  // disabled
 +      public: true,           // by
 +      base_feature: "none",   // default
-     },
++    },
      {
        name: "ImplicitRootScroller",
+       public: true,
 --
-2.25.1

@@ -3,23 +3,23 @@ Date: Fri, 9 Jun 2023 15:11:46 +0000
 Subject: bromite build utils
 
 ---
- build/android/gyp/java_cpp_enum.py            | 36 +++++--
- build/android/gyp/util/build_utils.py         | 25 ++++-
- build/bromite/bromite_utils.gni               | 69 ++++++++++++++
- build/bromite/gyp/cpp_bromite_include.py      | 35 +++++++
- build/bromite/gyp/cpp_bromite_include.pydeps  |  9 ++
- build/bromite/gyp/java_bromite_impl.py        | 94 +++++++++++++++++++
- build/bromite/gyp/java_bromite_impl.pydeps    |  9 ++
- build/config/BUILDCONFIG.gn                   |  1 +
- build/config/android/rules.gni                |  6 +-
- .../ChromeAccessibilitySettingsDelegate.java  |  5 +
- chrome/browser/flags/BUILD.gn                 | 10 +-
- .../flags/android/cromite_native_utils.cc     | 27 ++++++
- .../flags/android/cromite_native_utils.h      | 14 +++
- .../browser/flags/CromiteNativeUtils.java     | 32 +++++++
- tools/grit/grit/grd_reader.py                 | 27 +++++-
- tools/grit/preprocess_if_expr.py              | 32 ++++++-
- 16 files changed, 415 insertions(+), 16 deletions(-)
+ build/android/gyp/java_cpp_enum.py            |  36 +++++-
+ build/android/gyp/util/build_utils.py         |  25 +++-
+ build/bromite/bromite_utils.gni               |  79 +++++++++++++
+ build/bromite/gyp/cpp_bromite_include.py      |  35 ++++++
+ build/bromite/gyp/cpp_bromite_include.pydeps  |   9 ++
+ build/bromite/gyp/java_bromite_impl.py        | 108 ++++++++++++++++++
+ build/bromite/gyp/java_bromite_impl.pydeps    |   9 ++
+ build/config/BUILDCONFIG.gn                   |   1 +
+ build/config/android/rules.gni                |   6 +-
+ .../ChromeAccessibilitySettingsDelegate.java  |   5 +
+ chrome/browser/flags/BUILD.gn                 |  10 +-
+ .../flags/android/cromite_native_utils.cc     |  41 +++++++
+ .../flags/android/cromite_native_utils.h      |  14 +++
+ .../browser/flags/CromiteNativeUtils.java     |  46 ++++++++
+ tools/grit/grit/grd_reader.py                 |  27 ++++-
+ tools/grit/preprocess_if_expr.py              |  32 +++++-
+ 16 files changed, 467 insertions(+), 16 deletions(-)
  create mode 100644 build/bromite/bromite_utils.gni
  create mode 100644 build/bromite/gyp/cpp_bromite_include.py
  create mode 100644 build/bromite/gyp/cpp_bromite_include.pydeps
@@ -40,7 +40,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
    single_line_comment_re = re.compile(r'\s*//\s*([^\n]*)')
    multi_line_comment_start_re = re.compile(r'\s*/\*')
    enum_line_re = re.compile(r'^\s*(\w+)(\s*\=\s*([^,\n]+))?,?')
-@@ -194,7 +195,7 @@ class HeaderParser:
+@@ -195,7 +196,7 @@ class HeaderParser:
    enum_single_line_re = re.compile(
        r'^\s*(?:\[cpp.*\])?\s*enum.*{(?P<enum_entries>.*)}.*$')
  
@@ -49,7 +49,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      self._lines = lines
      self._path = path
      self._enum_definitions = []
-@@ -204,6 +205,7 @@ class HeaderParser:
+@@ -205,6 +206,7 @@ class HeaderParser:
      self._generator_directives = DirectiveSet()
      self._multi_line_generator_directive = None
      self._current_enum_entry = ''
@@ -57,7 +57,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
  
    def _ApplyGeneratorDirectives(self):
      self._generator_directives.UpdateDefinition(self._current_definition)
-@@ -227,6 +229,24 @@ class HeaderParser:
+@@ -228,6 +230,24 @@ class HeaderParser:
        raise Exception('Multi-line comments in enums are not supported in ' +
                        self._path)
  
@@ -82,7 +82,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      enum_comment = HeaderParser.single_line_comment_re.match(line)
      if enum_comment:
        comment = enum_comment.groups()[0]
-@@ -327,9 +347,9 @@ class HeaderParser:
+@@ -328,9 +348,9 @@ class HeaderParser:
          self._ParseSingleLineEnum(single_line_enum.group('enum_entries'))
  
  
@@ -94,7 +94,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      if not enum_definitions:
        raise Exception('No enums found in %s\n'
                        'Did you forget prefixing enums with '
-@@ -342,9 +362,9 @@ def DoGenerate(source_paths):
+@@ -343,9 +363,9 @@ def DoGenerate(source_paths):
        yield output_path, output
  
  
@@ -106,7 +106,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
  
  
  def GenerateOutput(source_path, enum_definition):
-@@ -423,6 +443,10 @@ def DoMain(argv):
+@@ -424,6 +444,10 @@ def DoMain(argv):
    parser.add_option('--srcjar',
                      help='When specified, a .srcjar at the given path is '
                      'created instead of individual .java files.')
@@ -117,7 +117,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
  
    options, args = parser.parse_args(argv)
  
-@@ -432,7 +456,7 @@ def DoMain(argv):
+@@ -433,7 +457,7 @@ def DoMain(argv):
  
    with action_helpers.atomic_output(options.srcjar) as f:
      with zipfile.ZipFile(f, 'w', zipfile.ZIP_STORED) as srcjar:
@@ -162,7 +162,7 @@ diff --git a/build/bromite/bromite_utils.gni b/build/bromite/bromite_utils.gni
 new file mode 100644
 --- /dev/null
 +++ b/build/bromite/bromite_utils.gni
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,79 @@
 +import("//build/config/python.gni")
 +
 +# generates the file specified in ouput_file containing
@@ -215,18 +215,28 @@ new file mode 100644
 +                           TESTONLY_AND_VISIBILITY + [
 +                                 "deps",
 +                                 "inputs",
++                                 "namespace",
++                                 "static_classes",
 +                               ])
 +    script = "//build/bromite/gyp/java_bromite_impl.py"
++    namespace = ""
++    static_classes = false
 +
 +    _srcjar_path = "${target_gen_dir}/${target_name}.srcjar"
 +    _rebased_srcjar_path = rebase_path(_srcjar_path, root_build_dir)
 +    _rebased_directories = rebase_path(invoker.inputs, root_build_dir)
 +    _rebased_template = rebase_path(invoker.template, root_build_dir)
++    _namespace = invoker.namespace
++    _static_classes = invoker.static_classes
 +
 +    args = [
 +      "--srcjar=$_rebased_srcjar_path",
 +      "--template=$_rebased_template",
++      "--namespace=$_namespace",
 +    ]
++    if (_static_classes) {
++      args += [ "--static_classes", ]
++    }
 +    args += _rebased_directories
 +
 +    outputs = [ _srcjar_path ]
@@ -290,7 +300,7 @@ diff --git a/build/bromite/gyp/java_bromite_impl.py b/build/bromite/gyp/java_bro
 new file mode 100644
 --- /dev/null
 +++ b/build/bromite/gyp/java_bromite_impl.py
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,108 @@
 +#!/usr/bin/env python3
 +
 +import argparse
@@ -307,7 +317,8 @@ new file mode 100644
 +import action_helpers  # build_utils adds //build to sys.path.
 +import zip_helpers
 +
-+def _GenerateOutput(template, source_paths, template_path, strings):
++def _GenerateOutput(template, source_paths, template_path, strings,
++                    namespace, static_classes):
 +  description_template = """
 +// This following string constants were inserted by
 +//     {SCRIPT_NAME}
@@ -325,8 +336,13 @@ new file mode 100644
 +  description = description_template.format(**values)
 +
 +  import_clause = '\n'.join(
-+      ['import org.chromium.components.browser_ui.site_settings.impl.' + f + ';' for f in strings])
-+  add_clause = '\n\t'.join(['\tadd(new ' + f + '());' for f in strings])
++      ['import ' + namespace + '.' + f + ';' for f in strings])
++  print(namespace)
++  print(static_classes)
++  if static_classes:
++    add_clause = '\n\t'.join(['\tadd(' + f + '.getInstance());' for f in strings])
++  else:
++    add_clause = '\n\t'.join(['\tadd(new ' + f + '());' for f in strings])
 +
 +  values = {
 +      'DESCRIPTION': description,
@@ -336,7 +352,7 @@ new file mode 100644
 +  return template.format(**values)
 +
 +
-+def _Generate(source_paths, template_path):
++def _Generate(source_paths, template_path, namespace, static_classes):
 +  with open(template_path) as f:
 +    lines = f.readlines()
 +
@@ -356,7 +372,8 @@ new file mode 100644
 +             if not f.endswith('include_all_directory.java') and
 +                not f.endswith('.java.tmpl') ]
 +
-+  output = _GenerateOutput(template, source_paths, template_path, strings)
++  output = _GenerateOutput(template, source_paths, template_path, strings,
++                           namespace, static_classes)
 +
 +  return output, output_path
 +
@@ -374,12 +391,19 @@ new file mode 100644
 +                      'class.')
 +
 +  parser.add_argument(
++      '--namespace', required=True, help='Output namespace')
++  parser.add_argument(
++      '--static_classes', action="store_true",
++      default=False,
++      help='True to use getInstance() method')
++  parser.add_argument(
 +      'inputs', nargs='+', help='Input folder(s)', metavar='INPUTFILE')
 +  args = parser.parse_args(argv)
 +
 +  with action_helpers.atomic_output(args.srcjar) as f:
 +    with zipfile.ZipFile(f, 'w', zipfile.ZIP_STORED) as srcjar:
-+      data, path = _Generate(args.inputs, args.template)
++      data, path = _Generate(args.inputs, args.template,
++                             args.namespace, args.static_classes)
 +      zip_helpers.add_to_zip_hermetic(srcjar, path, data=data)
 +
 +
@@ -413,7 +437,7 @@ diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
 diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
 --- a/build/config/android/rules.gni
 +++ b/build/config/android/rules.gni
-@@ -212,7 +212,7 @@ if (enable_java_templates && is_android) {
+@@ -214,7 +214,7 @@ if (enable_java_templates && is_android) {
    #   }
    template("java_cpp_enum") {
      action_with_pydeps(target_name) {
@@ -422,7 +446,7 @@ diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
  
        # The sources aren't compiled so don't check their dependencies.
        check_includes = false
-@@ -223,6 +223,10 @@ if (enable_java_templates && is_android) {
+@@ -225,6 +225,10 @@ if (enable_java_templates && is_android) {
        _rebased_sources = rebase_path(invoker.sources, root_build_dir)
  
        args = [ "--srcjar=$_rebased_srcjar_path" ] + _rebased_sources
@@ -443,7 +467,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/accessibility/s
 +import org.chromium.chrome.browser.flags.ChromeFeatureList;
 +import org.chromium.chrome.browser.flags.CromiteNativeUtils;
 +import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 +
  /** The Chrome implementation of AccessibilitySettingsDelegate. */
  public class ChromeAccessibilitySettingsDelegate implements AccessibilitySettingsDelegate {
@@ -461,7 +485,7 @@ diff --git a/chrome/browser/flags/BUILD.gn b/chrome/browser/flags/BUILD.gn
      "android/java/src/org/chromium/chrome/browser/flags/AllCachedFieldTrialParameters.java",
      "android/java/src/org/chromium/chrome/browser/flags/BooleanCachedFieldTrialParameter.java",
      "android/java/src/org/chromium/chrome/browser/flags/CachedFieldTrialParameter.java",
-@@ -42,7 +43,8 @@ android_library("java") {
+@@ -41,7 +42,8 @@ android_library("java") {
  }
  
  generate_jni("jni_headers") {
@@ -471,7 +495,7 @@ diff --git a/chrome/browser/flags/BUILD.gn b/chrome/browser/flags/BUILD.gn
      "android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureMap.java",
      "android/java/src/org/chromium/chrome/browser/flags/ChromeSessionState.java",
    ]
-@@ -50,6 +52,10 @@ generate_jni("jni_headers") {
+@@ -49,6 +51,10 @@ generate_jni("jni_headers") {
  
  static_library("flags_android") {
    sources = [
@@ -486,7 +510,7 @@ diff --git a/chrome/browser/flags/android/cromite_native_utils.cc b/chrome/brows
 new file mode 100755
 --- /dev/null
 +++ b/chrome/browser/flags/android/cromite_native_utils.cc
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,41 @@
 +#include "chrome/browser/flags/android/cromite_native_utils.h"
 +
 +#include "chrome/browser/browser_process.h"
@@ -514,6 +538,20 @@ new file mode 100755
 +  flags_storage.SetFlags(entries);
 +  flags_storage.CommitPendingWrites();
 +}
++
++static jboolean JNI_CromiteNativeUtils_IsFlagEnabled(JNIEnv* env,
++    const JavaParamRef<jstring>& featureName) {
++  auto internal_name = base::android::ConvertJavaStringToUTF8(env, featureName);
++  const std::string enabled_entry = internal_name + "@1";
++
++  flags_ui::PrefServiceFlagsStorage flags_storage(
++      g_browser_process->local_state());
++  std::set<std::string> entries = flags_storage.GetFlags();
++  if (entries.count(enabled_entry))
++    return true;
++
++  return false;
++}
 diff --git a/chrome/browser/flags/android/cromite_native_utils.h b/chrome/browser/flags/android/cromite_native_utils.h
 new file mode 100755
 --- /dev/null
@@ -537,15 +575,15 @@ diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/f
 new file mode 100755
 --- /dev/null
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/CromiteNativeUtils.java
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,46 @@
 +package org.chromium.chrome.browser.flags;
 +
 +import org.chromium.chrome.browser.flags.ChromeFeatureList;
 +import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 +
-+import org.chromium.base.annotations.CalledByNative;
-+import org.chromium.base.annotations.NativeMethods;
++import org.jni_zero.CalledByNative;
++import org.jni_zero.NativeMethods;
 +
 +public class CromiteNativeUtils {
 +    /**
@@ -555,19 +593,33 @@ new file mode 100755
 +     * @param featureName the feature name from ChromeFeatureList.
 +     * @param flagName the flag name name from about_flags.cc.
 +     */
++    public static void setFlagEnabled(String flagName, Boolean newValue) {
++        CachedFlag cachedFlag = ChromeFeatureList.sAllCachedFlags.get(flagName);
++        setFlagEnabled(cachedFlag == null
++                        ? ""
++                        : cachedFlag.getFeatureName(), flagName, newValue);
++    }
++
 +    public static void setFlagEnabled(String featureName, String flagName, Boolean newValue) {
 +        CromiteNativeUtilsJni.get().setEnabled(flagName, newValue);
 +
-+        CachedFlag cachedFlag = ChromeFeatureList.sAllCachedFlags.get(featureName);
-+        String preferenceName = cachedFlag.getSharedPreferenceKey();
++        if (!featureName.isEmpty()) {
++            CachedFlag cachedFlag = ChromeFeatureList.sAllCachedFlags.get(featureName);
++            String preferenceName = cachedFlag.getSharedPreferenceKey();
 +
-+        SharedPreferencesManager.getInstance().writeBoolean(preferenceName, newValue);
-+        cachedFlag.setValueReturnedOverride(newValue);
++            ChromeSharedPreferences.getInstance().writeBoolean(preferenceName, newValue);
++            cachedFlag.setValueReturnedOverride(newValue);
++        }
++    }
++
++    public static boolean isFlagEnabled(String featureName) {
++        return CromiteNativeUtilsJni.get().isFlagEnabled(featureName);
 +    }
 +
 +    @NativeMethods
 +    interface Natives {
 +        void setEnabled(String featureName, boolean newValue);
++        boolean isFlagEnabled(String featureName);
 +    }
 +}
 diff --git a/tools/grit/grit/grd_reader.py b/tools/grit/grit/grd_reader.py
@@ -664,4 +716,3 @@ diff --git a/tools/grit/preprocess_if_expr.py b/tools/grit/preprocess_if_expr.py
      removal_comments_extension = None  # None means no removal comments
      if args.enable_removal_comments:
 --
-2.25.1

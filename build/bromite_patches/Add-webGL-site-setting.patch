@@ -9,7 +9,7 @@ Requires patch: Content-settings-infrastructure.patch
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../impl/BromiteWebGLContentSetting.java      | 92 +++++++++++++++++++
+ .../impl/BromiteWebGLContentSetting.java      | 93 +++++++++++++++++++
  .../bromite_content_settings/webgl.grdp       | 27 ++++++
  .../bromite_content_settings/webgl.inc        | 22 +++++
  .../common/bromite_content_settings/WEBGL.inc |  1 +
@@ -17,7 +17,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../execution_context/execution_context.h     |  2 +
  .../webgl/webgl_rendering_context_base.cc     | 32 +++----
  .../webgl/webgl_rendering_context_base.h      |  2 +
- 8 files changed, 166 insertions(+), 19 deletions(-)
+ 8 files changed, 167 insertions(+), 19 deletions(-)
  create mode 100644 components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteWebGLContentSetting.java
  create mode 100644 components/browser_ui/strings/bromite_content_settings/webgl.grdp
  create mode 100644 components/content_settings/core/browser/bromite_content_settings/webgl.inc
@@ -27,7 +27,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 new file mode 100644
 --- /dev/null
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteWebGLContentSetting.java
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,93 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -80,7 +80,8 @@ new file mode 100644
 +            /*defaultEnabledValue*/ getDefaultEnabledValue(),
 +            /*defaultDisabledValue*/ getDefaultDisabledValue(),
 +            /*enabledSummary*/ R.string.website_settings_category_webgl_enabled,
-+            /*disabledSummary*/ R.string.website_settings_category_webgl_disabled);
++            /*disabledSummary*/ R.string.website_settings_category_webgl_disabled,
++            /*summaryOverrideForScreenReader*/ 0);
 +    }
 +
 +    @Override
@@ -205,7 +206,7 @@ diff --git a/third_party/blink/renderer/core/execution_context/execution_context
 diff --git a/third_party/blink/renderer/core/execution_context/execution_context.h b/third_party/blink/renderer/core/execution_context/execution_context.h
 --- a/third_party/blink/renderer/core/execution_context/execution_context.h
 +++ b/third_party/blink/renderer/core/execution_context/execution_context.h
-@@ -116,6 +116,8 @@ enum ReasonForCallingCanExecuteScripts {
+@@ -115,6 +115,8 @@ enum ReasonForCallingCanExecuteScripts {
  
  enum ReferrerPolicySource { kPolicySourceHttpHeader, kPolicySourceMetaTag };
  
@@ -217,7 +218,7 @@ diff --git a/third_party/blink/renderer/core/execution_context/execution_context
 diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
 --- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
 +++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
-@@ -248,6 +248,13 @@ void WebGLRenderingContextBase::InitializeWebGLContextLimits(
+@@ -309,6 +309,13 @@ void WebGLRenderingContextBase::InitializeWebGLContextLimits(
    }
  }
  
@@ -231,7 +232,7 @@ diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_ba
  unsigned WebGLRenderingContextBase::CurrentMaxGLContexts() {
    base::AutoLock locker(WebGLContextLimitLock());
    DCHECK(webgl_context_limits_initialized_);
-@@ -521,25 +528,6 @@ static String ExtractWebGLContextCreationError(
+@@ -582,25 +589,6 @@ static String ExtractWebGLContextCreationError(
      const Platform::GraphicsInfo& info) {
    StringBuilder builder;
    builder.Append("Could not create a WebGL context");
@@ -257,7 +258,7 @@ diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_ba
    FormatWebGLStatusString("ErrorMessage", info.error_message.Utf8().c_str(),
                            builder);
    builder.Append('.');
-@@ -599,6 +587,12 @@ WebGLRenderingContextBase::CreateWebGraphicsContext3DProvider(
+@@ -660,6 +648,12 @@ WebGLRenderingContextBase::CreateWebGraphicsContext3DProvider(
      const CanvasContextCreationAttributesCore& attributes,
      Platform::ContextType context_type,
      Platform::GraphicsInfo* graphics_info) {
@@ -273,14 +274,13 @@ diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_ba
 diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
 --- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
 +++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
-@@ -1937,6 +1937,8 @@ class MODULES_EXPORT WebGLRenderingContextBase : public CanvasRenderingContext,
+@@ -1952,6 +1952,8 @@ class MODULES_EXPORT WebGLRenderingContextBase : public CanvasRenderingContext,
                          DOMArrayBufferView* pixels,
                          int64_t offset);
  
 +  static bool AllowWebglForHost(blink::CanvasRenderingContextHost* host);
 +
-   // Record Canvas/OffscreenCanvas.RenderingContextDrawnTo at the first draw
-   // call.
-   void RecordUKMCanvasDrawnToAtFirstDrawCall();
+   void RecordANGLEImplementation();
+ 
+  private:
 --
-2.25.1

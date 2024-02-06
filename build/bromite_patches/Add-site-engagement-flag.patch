@@ -8,12 +8,14 @@ Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  chrome/browser/about_flags.cc                 |  1 +
+ .../internal/tracker_impl.cc                  |  3 ++
+ .../public/feature_configurations.cc          |  7 ++++
  .../content/site_engagement_score.cc          |  5 +++
  components/site_engagement/core/BUILD.gn      |  6 ++++
  components/site_engagement/core/features.cc   | 30 ++++++++++++++++
  components/site_engagement/core/features.h    | 34 +++++++++++++++++++
  .../Add-site-engagement-flag.inc              | 10 ++++++
- 6 files changed, 86 insertions(+)
+ 8 files changed, 96 insertions(+)
  create mode 100644 components/site_engagement/core/features.cc
  create mode 100644 components/site_engagement/core/features.h
  create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-site-engagement-flag.inc
@@ -21,14 +23,58 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -148,6 +148,7 @@
- #include "components/segmentation_platform/public/features.h"
+@@ -152,6 +152,7 @@
  #include "components/send_tab_to_self/features.h"
  #include "components/services/heap_profiling/public/cpp/switches.h"
+ #include "components/services/storage/public/cpp/buckets/bucket_info.h"
 +#include "components/site_engagement/core/features.h"
  #include "components/shared_highlighting/core/common/shared_highlighting_features.h"
  #include "components/signin/core/browser/dice_account_reconcilor_delegate.h"
  #include "components/signin/public/base/signin_buildflags.h"
+diff --git a/components/feature_engagement/internal/tracker_impl.cc b/components/feature_engagement/internal/tracker_impl.cc
+--- a/components/feature_engagement/internal/tracker_impl.cc
++++ b/components/feature_engagement/internal/tracker_impl.cc
+@@ -22,6 +22,7 @@
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/clock.h"
+ #include "build/build_config.h"
++#include "components/site_engagement/core/features.h"
+ #include "components/feature_engagement/internal/availability_model_impl.h"
+ #include "components/feature_engagement/internal/blocked_iph_features.h"
+ #include "components/feature_engagement/internal/chrome_variations_configuration.h"
+@@ -187,6 +188,8 @@ TrackerImpl::TrackerImpl(
+ TrackerImpl::~TrackerImpl() = default;
+ 
+ void TrackerImpl::NotifyEvent(const std::string& event) {
++  if (!base::FeatureList::IsEnabled(site_engagement::features::kSiteEngagement))
++    return;
+   event_model_->IncrementEvent(event, time_provider_->GetCurrentDay());
+   stats::RecordNotifyEvent(event, configuration_.get(),
+                            event_model_->IsReady());
+diff --git a/components/feature_engagement/public/feature_configurations.cc b/components/feature_engagement/public/feature_configurations.cc
+--- a/components/feature_engagement/public/feature_configurations.cc
++++ b/components/feature_engagement/public/feature_configurations.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "base/strings/string_util.h"
+ #include "build/build_config.h"
++#include "components/site_engagement/core/features.h"
+ #include "components/feature_engagement/public/configuration.h"
+ #include "components/feature_engagement/public/event_constants.h"
+ #include "components/feature_engagement/public/feature_constants.h"
+@@ -66,6 +67,12 @@ absl::optional<FeatureConfig> GetClientSideFeatureConfig(
+   }
+ 
+ #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
++  if (!base::FeatureList::IsEnabled(site_engagement::features::kSiteEngagement)) {
++    absl::optional<FeatureConfig> config = FeatureConfig();
++    config->valid = false;
++    return config;
++  }
++
+ #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
+     BUILDFLAG(IS_CHROMEOS)
+   if (kIPHPasswordsAccountStorageFeature.name == feature->name) {
 diff --git a/components/site_engagement/content/site_engagement_score.cc b/components/site_engagement/content/site_engagement_score.cc
 --- a/components/site_engagement/content/site_engagement_score.cc
 +++ b/components/site_engagement/content/site_engagement_score.cc
@@ -159,4 +205,3 @@ new file mode 100644
 +
 +#endif
 --
-2.25.1
