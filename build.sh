@@ -13,7 +13,6 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
-test=0
 arch=""
 
 usage() {
@@ -26,7 +25,6 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
-    echo "    -t Sign with AOSP test-key"
     echo
     exit 1
 }
@@ -52,15 +50,6 @@ build() {
     build_args+=' android_default_version_name="'$chromium_version'"'
     build_args+=' android_default_version_code="'$code'"'
 
-    if [ $test -eq 1 ]; then
-        echo ">> [$(date)] Using AOSP test-key to sign"
-        keystore_path="${root_dir}/platform.jks"
-        build_args+=' android_keystore_path="'$keystore_path'"'
-        build_args+=' android_keystore_name="platform"'
-        build_args+=' android_keystore_password="platform"'
-        build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
-    fi
-
     if [ $clean -eq 1 ]; then
         if [ -d "out/$1" ]; then
             rm -rf "out/$1"
@@ -80,13 +69,32 @@ build() {
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
 
+    mkdir -p "${root_dir}/apks/${apk_arch}"
+
+    echo ">> [$(date)] Using chromium test-key for release build"
     ninja -C out/$1 $build_targets
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
-            echo ">> [$(date)] Moving $apk for ${apk_arch} to output folder"
-            mkdir -p "${root_dir}/apks/${apk_arch}"
+            echo ">> [$(date)] Moving release $apk for ${apk_arch} to output folder"
             mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
+        fi
+    done
+
+    keystore_path="${root_dir}/platform.jks"
+    build_args+=' android_keystore_path="'$keystore_path'"'
+    build_args+=' android_keystore_name="platform"'
+    build_args+=' android_keystore_password="platform"'
+    build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
+
+    echo ">> [$(date)] Using AOSP test-key for debug build"
+    gn gen "out/$1" --args="$build_args"
+    ninja -C out/$1 $build_targets
+
+    for apk in $apks; do
+        if [ -f "out/${1}/apks/$apk.apk" ]; then
+            echo ">> [$(date)] Moving debug $apk for ${apk_arch} to output folder"
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g')_debug.apk"
         fi
     done
 }
@@ -200,14 +208,13 @@ init_repo(){
     fi
 }
 
-while getopts ":a:cur:sht" opt; do
+while getopts ":a:cur:sh" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
     s) gsync=1  ;;
     h) history=0 ;;
-    t) test=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
