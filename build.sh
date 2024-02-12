@@ -104,11 +104,11 @@ setup_ccache() {
 
 patch() {
     cd $chromium_dir/src
-    echo ">> [$(date)] Applying bromite and /e/ patches"
+    echo ">> [$(date)] Applying cromite and /e/ patches"
 
-    bromite_patches_list=$(cat "${root_dir}/build/bromite_patches_list.txt")
-    for file in $bromite_patches_list; do
-        git am -C0 -3 --ignore-whitespace "${root_dir}/build/bromite_patches/$file"
+    cromite_patches_list=$(cat "${root_dir}/build/cromite_patches_list.txt")
+    for file in $cromite_patches_list; do
+        git am -C0 -3 --ignore-whitespace "${root_dir}/build/cromite_patches/$file"
     done
 
     e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
