@@ -3,7 +3,7 @@
 /e/OS Browser is an open-source fork of [Cromite](https://github.com/uazo/cromite) (Fork of bromite) which is based on [Chromium](https://www.chromium.org/Home) licensed and distributed under [The GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html). It has several additional changes to improve user experience, security, and privacy. It is shipped as the default browser on /e/OS.
 
 ## Enhancements
-Following are the enhancements offered by Browser over bromite:
+Following are the enhancements offered by Browser over cromite:
 - Disabled by default:
     - Autofill,
     - Async DNS

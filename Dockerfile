@@ -11,7 +11,7 @@ RUN apt-get update &&\
 
 RUN mkdir ${CHROMIUM_DIR}
 
-RUN curl -s https://raw.githubusercontent.com/chromium/chromium/main/build/install-build-deps.py \
+RUN curl -s https://raw.githubusercontent.com/chromium/chromium/121.0.6167.164/build/install-build-deps.py \
        | python - --android --lib32 --no-chromeos-fonts --no-prompt
 
 RUN git config --global user.name "John Doe"

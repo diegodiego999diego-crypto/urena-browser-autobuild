@@ -1,0 +1,748 @@
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Thu, 18 Feb 2021 21:22:52 +0100
+Subject: Add menu item to bookmark all tabs
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/android/java/res/menu/main_menu.xml    |  7 ++
+ .../chrome/browser/ChromeTabbedActivity.java  | 24 +++++++
+ .../browser/bookmarks/BookmarkBridge.java     | 67 +++++++++++++++++++
+ .../bookmarks/android/bookmark_bridge.cc      | 44 ++++++++++++
+ .../bookmarks/android/bookmark_bridge.h       |  8 +++
+ .../browser/bookmarks/bookmark_html_writer.cc |  8 ++-
+ .../dialogs/DownloadLocationCustomView.java   |  4 +-
+ .../strings/android_chrome_strings.grd        |  3 +
+ components/bookmark_bar_strings.grdp          |  6 ++
+ .../bookmarks/browser/bookmark_client.cc      |  2 +
+ .../bookmarks/browser/bookmark_codec.cc       | 22 ++++--
+ components/bookmarks/browser/bookmark_codec.h |  7 +-
+ .../browser/bookmark_load_details.cc          |  4 ++
+ .../bookmarks/browser/bookmark_load_details.h |  3 +
+ .../bookmarks/browser/bookmark_model.cc       |  3 +-
+ components/bookmarks/browser/bookmark_model.h |  7 ++
+ components/bookmarks/browser/bookmark_node.cc | 11 +++
+ components/bookmarks/browser/bookmark_node.h  |  4 ++
+ .../bookmarks/browser/bookmark_uuids.cc       |  3 +
+ components/bookmarks/browser/bookmark_uuids.h |  1 +
+ components/bookmarks/browser/model_loader.cc  |  3 +-
+ .../bookmark_specifics_conversions.cc         |  1 +
+ 22 files changed, 232 insertions(+), 10 deletions(-)
+
+diff --git a/chrome/android/java/res/menu/main_menu.xml b/chrome/android/java/res/menu/main_menu.xml
+--- a/chrome/android/java/res/menu/main_menu.xml
++++ b/chrome/android/java/res/menu/main_menu.xml
+@@ -71,6 +71,10 @@ found in the LICENSE file.
+         <item android:id="@+id/all_bookmarks_menu_id"
+             android:title="@string/menu_bookmarks"
+             android:icon="@drawable/btn_star_filled" />
++        <item android:id="@+id/bookmark_all_tabs_menu_id"
++            android:title="@string/menu_bookmark_all_tabs"
++            android:titleCondensed="@string/menu_bookmark_all_tabs"
++            android:icon="@drawable/ic_folder_blue_24dp" />
+         <item android:id="@+id/recent_tabs_menu_id"
+             android:title="@string/menu_recent_tabs"
+             android:icon="@drawable/devices_black_24dp" />
+@@ -183,6 +187,9 @@ found in the LICENSE file.
+         <item android:id="@+id/close_all_incognito_tabs_menu_id"
+             android:title="@string/menu_close_all_incognito_tabs"
+             android:icon="@drawable/btn_close_white" />
++        <item android:id="@+id/bookmark_all_tabs_menu_id"
++            android:title="@string/menu_bookmark_all_tabs"
++            android:icon="@drawable/ic_folder_blue_24dp" />
+         <item android:id="@+id/menu_select_tabs"
+             android:title="@string/menu_select_tabs"
+             android:icon="@drawable/ic_select_tabs" />
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -86,6 +86,7 @@ import org.chromium.chrome.browser.base.ColdStartTracker;
+ import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
+ import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
+ import org.chromium.chrome.browser.compositor.CompositorViewHolder;
++import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+ import org.chromium.chrome.browser.compositor.layouts.Layout;
+ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome;
+ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChromePhone;
+@@ -2787,6 +2788,8 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+                     getTabModelSelectorSupplier().get(),
+                     () -> getTabModelSelector().closeAllTabs());
+             RecordUserAction.record("MobileMenuCloseAllTabs");
++        } else if (id == R.id.bookmark_all_tabs_menu_id) {
++            bookmarkAllTabs();
+         } else if (id == R.id.close_all_incognito_tabs_menu_id) {
+             // Close only incognito tabs
+             CloseAllTabsDialog.show(
+@@ -2858,6 +2861,27 @@ public class ChromeTabbedActivity extends ChromeActivity<ChromeActivityComponent
+         mTabModalHandler.onOmniboxFocusChanged(hasFocus);
+     }
+ 
++    private void bookmarkAllTabs() {
++        TabModel tabModel = getTabModelSelector().getCurrentModel();
++        int count = tabModel.getCount();
++        Log.i(TAG, "bookmarkAllTabs(): %d tabs to bookmark", count);
++        if (count == 0) {
++            return;
++        }
++
++        final BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
++        bookmarkModel.finishLoadingBookmarkModel(() -> {
++            for (int i = 0; i < tabModel.getCount(); i++) {
++                Tab tab = tabModel.getTabAt(i);
++                if (tab.isNativePage()) {
++                    continue;
++                }
++                bookmarkModel.addToTabsCollection(this, tab);
++            }
++            bookmarkModel.finishedAddingToTabsCollection(this, getSnackbarManager());
++        });
++    }
++
+     private void recordLauncherShortcutAction(boolean isIncognito) {
+         if (isIncognito) {
+             RecordUserAction.record("Android.LauncherShortcut.NewIncognitoTab");
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
+@@ -32,6 +32,7 @@ import org.jni_zero.NativeMethods;
+ 
+ import org.chromium.base.Callback;
+ import org.chromium.base.ContextUtils;
++import org.chromium.base.Log;
+ import org.chromium.base.ObserverList;
+ import org.chromium.base.ThreadUtils;
+ import org.chromium.base.metrics.RecordHistogram;
+@@ -39,6 +40,11 @@ import org.chromium.base.metrics.RecordUserAction;
+ import org.chromium.chrome.browser.partnerbookmarks.PartnerBookmarksShim;
+ import org.chromium.chrome.browser.profiles.Profile;
+ import org.chromium.chrome.browser.read_later.ReadingListUtils;
++import org.chromium.chrome.browser.tab.Tab;
++import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
++import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
++import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarController;
++import org.chromium.chrome.R;
+ import org.chromium.components.bookmarks.BookmarkId;
+ import org.chromium.components.bookmarks.BookmarkItem;
+ import org.chromium.components.bookmarks.BookmarkType;
+@@ -83,6 +89,8 @@ import java.io.File;
+ class BookmarkBridge {
+     private final ObserverList<BookmarkModelObserver> mObservers = new ObserverList<>();
+ 
++    private static final String TAG = "BookmarkBridge";
++
+     private long mNativeBookmarkBridge;
+     private boolean mIsDestroyed;
+     private boolean mIsDoingExtensiveChanges;
+@@ -374,6 +382,16 @@ class BookmarkBridge {
+         return mMobileFolderId;
+     }
+ 
++    /**
++     * @return The BookmarkId for the Tabs collecction folder node
++     */
++    public BookmarkId getTabsCollectionFolderId() {
++        ThreadUtils.assertOnUiThread();
++        assert mIsNativeBookmarkModelLoaded;
++        return BookmarkBridgeJni.get().getTabsCollectionFolderId(
++                mNativeBookmarkBridge, BookmarkBridge.this);
++    }
++
+     /**
+      * @return Id representing the special "other" folder from bookmark model.
+      */
+@@ -1018,6 +1036,50 @@ class BookmarkBridge {
+         return BookmarkBridgeJni.get().addToReadingList(mNativeBookmarkBridge, title, url);
+     }
+ 
++    // Used to bookmark all tabs in a specific folder, created if not existing
++    public BookmarkId addToTabsCollection(Context context, Tab tab) {
++        BookmarkId parent = getTabsCollectionFolderId();
++        BookmarkId existingId = BookmarkBridgeJni.get().getBookmarkIdForTabsCollection(
++                mNativeBookmarkBridge, tab.getOriginalUrl());
++        if (existingId != null && existingId.getId() != BookmarkId.INVALID_ID) {
++            BookmarkId existingBookmarkId = new BookmarkId(existingId.getId(), BookmarkType.NORMAL);
++            BookmarkItem existingBookmark = getBookmarkById(existingBookmarkId);
++            if (parent.equals(existingBookmark.getParentId())) {
++                // bookmark already exists in the tabs collection folder
++                return existingBookmarkId;
++            }
++        }
++        BookmarkId bookmarkId =
++                addBookmark(parent, getChildCount(parent), tab.getTitle(), tab.getUrl());
++
++        if (bookmarkId == null) {
++            Log.e(TAG,
++                    "Failed to add bookmarks: parentTypeAndId %s", parent);
++        }
++        return bookmarkId;
++     }
++
++     public void finishedAddingToTabsCollection(Activity activity, SnackbarManager snackbarManager) {
++        BookmarkId parent = getTabsCollectionFolderId();
++
++        BookmarkItem bookmarkItem = getBookmarkById(parent);
++        String folderName;
++        if (bookmarkItem != null) {
++            folderName = bookmarkItem.getTitle();
++        } else {
++            folderName = "";
++        }
++        SnackbarController snackbarController = new SnackbarController() {
++            @Override
++            public void onAction(Object actionData) {
++            }
++        };
++        Snackbar snackbar = Snackbar.make(folderName, snackbarController, Snackbar.TYPE_ACTION,
++                        Snackbar.UMA_BOOKMARK_ADDED)
++                        .setTemplateText(activity.getString(R.string.bookmark_page_saved_folder));
++        snackbarManager.showSnackbar(snackbar);
++    }
++
+     /**
+      * Helper method to mark an article as read.
+      *
+@@ -1243,6 +1305,9 @@ class BookmarkBridge {
+ 
+         BookmarkId getMostRecentlyAddedUserBookmarkIdForUrl(long nativeBookmarkBridge, GURL url);
+ 
++        BookmarkId getBookmarkIdForTabsCollection(
++                long nativeBookmarkBridge, GURL url);
++
+         BookmarkItem getBookmarkById(long nativeBookmarkBridge, long id, int type);
+ 
+         void getTopLevelFolderIds(long nativeBookmarkBridge, List<BookmarkId> bookmarksList);
+@@ -1254,6 +1319,8 @@ class BookmarkBridge {
+ 
+         BookmarkId getRootFolderId(long nativeBookmarkBridge);
+ 
++        BookmarkId getTabsCollectionFolderId(long nativeBookmarkBridge, BookmarkBridge caller);
++
+         BookmarkId getMobileFolderId(long nativeBookmarkBridge);
+ 
+         BookmarkId getOtherFolderId(long nativeBookmarkBridge);
+diff --git a/chrome/browser/bookmarks/android/bookmark_bridge.cc b/chrome/browser/bookmarks/android/bookmark_bridge.cc
+--- a/chrome/browser/bookmarks/android/bookmark_bridge.cc
++++ b/chrome/browser/bookmarks/android/bookmark_bridge.cc
+@@ -331,6 +331,33 @@ void BookmarkBridge::GetImageUrlForBookmark(
+       base::BindOnce(&HandleImageUrlResponse, callback));
+ }
+ 
++base::android::ScopedJavaLocalRef<jobject>
++BookmarkBridge::GetBookmarkIdForTabsCollection(
++    JNIEnv* env,
++    const JavaParamRef<jobject>& url) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++
++  GURL gurl = *url::GURLAndroid::ToNativeGURL(env, url);
++
++  bookmarks::BookmarkModel* model =
++      BookmarkModelFactory::GetForBrowserContext(profile_);
++
++  std::vector<const bookmarks::BookmarkNode*> nodes =
++    model->GetNodesByURL(gurl);
++  std::sort(nodes.begin(), nodes.end(), &bookmarks::MoreRecentlyAdded);
++
++  for (const auto* node : nodes) {
++    for (const auto& child : model->tabs_collection_node()->children()) {
++      if (node->id() == child->id()) {
++        return JavaBookmarkIdCreateBookmarkId(env, node->id(),
++                                              GetBookmarkType(node));
++      }
++    }
++  }
++
++  return nullptr;
++}
++
+ base::android::ScopedJavaLocalRef<jobject>
+ BookmarkBridge::GetMostRecentlyAddedUserBookmarkIdForUrl(
+     JNIEnv* env,
+@@ -421,6 +448,7 @@ void BookmarkBridge::GetAllFoldersWithDepths(
+   // Vector to temporarily contain all child bookmarks at same level for sorting
+   std::vector<const BookmarkNode*> bookmarks = {
+       bookmark_model_->mobile_node(),
++      bookmark_model_->tabs_collection_node(),
+       bookmark_model_->bookmark_bar_node(),
+       bookmark_model_->other_node(),
+   };
+@@ -474,6 +502,11 @@ std::vector<const BookmarkNode*> BookmarkBridge::GetTopLevelFolderIdsImpl() {
+     top_level_folders.push_back(root_child.get());
+   }
+ 
++  for (const auto& node : bookmark_model_->tabs_collection_node()->children()) {
++    if (node->is_folder())
++      top_level_folders.push_back(node.get());
++  }
++
+   if (reading_list_manager_->GetRoot()) {
+     top_level_folders.push_back(reading_list_manager_->GetRoot());
+   }
+@@ -1027,6 +1060,17 @@ void BookmarkBridge::GetBookmarksOfType(
+   AddBookmarkNodesToBookmarkIdList(env, j_list, results);
+ }
+ 
++ScopedJavaLocalRef<jobject> BookmarkBridge::GetTabsCollectionFolderId(
++    JNIEnv* env,
++    const JavaParamRef<jobject>& obj) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const BookmarkNode* tabs_collection_node = bookmark_model_->tabs_collection_node();
++  ScopedJavaLocalRef<jobject> folder_id_obj =
++      JavaBookmarkIdCreateBookmarkId(
++          env, tabs_collection_node->id(), GetBookmarkType(tabs_collection_node));
++  return folder_id_obj;
++}
++
+ ScopedJavaLocalRef<jobject> BookmarkBridge::AddFolder(
+     JNIEnv* env,
+     const JavaParamRef<jobject>& j_parent_id_obj,
+diff --git a/chrome/browser/bookmarks/android/bookmark_bridge.h b/chrome/browser/bookmarks/android/bookmark_bridge.h
+--- a/chrome/browser/bookmarks/android/bookmark_bridge.h
++++ b/chrome/browser/bookmarks/android/bookmark_bridge.h
+@@ -67,6 +67,10 @@ class BookmarkBridge : public bookmarks::BaseBookmarkModelObserver,
+       const base::android::JavaParamRef<jobject>& j_url,
+       const base::android::JavaParamRef<jobject>& j_callback);
+ 
++  base::android::ScopedJavaLocalRef<jobject> GetBookmarkIdForTabsCollection(
++      JNIEnv* env,
++      const base::android::JavaParamRef<jobject>& url);
++
+   base::android::ScopedJavaLocalRef<jobject>
+   GetMostRecentlyAddedUserBookmarkIdForUrl(
+       JNIEnv* env,
+@@ -197,6 +201,10 @@ class BookmarkBridge : public bookmarks::BaseBookmarkModelObserver,
+                           const base::android::JavaParamRef<jobject>& j_list,
+                           jint type);
+ 
++  base::android::ScopedJavaLocalRef<jobject> GetTabsCollectionFolderId(
++      JNIEnv* env,
++      const base::android::JavaParamRef<jobject>& obj);
++
+   base::android::ScopedJavaLocalRef<jobject> AddFolder(
+       JNIEnv* env,
+       const base::android::JavaParamRef<jobject>& j_parent_id_obj,
+diff --git a/chrome/browser/bookmarks/bookmark_html_writer.cc b/chrome/browser/bookmarks/bookmark_html_writer.cc
+--- a/chrome/browser/bookmarks/bookmark_html_writer.cc
++++ b/chrome/browser/bookmarks/bookmark_html_writer.cc
+@@ -190,15 +190,19 @@ class Writer : public base::RefCountedThreadSafe<Writer> {
+         roots->FindDict(BookmarkCodec::kOtherBookmarkFolderNameKey);
+     base::Value::Dict* mobile_folder_value =
+         roots->FindDict(BookmarkCodec::kMobileBookmarkFolderNameKey);
++    base::Value::Dict* tabs_collection_value =
++        roots->FindDict(BookmarkCodec::kTabsBookmarkFolderNameKey);
+     DCHECK(root_folder_value);
+     DCHECK(other_folder_value);
+     DCHECK(mobile_folder_value);
++    DCHECK(tabs_collection_value);
+ 
+     IncrementIndent();
+ 
+     if (!WriteNode(*root_folder_value, BookmarkNode::BOOKMARK_BAR) ||
+         !WriteNode(*other_folder_value, BookmarkNode::OTHER_NODE) ||
+-        !WriteNode(*mobile_folder_value, BookmarkNode::MOBILE)) {
++        !WriteNode(*mobile_folder_value, BookmarkNode::MOBILE) ||
++        !WriteNode(*tabs_collection_value, BookmarkNode::TABS_COLLECTION)) {
+       NotifyOnFinish(BookmarksExportObserver::Result::kCouldNotWriteNodes);
+       return;
+     }
+@@ -465,6 +469,8 @@ void BookmarkFaviconFetcher::ExportBookmarks() {
+       BookmarkModelFactory::GetForBrowserContext(profile_)->other_node());
+   ExtractUrls(
+       BookmarkModelFactory::GetForBrowserContext(profile_)->mobile_node());
++  ExtractUrls(
++      BookmarkModelFactory::GetForBrowserContext(profile_)->tabs_collection_node());
+   if (!bookmark_urls_.empty())
+     FetchNextFavicon();
+   else
+diff --git a/chrome/browser/download/android/java/src/org/chromium/chrome/browser/download/dialogs/DownloadLocationCustomView.java b/chrome/browser/download/android/java/src/org/chromium/chrome/browser/download/dialogs/DownloadLocationCustomView.java
+--- a/chrome/browser/download/android/java/src/org/chromium/chrome/browser/download/dialogs/DownloadLocationCustomView.java
++++ b/chrome/browser/download/android/java/src/org/chromium/chrome/browser/download/dialogs/DownloadLocationCustomView.java
+@@ -77,7 +77,7 @@ public class DownloadLocationCustomView extends ScrollView
+         mDirectoryAdapter.update();
+     }
+ 
+-    void setTitle(CharSequence title) {
++    public void setTitle(CharSequence title) {
+         mTitle.setText(title);
+     }
+ 
+@@ -85,7 +85,7 @@ public class DownloadLocationCustomView extends ScrollView
+         mSubtitleView.setText(subtitle);
+     }
+ 
+-    void setFileName(CharSequence fileName) {
++    public void setFileName(CharSequence fileName) {
+         mFileName.setText(fileName);
+     }
+ 
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -3789,6 +3789,9 @@ To change this setting, <ph name="BEGIN_LINK">&lt;resetlink&gt;</ph>reset sync<p
+       <message name="IDS_MENU_SELECT_TABS" desc="Menu item for bulk editing tabs. [CHAR_LIMIT=27]">
+         Select tabs
+       </message>
++      <message name="IDS_MENU_BOOKMARK_ALL_TABS" desc="Menu item to bookmark all tabs. [CHAR-LIMIT=27]">
++        Bookmark all tabs
++      </message>
+       <message name="IDS_MENU_GET_IMAGE_DESCRIPTIONS" desc="Menu item to start getting alt text accessibility image labels/descriptions [CHAR_LIMIT=27]">
+         Get image descriptions
+       </message>
+diff --git a/components/bookmark_bar_strings.grdp b/components/bookmark_bar_strings.grdp
+--- a/components/bookmark_bar_strings.grdp
++++ b/components/bookmark_bar_strings.grdp
+@@ -20,6 +20,9 @@
+     <message name="IDS_BOOKMARK_BAR_MOBILE_FOLDER_NAME" desc="Name shown in the tree for the mobile bookmarks folder">
+       Mobile bookmarks
+     </message>
++    <message name="IDS_BOOKMARK_BAR_TABS_COLLECTION_FOLDER_NAME" desc="Name shown in the tree for the tabs collection bookmarks folder">
++      Tabs collection
++    </message>
+     <message name="IDS_BOOKMARK_BAR_OTHER_FOLDER_NAME" desc="Name shown in the tree for the other bookmarks folder">
+       Other bookmarks
+     </message>
+@@ -34,6 +37,9 @@
+     <message name="IDS_BOOKMARK_BAR_MOBILE_FOLDER_NAME" desc="In Title Case: Name shown in the tree for the mobile bookmarks folder">
+       Mobile Bookmarks
+     </message>
++    <message name="IDS_BOOKMARK_BAR_TABS_COLLECTION_FOLDER_NAME" desc="Name shown in the tree for the tabs collection bookmarks folder">
++      Tabs Collection
++    </message>
+     <message name="IDS_BOOKMARK_BAR_OTHER_FOLDER_NAME" desc="In Title Case: Name shown in the tree for the other bookmarks folder">
+       Other Bookmarks
+     </message>
+diff --git a/components/bookmarks/browser/bookmark_client.cc b/components/bookmarks/browser/bookmark_client.cc
+--- a/components/bookmarks/browser/bookmark_client.cc
++++ b/components/bookmarks/browser/bookmark_client.cc
+@@ -55,6 +55,8 @@ bool BookmarkClient::IsPermanentNodeVisibleWhenEmpty(
+     case BookmarkNode::MOBILE:
+       // Either MOBILE or OTHER_NODE is visible when empty, but never both.
+       return !IsPermanentNodeVisibleWhenEmpty(BookmarkNode::OTHER_NODE);
++    case bookmarks::BookmarkNode::TABS_COLLECTION:
++      return !is_desktop;
+   }
+   NOTREACHED_NORETURN();
+ }
+diff --git a/components/bookmarks/browser/bookmark_codec.cc b/components/bookmarks/browser/bookmark_codec.cc
+--- a/components/bookmarks/browser/bookmark_codec.cc
++++ b/components/bookmarks/browser/bookmark_codec.cc
+@@ -36,6 +36,7 @@ const char BookmarkCodec::kBookmarkBarFolderNameKey[] = "bookmark_bar";
+ const char BookmarkCodec::kOtherBookmarkFolderNameKey[] = "other";
+ // The value is left as 'synced' for historical reasons.
+ const char BookmarkCodec::kMobileBookmarkFolderNameKey[] = "synced";
++const char BookmarkCodec::kTabsBookmarkFolderNameKey[] = "tabs";
+ const char BookmarkCodec::kVersionKey[] = "version";
+ const char BookmarkCodec::kChecksumKey[] = "checksum";
+ const char BookmarkCodec::kIdKey[] = "id";
+@@ -74,7 +75,8 @@ BookmarkCodec::~BookmarkCodec() = default;
+ base::Value::Dict BookmarkCodec::Encode(BookmarkModel* model,
+                                         std::string sync_metadata_str) {
+   return Encode(model->bookmark_bar_node(), model->other_node(),
+-                model->mobile_node(), model->root_node()->GetMetaInfoMap(),
++                model->mobile_node(), model->tabs_collection_node(),
++                model->root_node()->GetMetaInfoMap(),
+                 std::move(sync_metadata_str));
+ }
+ 
+@@ -82,6 +84,7 @@ base::Value::Dict BookmarkCodec::Encode(
+     const BookmarkNode* bookmark_bar_node,
+     const BookmarkNode* other_folder_node,
+     const BookmarkNode* mobile_folder_node,
++    const BookmarkNode* tabs_folder_node,
+     const BookmarkNode::MetaInfoMap* model_meta_info_map,
+     std::string sync_metadata_str) {
+   ids_reassigned_ = false;
+@@ -102,6 +105,7 @@ base::Value::Dict BookmarkCodec::Encode(
+   roots.Set(kBookmarkBarFolderNameKey, EncodeNode(bookmark_bar_node));
+   roots.Set(kOtherBookmarkFolderNameKey, EncodeNode(other_folder_node));
+   roots.Set(kMobileBookmarkFolderNameKey, EncodeNode(mobile_folder_node));
++  roots.Set(kTabsBookmarkFolderNameKey, EncodeNode(tabs_folder_node));
+   if (model_meta_info_map)
+     roots.Set(kMetaInfo, EncodeMetaInfo(*model_meta_info_map));
+ 
+@@ -119,6 +123,7 @@ bool BookmarkCodec::Decode(const base::Value::Dict& value,
+                            BookmarkNode* bb_node,
+                            BookmarkNode* other_folder_node,
+                            BookmarkNode* mobile_folder_node,
++                           BookmarkNode* tabs_folder_node,
+                            int64_t* max_id,
+                            std::string* sync_metadata_str) {
+   ids_.clear();
+@@ -126,7 +131,8 @@ bool BookmarkCodec::Decode(const base::Value::Dict& value,
+             base::Uuid::ParseLowercase(kBookmarkBarNodeUuid),
+             base::Uuid::ParseLowercase(kOtherBookmarksNodeUuid),
+             base::Uuid::ParseLowercase(kMobileBookmarksNodeUuid),
+-            base::Uuid::ParseLowercase(kManagedNodeUuid)};
++            base::Uuid::ParseLowercase(kManagedNodeUuid),
++            base::Uuid::ParseLowercase(kTabsCollectionBookmarksNodeUuid)};
+   ids_reassigned_ = false;
+   uuids_reassigned_ = false;
+   ids_valid_ = true;
+@@ -134,12 +140,13 @@ bool BookmarkCodec::Decode(const base::Value::Dict& value,
+   stored_checksum_.clear();
+   InitializeChecksum();
+   bool success = DecodeHelper(bb_node, other_folder_node, mobile_folder_node,
++                              tabs_folder_node,
+                               value, sync_metadata_str);
+   FinalizeChecksum();
+   // If either the checksums differ or some IDs were missing/not unique,
+   // reassign IDs.
+   if (!ids_valid_ || computed_checksum() != stored_checksum())
+-    ReassignIDs(bb_node, other_folder_node, mobile_folder_node);
++    ReassignIDs(bb_node, other_folder_node, mobile_folder_node, tabs_folder_node);
+   *max_id = maximum_id_ + 1;
+   return success;
+ }
+@@ -191,6 +198,7 @@ base::Value::Dict BookmarkCodec::EncodeMetaInfo(
+ bool BookmarkCodec::DecodeHelper(BookmarkNode* bb_node,
+                                  BookmarkNode* other_folder_node,
+                                  BookmarkNode* mobile_folder_node,
++                                 BookmarkNode* tabs_folder_node,
+                                  const base::Value::Dict& value,
+                                  std::string* sync_metadata_str) {
+   absl::optional<int> version = value.FindInt(kVersionKey);
+@@ -215,6 +223,8 @@ bool BookmarkCodec::DecodeHelper(BookmarkNode* bb_node,
+       roots->FindDict(kOtherBookmarkFolderNameKey);
+   const base::Value::Dict* mobile_folder_value =
+       roots->FindDict(kMobileBookmarkFolderNameKey);
++  const base::Value::Dict* tabs_folder_value =
++      roots->FindDict(kTabsBookmarkFolderNameKey);
+ 
+   if (!bb_value || !other_folder_value || !mobile_folder_value)
+     return false;
+@@ -222,6 +232,8 @@ bool BookmarkCodec::DecodeHelper(BookmarkNode* bb_node,
+   DecodeNode(*bb_value, nullptr, bb_node);
+   DecodeNode(*other_folder_value, nullptr, other_folder_node);
+   DecodeNode(*mobile_folder_value, nullptr, mobile_folder_node);
++  if (tabs_folder_value)
++    DecodeNode(*tabs_folder_value, nullptr, tabs_folder_node);
+ 
+   if (!DecodeMetaInfo(*roots, &model_meta_info_map_))
+     return false;
+@@ -463,11 +475,13 @@ void BookmarkCodec::DecodeMetaInfoHelper(
+ 
+ void BookmarkCodec::ReassignIDs(BookmarkNode* bb_node,
+                                 BookmarkNode* other_node,
+-                                BookmarkNode* mobile_node) {
++                                BookmarkNode* mobile_node,
++                                BookmarkNode* tabs_folder_node) {
+   maximum_id_ = 0;
+   ReassignIDsHelper(bb_node);
+   ReassignIDsHelper(other_node);
+   ReassignIDsHelper(mobile_node);
++  ReassignIDsHelper(tabs_folder_node);
+   ids_reassigned_ = true;
+ }
+ 
+diff --git a/components/bookmarks/browser/bookmark_codec.h b/components/bookmarks/browser/bookmark_codec.h
+--- a/components/bookmarks/browser/bookmark_codec.h
++++ b/components/bookmarks/browser/bookmark_codec.h
+@@ -46,6 +46,7 @@ class BookmarkCodec {
+       const BookmarkNode* bookmark_bar_node,
+       const BookmarkNode* other_folder_node,
+       const BookmarkNode* mobile_folder_node,
++      const BookmarkNode* tabs_folder_node,
+       const BookmarkNode::MetaInfoMap* model_meta_info_map,
+       std::string sync_metadata_str);
+ 
+@@ -58,6 +59,7 @@ class BookmarkCodec {
+               BookmarkNode* bb_node,
+               BookmarkNode* other_folder_node,
+               BookmarkNode* mobile_folder_node,
++              BookmarkNode* tabs_folder_node,
+               int64_t* max_node_id,
+               std::string* sync_metadata_str);
+ 
+@@ -103,6 +105,7 @@ class BookmarkCodec {
+   // Allows the BookmarkClient to read and a write a string blob from the JSON
+   // file. That string captures the bookmarks sync metadata.
+   static const char kSyncMetadata[];
++  static const char kTabsBookmarkFolderNameKey[];
+   static const char kDateLastUsed[];
+ 
+   // Possible values for kTypeKey.
+@@ -121,6 +124,7 @@ class BookmarkCodec {
+   bool DecodeHelper(BookmarkNode* bb_node,
+                     BookmarkNode* other_folder_node,
+                     BookmarkNode* mobile_folder_node,
++                    BookmarkNode* tabs_folder_node,
+                     const base::Value::Dict& value,
+                     std::string* sync_metadata_str);
+ 
+@@ -132,7 +136,8 @@ class BookmarkCodec {
+   // Reassigns bookmark IDs for all nodes.
+   void ReassignIDs(BookmarkNode* bb_node,
+                    BookmarkNode* other_node,
+-                   BookmarkNode* mobile_node);
++                   BookmarkNode* mobile_node,
++                   BookmarkNode* tabs_folder_node);
+ 
+   // Helper to recursively reassign IDs.
+   void ReassignIDsHelper(BookmarkNode* node);
+diff --git a/components/bookmarks/browser/bookmark_load_details.cc b/components/bookmarks/browser/bookmark_load_details.cc
+--- a/components/bookmarks/browser/bookmark_load_details.cc
++++ b/components/bookmarks/browser/bookmark_load_details.cc
+@@ -37,6 +37,10 @@ BookmarkLoadDetails::BookmarkLoadDetails(BookmarkClient* client)
+       root_node_->Add(BookmarkPermanentNode::CreateMobileBookmarks(
+           max_id_++,
+           client->IsPermanentNodeVisibleWhenEmpty(BookmarkNode::MOBILE))));
++  tabs_collection_folder_node_ = static_cast<BookmarkPermanentNode*>(
++      root_node_->Add(BookmarkPermanentNode::CreateTabsCollectionBookmarks(
++          max_id_++,
++          client->IsPermanentNodeVisibleWhenEmpty(BookmarkNode::TABS_COLLECTION))));
+ }
+ 
+ BookmarkLoadDetails::~BookmarkLoadDetails() = default;
+diff --git a/components/bookmarks/browser/bookmark_load_details.h b/components/bookmarks/browser/bookmark_load_details.h
+--- a/components/bookmarks/browser/bookmark_load_details.h
++++ b/components/bookmarks/browser/bookmark_load_details.h
+@@ -47,6 +47,7 @@ class BookmarkLoadDetails {
+   BookmarkPermanentNode* bb_node() { return bb_node_; }
+   BookmarkPermanentNode* mobile_folder_node() { return mobile_folder_node_; }
+   BookmarkPermanentNode* other_folder_node() { return other_folder_node_; }
++  BookmarkPermanentNode* tabs_collection_folder_node() { return tabs_collection_folder_node_; }
+ 
+   std::unique_ptr<TitledUrlIndex> owned_titled_url_index() {
+     return std::move(titled_url_index_);
+@@ -112,6 +113,8 @@ class BookmarkLoadDetails {
+       nullptr;
+   raw_ptr<BookmarkPermanentNode, DanglingUntriaged> mobile_folder_node_ =
+       nullptr;
++  raw_ptr<BookmarkPermanentNode, DanglingUntriaged> tabs_collection_folder_node_ =
++      nullptr;
+   LoadManagedNodeCallback load_managed_node_callback_;
+   std::unique_ptr<TitledUrlIndex> titled_url_index_;
+   UuidIndex uuid_index_;
+diff --git a/components/bookmarks/browser/bookmark_model.cc b/components/bookmarks/browser/bookmark_model.cc
+--- a/components/bookmarks/browser/bookmark_model.cc
++++ b/components/bookmarks/browser/bookmark_model.cc
+@@ -829,7 +829,7 @@ bool BookmarkModel::HasBookmarks() const {
+ bool BookmarkModel::HasNoUserCreatedBookmarksOrFolders() const {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   return bookmark_bar_node_->children().empty() &&
+-         other_node_->children().empty() && mobile_node_->children().empty();
++         other_node_->children().empty() && mobile_node_->children().empty() && tabs_collection_node_->children().empty();
+ }
+ 
+ bool BookmarkModel::IsBookmarked(const GURL& url) const {
+@@ -1166,6 +1166,7 @@ void BookmarkModel::DoneLoading(std::unique_ptr<BookmarkLoadDetails> details) {
+   bookmark_bar_node_ = details->bb_node();
+   other_node_ = details->other_folder_node();
+   mobile_node_ = details->mobile_folder_node();
++  tabs_collection_node_ = details->tabs_collection_folder_node();
+ 
+   // TODO(crbug.com/1494120): Load nodes for account storage as well.
+ 
+diff --git a/components/bookmarks/browser/bookmark_model.h b/components/bookmarks/browser/bookmark_model.h
+--- a/components/bookmarks/browser/bookmark_model.h
++++ b/components/bookmarks/browser/bookmark_model.h
+@@ -159,6 +159,12 @@ class BookmarkModel final : public BookmarkUndoProvider,
+   // bookmarks in the account storage).
+   const BookmarkNode* account_mobile_node() const;
+ 
++  // Returns the 'mobile' node. This is NULL until loaded.
++  const BookmarkNode* tabs_collection_node() const {
++    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++    return tabs_collection_node_;
++  }
++
+   bool is_root_node(const BookmarkNode* node) const {
+     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+     return node == root_;
+@@ -528,6 +534,7 @@ class BookmarkModel final : public BookmarkUndoProvider,
+   raw_ptr<BookmarkPermanentNode> account_bookmark_bar_node_ = nullptr;
+   raw_ptr<BookmarkPermanentNode> account_other_node_ = nullptr;
+   raw_ptr<BookmarkPermanentNode> account_mobile_node_ = nullptr;
++  raw_ptr<BookmarkPermanentNode> tabs_collection_node_ = nullptr;
+ 
+   // The maximum ID assigned to the bookmark nodes in the model.
+   int64_t next_node_id_ = 1;
+diff --git a/components/bookmarks/browser/bookmark_node.cc b/components/bookmarks/browser/bookmark_node.cc
+--- a/components/bookmarks/browser/bookmark_node.cc
++++ b/components/bookmarks/browser/bookmark_node.cc
+@@ -189,6 +189,17 @@ BookmarkPermanentNode::CreateMobileBookmarks(int64_t id,
+       visible_when_empty));
+ }
+ 
++// static
++std::unique_ptr<BookmarkPermanentNode>
++BookmarkPermanentNode::CreateTabsCollectionBookmarks(int64_t id,
++                                             bool visible_when_empty) {
++  // base::WrapUnique() used because the constructor is private.
++  return base::WrapUnique(new BookmarkPermanentNode(
++      id, TABS_COLLECTION, base::Uuid::ParseLowercase(kTabsCollectionBookmarksNodeUuid),
++      l10n_util::GetStringUTF16(IDS_BOOKMARK_BAR_TABS_COLLECTION_FOLDER_NAME),
++      visible_when_empty));
++}
++
+ BookmarkPermanentNode::BookmarkPermanentNode(int64_t id,
+                                              Type type,
+                                              const base::Uuid& uuid,
+diff --git a/components/bookmarks/browser/bookmark_node.h b/components/bookmarks/browser/bookmark_node.h
+--- a/components/bookmarks/browser/bookmark_node.h
++++ b/components/bookmarks/browser/bookmark_node.h
+@@ -35,6 +35,7 @@ class BookmarkNode : public ui::TreeNode<BookmarkNode>, public TitledUrlNode {
+     FOLDER,
+     BOOKMARK_BAR,
+     OTHER_NODE,
++    TABS_COLLECTION,
+     MOBILE
+   };
+ 
+@@ -246,6 +247,9 @@ class BookmarkPermanentNode : public BookmarkNode {
+   static std::unique_ptr<BookmarkPermanentNode> CreateMobileBookmarks(
+       int64_t id,
+       bool visible_when_empty);
++  static std::unique_ptr<BookmarkPermanentNode> CreateTabsCollectionBookmarks(
++      int64_t id,
++      bool visible_when_empty);
+ 
+   // Constructor is private to disallow the construction of permanent nodes
+   // other than the well-known ones, see factory methods.
+diff --git a/components/bookmarks/browser/bookmark_uuids.cc b/components/bookmarks/browser/bookmark_uuids.cc
+--- a/components/bookmarks/browser/bookmark_uuids.cc
++++ b/components/bookmarks/browser/bookmark_uuids.cc
+@@ -35,6 +35,9 @@ const char kManagedNodeUuid[] = "323123f4-9381-5aee-80e6-ea5fca2f7672";
+ //  see https://crbug.com/1484372 for details.
+ const char kShoppingCollectionUuid[] = "89fc5b66-beb6-56c1-a99b-70635d7df201";
+ 
++const char kTabsCollectionBookmarksNodeUuid[] =
++    "00000000-0000-4000-a000-000000000006";
++
+ // This value is the result of exercising sync's function
+ // syncer::InferGuidForLegacyBookmark() with an empty input.
+ const char kBannedUuidDueToPastSyncBug[] =
+diff --git a/components/bookmarks/browser/bookmark_uuids.h b/components/bookmarks/browser/bookmark_uuids.h
+--- a/components/bookmarks/browser/bookmark_uuids.h
++++ b/components/bookmarks/browser/bookmark_uuids.h
+@@ -14,6 +14,7 @@ extern const char kBookmarkBarNodeUuid[];
+ extern const char kOtherBookmarksNodeUuid[];
+ extern const char kMobileBookmarksNodeUuid[];
+ extern const char kManagedNodeUuid[];
++extern const char kTabsCollectionBookmarksNodeUuid[];
+ extern const char kShoppingCollectionUuid[];
+ 
+ // A bug in sync caused some problematic UUIDs to be produced.
+diff --git a/components/bookmarks/browser/model_loader.cc b/components/bookmarks/browser/model_loader.cc
+--- a/components/bookmarks/browser/model_loader.cc
++++ b/components/bookmarks/browser/model_loader.cc
+@@ -45,7 +45,8 @@ void LoadBookmarks(const base::FilePath& path,
+       std::string sync_metadata_str;
+       BookmarkCodec codec;
+       codec.Decode(*root_dict, details->bb_node(), details->other_folder_node(),
+-                   details->mobile_folder_node(), &max_node_id,
++                   details->mobile_folder_node(),
++                   details->tabs_collection_folder_node(), &max_node_id,
+                    &sync_metadata_str);
+       details->set_sync_metadata_str(std::move(sync_metadata_str));
+       details->set_max_id(std::max(max_node_id, details->max_id()));
+diff --git a/components/sync_bookmarks/bookmark_specifics_conversions.cc b/components/sync_bookmarks/bookmark_specifics_conversions.cc
+--- a/components/sync_bookmarks/bookmark_specifics_conversions.cc
++++ b/components/sync_bookmarks/bookmark_specifics_conversions.cc
+@@ -445,6 +445,7 @@ sync_pb::BookmarkSpecifics::Type GetProtoTypeFromBookmarkNode(
+     case bookmarks::BookmarkNode::BOOKMARK_BAR:
+     case bookmarks::BookmarkNode::OTHER_NODE:
+     case bookmarks::BookmarkNode::MOBILE:
++    case bookmarks::BookmarkNode::TABS_COLLECTION:
+       DCHECK(node->is_folder());
+       return sync_pb::BookmarkSpecifics::FOLDER;
+   }
+--

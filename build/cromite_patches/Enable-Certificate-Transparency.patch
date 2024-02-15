@@ -1,0 +1,162 @@
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Fri, 10 Jun 2022 14:20:02 +0200
+Subject: Enable Certificate Transparency
+
+Reporting/auditing functionalities are disabled; a flag is exposed.
+Add guard to make sure that certificate transparency stays enabled
+by default.
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/browser/browser_features.h                        | 1 +
+ chrome/browser/net/system_network_context_manager.cc     | 2 +-
+ chrome/browser/ssl/sct_reporting_service.cc              | 5 +++++
+ .../about_flags_cc/Enable-Certificate-Transparency.inc   | 9 +++++++++
+ .../Enable-Certificate-Transparency.inc                  | 6 ++++++
+ .../Enable-Certificate-Transparency.inc                  | 2 ++
+ net/http/transport_security_state.cc                     | 5 +++--
+ net/url_request/report_sender.cc                         | 3 ++-
+ services/network/network_context.cc                      | 2 +-
+ services/network/sct_auditing/sct_auditing_handler.cc    | 2 ++
+ 10 files changed, 32 insertions(+), 5 deletions(-)
+ create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+ create mode 100644 cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+ create mode 100644 cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
+
+diff --git a/chrome/browser/browser_features.h b/chrome/browser/browser_features.h
+--- a/chrome/browser/browser_features.h
++++ b/chrome/browser/browser_features.h
+@@ -62,6 +62,7 @@ BASE_DECLARE_FEATURE(kTabCaptureBlueBorderCrOS);
+ 
+ BASE_DECLARE_FEATURE(kWebUsbDeviceDetection);
+ 
++BASE_DECLARE_FEATURE(kCertificateTransparency);
+ BASE_DECLARE_FEATURE(kCertificateTransparencyAskBeforeEnabling);
+ 
+ BASE_DECLARE_FEATURE(kLargeFaviconFromGoogle);
+diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
+--- a/chrome/browser/net/system_network_context_manager.cc
++++ b/chrome/browser/net/system_network_context_manager.cc
+@@ -982,7 +982,7 @@ bool SystemNetworkContextManager::IsCertificateTransparencyEnabled() {
+   //   - on an opt-in basis for other builds and embedders, controlled with the
+   //     kCertificateTransparencyAskBeforeEnabling flag
+   return base::FeatureList::IsEnabled(
+-      features::kCertificateTransparencyAskBeforeEnabling);
++      features::kCertificateTransparency);
+ }
+ 
+ #if BUILDFLAG(CHROME_ROOT_STORE_OPTIONAL)
+diff --git a/chrome/browser/ssl/sct_reporting_service.cc b/chrome/browser/ssl/sct_reporting_service.cc
+--- a/chrome/browser/ssl/sct_reporting_service.cc
++++ b/chrome/browser/ssl/sct_reporting_service.cc
+@@ -203,6 +203,11 @@ SCTReportingService::SCTReportingService(
+ SCTReportingService::~SCTReportingService() = default;
+ 
+ network::mojom::SCTAuditingMode SCTReportingService::GetReportingMode() {
++  if ((true)) {
++    // always disabled in Bromite
++    return network::mojom::SCTAuditingMode::kDisabled;
++  }
++
+   if (profile_->IsOffTheRecord() ||
+       !base::FeatureList::IsEnabled(features::kSCTAuditing)) {
+     return network::mojom::SCTAuditingMode::kDisabled;
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/about_flags_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,9 @@
++#ifdef FLAG_SECTION
++
++    {"certificate-transparency-enabled",
++     "Enable Certificate Transparency",
++     "Enables compliance against the Certificate Transparency "
++     "Policy, with reporting disabled.", kOsAll,
++     FEATURE_VALUE_TYPE(features::kCertificateTransparency)},
++
++#endif
+diff --git a/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/browser/browser_features_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,6 @@
++SET_CROMITE_FEATURE_ENABLED(kCertificateTransparencyAskBeforeEnabling);
++
++// Enables Certificate Transparency
++CROMITE_FEATURE(kCertificateTransparency,
++                "CertificateTransparency",
++                base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc b/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
+new file mode 100644
+--- /dev/null
++++ b/cromite_flags/chrome/common/chrome_features_cc/Enable-Certificate-Transparency.inc
+@@ -0,0 +1,2 @@
++SET_CROMITE_FEATURE_DISABLED(kSCTAuditing);
++SET_CROMITE_FEATURE_DISABLED(kSCTAuditingHashdance);
+diff --git a/net/http/transport_security_state.cc b/net/http/transport_security_state.cc
+--- a/net/http/transport_security_state.cc
++++ b/net/http/transport_security_state.cc
+@@ -327,6 +327,7 @@ class HSTSPreloadDecoder : public net::extras::PreloadDecoder {
+ 
+ bool DecodeHSTSPreload(const std::string& search_hostname, PreloadResult* out) {
+ #if !BUILDFLAG(INCLUDE_TRANSPORT_SECURITY_STATE_PRELOAD_LIST)
++#error "BUILDFLAG(INCLUDE_TRANSPORT_SECURITY_STATE_PRELOAD_LIST) must be enabled"
+   if (g_hsts_source == nullptr)
+     return false;
+ #endif
+@@ -372,8 +373,8 @@ bool DecodeHSTSPreload(const std::string& search_hostname, PreloadResult* out) {
+ 
+ // static
+ BASE_FEATURE(kCertificateTransparencyEnforcement,
+-             "CertificateTransparencyEnforcement",
+-             base::FEATURE_ENABLED_BY_DEFAULT);
++             "CertificateTransparencyEnforcement",            // must be enabled
++             base::FEATURE_ENABLED_BY_DEFAULT);               // in Bromite
+ 
+ void SetTransportSecurityStateSourceForTesting(
+     const TransportSecurityStateSource* source) {
+diff --git a/net/url_request/report_sender.cc b/net/url_request/report_sender.cc
+--- a/net/url_request/report_sender.cc
++++ b/net/url_request/report_sender.cc
+@@ -87,7 +87,8 @@ void ReportSender::Send(
+ 
+   URLRequest* raw_url_request = url_request.get();
+   inflight_requests_[raw_url_request] = std::move(url_request);
+-  raw_url_request->Start();
++  // pretend that request completed
++  OnResponseStarted(raw_url_request, OK);
+ }
+ 
+ void ReportSender::OnResponseStarted(URLRequest* request, int net_error) {
+diff --git a/services/network/network_context.cc b/services/network/network_context.cc
+--- a/services/network/network_context.cc
++++ b/services/network/network_context.cc
+@@ -2797,7 +2797,7 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
+   // TransportSecurityState.  Since no requests have been made yet, safe to do
+   // this even after the call to Build().
+ 
+-  if (params_->enable_certificate_reporting) {
++  if ((false) /* params_->enable_certificate_reporting*/) {
+     net::NetworkTrafficAnnotationTag traffic_annotation =
+         net::DefineNetworkTrafficAnnotation("domain_security_policy", R"(
+         semantics {
+diff --git a/services/network/sct_auditing/sct_auditing_handler.cc b/services/network/sct_auditing/sct_auditing_handler.cc
+--- a/services/network/sct_auditing/sct_auditing_handler.cc
++++ b/services/network/sct_auditing/sct_auditing_handler.cc
+@@ -109,6 +109,7 @@ void SCTAuditingHandler::MaybeEnqueueReport(
+   if (mode_ == mojom::SCTAuditingMode::kDisabled) {
+     return;
+   }
++  if ((true)) return;
+ 
+   // Only audit valid SCTs. This ensures that they come from a known log, have
+   // a valid signature, and thus are expected to be public certificates. If
+@@ -324,6 +325,7 @@ void SCTAuditingHandler::AddReporter(
+   if (mode_ == mojom::SCTAuditingMode::kDisabled) {
+     return;
+   }
++  if ((true)) return;
+ 
+   auto reporter = std::make_unique<SCTAuditingReporter>(
+       owner_network_context_, reporter_key, std::move(report),
+--
