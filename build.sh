@@ -88,6 +88,19 @@ build() {
     build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
 
     echo ">> [$(date)] Using AOSP test-key for debug build"
+    # Create an array of strings to replace
+    replacements=(
+        "is_official_build=true|is_official_build=false"
+        "debuggable_apks=false|debuggable_apks=true"
+        "is_debug=false|is_debug=true"
+    )
+
+    # Loop through the array and apply the replacements
+    for replacement in "${replacements[@]}"; do
+        IFS="|" read find replace <<< "$replacement"
+        build_args=$(echo "$build_args" | sed "s/\(${find}\)/${replace}/")
+    done
+
     gn gen "out/$1" --args="$build_args"
     ninja -C out/$1 $build_targets
 
