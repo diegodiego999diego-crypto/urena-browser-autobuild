@@ -27,11 +27,12 @@ Require: bromite-build-utils.patch
  .../site_settings_page_util.ts                |  55 +++
  chrome/browser/ui/BUILD.gn                    |   1 +
  .../controls/rich_controls_container_view.h   |   7 +
- .../ui/views/page_info/page_info_main_view.cc |  27 +-
+ .../ui/views/page_info/page_info_main_view.cc |  28 +-
  .../views/page_info/page_info_view_factory.cc |  19 +
  .../views/page_info/page_info_view_factory.h  |   3 +
  .../page_info/permission_toggle_row_view.cc   | 163 ++++++-
  .../page_info/permission_toggle_row_view.h    |  18 +-
+ .../privacy_sandbox_internals_handler.cc      |   2 +-
  .../settings_localized_strings_provider.cc    |  54 +++
  .../ui/webui/settings/site_settings_helper.cc |  34 +-
  .../browser_ui/settings/android/BUILD.gn      |   1 +
@@ -42,10 +43,10 @@ Require: bromite-build-utils.patch
  .../BromiteCustomContentSetting.java          | 155 +++++++
  .../BromiteCustomContentSettingImpl.java      | 409 ++++++++++++++++++
  ...tomTriStateSiteSettingsPreferenceImpl.java |  24 +
- .../ContentSettingsResources.java             |  14 +-
+ .../ContentSettingsResources.java             |  16 +-
  .../site_settings/SingleCategorySettings.java |  50 ++-
  .../site_settings/SingleWebsiteSettings.java  |  58 ++-
- .../site_settings/SiteSettings.java           |  14 +-
+ .../site_settings/SiteSettings.java           |  31 +-
  .../site_settings/SiteSettingsCategory.java   |  18 +-
  .../site_settings/SiteSettingsDelegate.java   |   2 +
  .../TriStateSiteSettingsPreference.java       |  13 +-
@@ -72,7 +73,7 @@ Require: bromite-build-utils.patch
  .../common/content_settings_mojom_traits.cc   |  12 +-
  .../common/content_settings_mojom_traits.h    |  24 +
  .../common/content_settings_param_traits.h    |   2 +-
- .../core/common/content_settings_types.h      |   4 +-
+ .../core/common/content_settings_types.mojom  |   4 +-
  .../renderer/content_settings_agent_impl.cc   |  33 ++
  .../renderer/content_settings_agent_impl.h    |   5 +
  .../PageInfoPermissionsController.java        |   9 +
@@ -84,7 +85,7 @@ Require: bromite-build-utils.patch
  .../platform/web_content_settings_client.h    |   5 +
  .../execution_context/execution_context.cc    |  16 +
  .../execution_context/execution_context.h     |   5 +
- 73 files changed, 1821 insertions(+), 76 deletions(-)
+ 74 files changed, 1833 insertions(+), 86 deletions(-)
  create mode 100644 components/browser_ui/settings/android/java/res/layout/preference_spinner_single_widget.xml
  create mode 100644 components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSetting.java
  create mode 100644 components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/BromiteCustomContentSettingImpl.java
@@ -109,7 +110,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/C
  /** A SiteSettingsDelegate instance that contains Chrome-specific Site Settings logic. */
  public class ChromeSiteSettingsDelegate implements SiteSettingsDelegate {
      public static final String EMBEDDED_CONTENT_HELP_CENTER_URL =
-@@ -202,7 +206,7 @@ public class ChromeSiteSettingsDelegate implements SiteSettingsDelegate {
+@@ -199,7 +203,7 @@ public class ChromeSiteSettingsDelegate implements SiteSettingsDelegate {
  
      @Override
      public boolean isHelpAndFeedbackEnabled() {
@@ -118,7 +119,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/site_settings/C
      }
  
      @Override
-@@ -315,6 +319,17 @@ public class ChromeSiteSettingsDelegate implements SiteSettingsDelegate {
+@@ -312,6 +316,17 @@ public class ChromeSiteSettingsDelegate implements SiteSettingsDelegate {
          return PrivacySandboxBridge.getFirstPartySetOwner(memberOrigin);
      }
  
@@ -151,7 +152,7 @@ diff --git a/chrome/browser/installable/installed_webapp_bridge.cc b/chrome/brow
 diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html b/chrome/browser/resources/settings/privacy_page/privacy_page.html
 --- a/chrome/browser/resources/settings/privacy_page/privacy_page.html
 +++ b/chrome/browser/resources/settings/privacy_page/privacy_page.html
-@@ -1326,4 +1326,5 @@
+@@ -1369,4 +1369,5 @@
            </settings-subpage>
         </template>
        </template>
@@ -160,7 +161,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html b/
 diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 --- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 +++ b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
-@@ -47,6 +47,7 @@ import {SiteSettingsPrefsBrowserProxy, SiteSettingsPrefsBrowserProxyImpl} from '
+@@ -51,6 +51,7 @@ import {SiteSettingsPrefsBrowserProxyImpl} from '../site_settings/site_settings_
  
  import {PrivacyGuideAvailabilityMixin} from './privacy_guide/privacy_guide_availability_mixin.js';
  import {getTemplate} from './privacy_page.html.js';
@@ -168,7 +169,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/ch
  
  interface BlockAutoplayStatus {
    enabled: boolean;
-@@ -70,8 +71,82 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+@@ -74,8 +75,82 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
      return 'settings-privacy-page';
    }
  
@@ -255,15 +256,15 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/ch
 diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
 --- a/chrome/browser/resources/settings/route.ts
 +++ b/chrome/browser/resources/settings/route.ts
-@@ -7,6 +7,7 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
- 
+@@ -8,6 +8,7 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
  import {pageVisibility} from './page_visibility.js';
- import {Route, Router, SettingsRoutes} from './router.js';
+ import type {SettingsRoutes} from './router.js';
+ import {Route, Router} from './router.js';
 +import {setupContentSettingsRoutes} from './site_settings_page/site_settings_page_util.js'
  
  /**
   * Add all of the child routes that originate from the privacy route,
-@@ -136,6 +137,7 @@ function addPrivacyChildRoutes(r: Partial<SettingsRoutes>) {
+@@ -141,6 +142,7 @@ function addPrivacyChildRoutes(r: Partial<SettingsRoutes>) {
      r.SITE_SETTINGS_STORAGE_ACCESS =
          r.SITE_SETTINGS.createChild('storageAccess');
    }
@@ -295,7 +296,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
 diff --git a/chrome/browser/resources/settings/site_settings/settings_category_default_radio_group.ts b/chrome/browser/resources/settings/site_settings/settings_category_default_radio_group.ts
 --- a/chrome/browser/resources/settings/site_settings/settings_category_default_radio_group.ts
 +++ b/chrome/browser/resources/settings/site_settings/settings_category_default_radio_group.ts
-@@ -29,6 +29,7 @@ import {ContentSettingProvider, DefaultContentSetting} from './site_settings_pre
+@@ -30,6 +30,7 @@ import {ContentSettingProvider} from './site_settings_prefs_browser_proxy.js';
  export enum SiteContentRadioSetting {
    DISABLED = 0,
    ENABLED = 1,
@@ -303,7 +304,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
  }
  
  export interface SettingsCategoryDefaultRadioGroupElement {
-@@ -76,6 +77,10 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -77,6 +78,10 @@ export class SettingsCategoryDefaultRadioGroupElement extends
        blockOptionSubLabel: String,
        blockOptionIcon: String,
  
@@ -314,7 +315,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
        siteContentRadioSettingEnum_: {
          type: Object,
          value: SiteContentRadioSetting,
-@@ -111,6 +116,9 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -112,6 +117,9 @@ export class SettingsCategoryDefaultRadioGroupElement extends
    blockOptionLabel: string;
    blockOptionSubLabel: string;
    blockOptionIcon: string;
@@ -324,7 +325,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
    private pref_: chrome.settingsPrivate.PrefObject<number>;
  
    override ready() {
-@@ -121,6 +129,13 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -122,6 +130,13 @@ export class SettingsCategoryDefaultRadioGroupElement extends
          (category: ContentSettingsTypes) => this.onCategoryChanged_(category));
    }
  
@@ -338,7 +339,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
    private getAllowOptionForCategory_(): ContentSetting {
      switch (this.category) {
        case ContentSettingsTypes.ADS:
-@@ -161,6 +176,8 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -163,6 +178,8 @@ export class SettingsCategoryDefaultRadioGroupElement extends
          // "Ask" vs "Blocked".
          return ContentSetting.ASK;
        default:
@@ -347,7 +348,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
          assertNotReached('Invalid category: ' + this.category);
      }
    }
-@@ -185,6 +202,7 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -187,6 +204,7 @@ export class SettingsCategoryDefaultRadioGroupElement extends
          /** @type {!ContentSetting} */ (this.getAllowOptionForCategory_());
      this.browserProxy.setDefaultValueForContentType(
          this.category,
@@ -355,7 +356,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
          this.categoryEnabled_ ? allowOption : ContentSetting.BLOCK);
    }
  
-@@ -216,7 +234,9 @@ export class SettingsCategoryDefaultRadioGroupElement extends
+@@ -218,7 +236,9 @@ export class SettingsCategoryDefaultRadioGroupElement extends
      }
  
      const enabled = this.computeIsSettingEnabled(update.setting);
@@ -369,7 +370,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/settings_category_d
 diff --git a/chrome/browser/resources/settings/site_settings/site_details.html b/chrome/browser/resources/settings/site_settings/site_details.html
 --- a/chrome/browser/resources/settings/site_settings/site_details.html
 +++ b/chrome/browser/resources/settings/site_settings/site_details.html
-@@ -279,4 +279,5 @@
+@@ -282,4 +282,5 @@
              label="$i18n{siteSettingsAutoPictureInPicture}">
          </site-details-permission>
        </template>
@@ -378,7 +379,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/site_details.html b
 diff --git a/chrome/browser/resources/settings/site_settings/site_details.ts b/chrome/browser/resources/settings/site_settings/site_details.ts
 --- a/chrome/browser/resources/settings/site_settings/site_details.ts
 +++ b/chrome/browser/resources/settings/site_settings/site_details.ts
-@@ -60,8 +60,39 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
+@@ -62,8 +62,39 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
      return 'site-details';
    }
  
@@ -537,15 +538,15 @@ diff --git a/chrome/browser/resources/settings/site_settings/site_details_permis
 diff --git a/chrome/browser/resources/settings/site_settings/site_settings_mixin.ts b/chrome/browser/resources/settings/site_settings/site_settings_mixin.ts
 --- a/chrome/browser/resources/settings/site_settings/site_settings_mixin.ts
 +++ b/chrome/browser/resources/settings/site_settings/site_settings_mixin.ts
-@@ -11,6 +11,7 @@ import {dedupingMixin, PolymerElement} from 'chrome://resources/polymer/v3_0/pol
- 
- import {ContentSetting,ContentSettingsTypes, SiteSettingSource} from './constants.js';
- import {RawSiteException,SiteException,SiteSettingsPrefsBrowserProxy,SiteSettingsPrefsBrowserProxyImpl} from './site_settings_prefs_browser_proxy.js';
+@@ -14,6 +14,7 @@ import type {ContentSettingsTypes} from './constants.js';
+ import {ContentSetting, SiteSettingSource} from './constants.js';
+ import type {RawSiteException,SiteException,SiteSettingsPrefsBrowserProxy} from './site_settings_prefs_browser_proxy.js';
+ import {SiteSettingsPrefsBrowserProxyImpl} from './site_settings_prefs_browser_proxy.js';
 +import {loadTimeData} from '../i18n_setup.js';
  // clang-format on
  
  type Constructor<T> = new (...args: any[]) => T;
-@@ -91,6 +92,21 @@ export const SiteSettingsMixin = dedupingMixin(
+@@ -94,6 +95,21 @@ export const SiteSettingsMixin = dedupingMixin(
            return setting !== ContentSetting.BLOCK;
          }
  
@@ -567,7 +568,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/site_settings_mixin
          /**
           * Converts a string origin/pattern to a URL.
           * @param originOrPattern The origin/pattern to convert to URL.
-@@ -171,6 +187,8 @@ export interface SiteSettingsMixinInterface {
+@@ -174,6 +190,8 @@ export interface SiteSettingsMixinInterface {
    browserProxy: SiteSettingsPrefsBrowserProxy;
    category: ContentSettingsTypes;
    computeIsSettingEnabled(setting: string): boolean;
@@ -579,7 +580,7 @@ diff --git a/chrome/browser/resources/settings/site_settings/site_settings_mixin
 diff --git a/chrome/browser/resources/settings/site_settings_page/site_settings_page.ts b/chrome/browser/resources/settings/site_settings_page/site_settings_page.ts
 --- a/chrome/browser/resources/settings/site_settings_page/site_settings_page.ts
 +++ b/chrome/browser/resources/settings/site_settings_page/site_settings_page.ts
-@@ -45,7 +45,7 @@ function getCategoryItemMap(): Map<ContentSettingsTypes, CategoryListItem> {
+@@ -47,7 +47,7 @@ function getCategoryItemMap(): Map<ContentSettingsTypes, CategoryListItem> {
    }
    // The following list is ordered alphabetically by |id|. The order in which
    // these appear in the UI is determined elsewhere in this file.
@@ -588,7 +589,7 @@ diff --git a/chrome/browser/resources/settings/site_settings_page/site_settings_
      {
        route: routes.SITE_SETTINGS_ADS,
        id: Id.ADS,
-@@ -371,10 +371,36 @@ function getCategoryItemMap(): Map<ContentSettingsTypes, CategoryListItem> {
+@@ -391,10 +391,36 @@ function getCategoryItemMap(): Map<ContentSettingsTypes, CategoryListItem> {
        disabledLabel: 'trackingProtectionLinkRowSubLabel',
      });
    }
@@ -625,7 +626,7 @@ diff --git a/chrome/browser/resources/settings/site_settings_page/site_settings_
  function buildItemListFromIds(orderedIdList: ContentSettingsTypes[]):
      CategoryListItem[] {
    const map = getCategoryItemMap();
-@@ -465,7 +491,7 @@ export class SettingsSiteSettingsPageElement extends
+@@ -486,7 +512,7 @@ export class SettingsSiteSettingsPageElement extends
                Id.IMAGES,
                Id.POPUPS,
              ]),
@@ -692,7 +693,7 @@ diff --git a/chrome/browser/resources/settings/site_settings_page/site_settings_
  /**
   * Determine localization string for i18n for a given content settings type.
   * Sorted alphabetically by |ContentSettingsType|.
-@@ -90,6 +138,13 @@ export function getLocalizationStringForContentType(
+@@ -92,6 +140,13 @@ export function getLocalizationStringForContentType(
      case ContentSettingsTypes.SITE_DATA:
        return null;
      default:
@@ -709,8 +710,8 @@ diff --git a/chrome/browser/resources/settings/site_settings_page/site_settings_
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -2047,6 +2047,7 @@ static_library("ui") {
-       "//components/commerce/core/mojom:mojo_bindings",
+@@ -2043,6 +2043,7 @@ static_library("ui") {
+       "//components/commerce/core:shopping_service",
        "//components/commerce/core/webui",
        "//components/endpoint_fetcher:endpoint_fetcher",
 +      "//components/content_settings/core/browser:browser",
@@ -720,7 +721,7 @@ diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
 diff --git a/chrome/browser/ui/views/controls/rich_controls_container_view.h b/chrome/browser/ui/views/controls/rich_controls_container_view.h
 --- a/chrome/browser/ui/views/controls/rich_controls_container_view.h
 +++ b/chrome/browser/ui/views/controls/rich_controls_container_view.h
-@@ -42,6 +42,13 @@ class RichControlsContainerView : public views::FlexLayoutView {
+@@ -43,6 +43,13 @@ class RichControlsContainerView : public views::FlexLayoutView {
      return AddChildView(std::move(control_view));
    }
  
@@ -737,7 +738,7 @@ diff --git a/chrome/browser/ui/views/controls/rich_controls_container_view.h b/c
 diff --git a/chrome/browser/ui/views/page_info/page_info_main_view.cc b/chrome/browser/ui/views/page_info/page_info_main_view.cc
 --- a/chrome/browser/ui/views/page_info/page_info_main_view.cc
 +++ b/chrome/browser/ui/views/page_info/page_info_main_view.cc
-@@ -49,6 +49,7 @@
+@@ -50,6 +50,7 @@
  #include "ui/views/controls/separator.h"
  #include "ui/views/layout/box_layout.h"
  #include "ui/views/layout/flex_layout.h"
@@ -745,7 +746,7 @@ diff --git a/chrome/browser/ui/views/page_info/page_info_main_view.cc b/chrome/b
  #include "ui/views/view_class_properties.h"
  
  #if BUILDFLAG(FULL_SAFE_BROWSING)
-@@ -243,8 +244,20 @@ void PageInfoMainView::SetPermissionInfo(
+@@ -244,8 +245,20 @@ void PageInfoMainView::SetPermissionInfo(
    scroll_view->SetDrawOverflowIndicator(false);
    auto* content_view =
        scroll_view->SetContents(std::make_unique<views::View>());
@@ -768,7 +769,7 @@ diff --git a/chrome/browser/ui/views/page_info/page_info_main_view.cc b/chrome/b
    content_view->SetID(PageInfoViewFactory::VIEW_ID_PAGE_INFO_PERMISSION_VIEW);
    content_view->SetProperty(views::kElementIdentifierKey,
                              kPermissionsElementId);
-@@ -259,17 +272,24 @@ void PageInfoMainView::SetPermissionInfo(
+@@ -260,17 +273,24 @@ void PageInfoMainView::SetPermissionInfo(
      }
    }
  
@@ -793,10 +794,11 @@ diff --git a/chrome/browser/ui/views/page_info/page_info_main_view.cc b/chrome/b
      // The view takes ownership of the object info.
      auto object_view = std::make_unique<ChosenObjectView>(
          std::move(object),
-@@ -280,6 +300,9 @@ void PageInfoMainView::SetPermissionInfo(
+@@ -281,6 +301,10 @@ void PageInfoMainView::SetPermissionInfo(
          content_view->AddChildView(std::move(object_view)));
    }
  
++  table_layout->AddRows(/*n=*/1, views::TableLayout::kFixedSize);
 +  if (++count % 2 == 0)
 +    content_view->AddChildView(std::make_unique<views::View>());
 +
@@ -815,7 +817,7 @@ diff --git a/chrome/browser/ui/views/page_info/page_info_view_factory.cc b/chrom
  #include "components/page_info/core/features.h"
  #include "components/page_info/core/proto/about_this_site_metadata.pb.h"
  #include "components/page_info/page_info.h"
-@@ -253,7 +255,13 @@ const ui::ImageModel PageInfoViewFactory::GetPermissionIcon(
+@@ -254,7 +256,13 @@ const ui::ImageModel PageInfoViewFactory::GetPermissionIcon(
    ContentSetting setting = info.setting == CONTENT_SETTING_DEFAULT
                                 ? info.default_setting
                                 : info.setting;
@@ -829,8 +831,8 @@ diff --git a/chrome/browser/ui/views/page_info/page_info_view_factory.cc b/chrom
    // For guard content settings and Automatic Picture-in-Picture, ASK is treated
    // as an "on" state.
    const bool show_blocked_badge =
-@@ -507,6 +515,17 @@ const ui::ImageModel PageInfoViewFactory::GetPermissionIcon(
-       icon = &vector_icons::kPictureInPictureIcon;
+@@ -509,6 +517,17 @@ const ui::ImageModel PageInfoViewFactory::GetPermissionIcon(
+       icon = &kFullscreenIcon;
        break;
      default:
 +      bool found = false;
@@ -1101,10 +1103,10 @@ diff --git a/chrome/browser/ui/views/page_info/permission_toggle_row_view.h b/ch
 -class PermissionToggleRowView : public views::View {
 +class PermissionToggleRowView : public views::View,
 +                                public ui::SimpleMenuModel::Delegate {
+   METADATA_HEADER(PermissionToggleRowView, views::View)
+ 
   public:
-   METADATA_HEADER(PermissionToggleRowView);
-   PermissionToggleRowView(ChromePageInfoUiDelegate* delegate,
-@@ -52,6 +58,12 @@ class PermissionToggleRowView : public views::View {
+@@ -55,6 +61,12 @@ class PermissionToggleRowView : public views::View {
   private:
    friend class test::PageInfoBubbleViewTestApi;
  
@@ -1117,7 +1119,7 @@ diff --git a/chrome/browser/ui/views/page_info/permission_toggle_row_view.h b/ch
    void OnToggleButtonPressed();
    void InitForUserSource(bool should_show_spacer_view,
                           const std::u16string& toggle_accessible_name);
-@@ -65,6 +77,10 @@ class PermissionToggleRowView : public views::View {
+@@ -68,6 +80,10 @@ class PermissionToggleRowView : public views::View {
    raw_ptr<views::ToggleButton, DanglingUntriaged> toggle_button_ = nullptr;
    raw_ptr<views::View, DanglingUntriaged> spacer_view_ = nullptr;
  
@@ -1128,6 +1130,18 @@ diff --git a/chrome/browser/ui/views/page_info/permission_toggle_row_view.h b/ch
    raw_ptr<ChromePageInfoUiDelegate, DanglingUntriaged> delegate_ = nullptr;
    raw_ptr<PageInfoNavigationHandler, DanglingUntriaged> navigation_handler_ =
        nullptr;
+diff --git a/chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_handler.cc b/chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_handler.cc
+--- a/chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_handler.cc
++++ b/chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_handler.cc
+@@ -41,7 +41,7 @@ void PrivacySandboxInternalsHandler::ReadPref(const std::string& pref_name,
+ void PrivacySandboxInternalsHandler::ReadContentSettings(
+     const ContentSettingsType type,
+     ReadContentSettingsCallback callback) {
+-  if (!IsKnownEnumValue(type) || type == ContentSettingsType::NUM_TYPES) {
++  if (!IsKnownEnumValue(type) || type == ContentSettingsType::NUM_TYPES_BROMITE) {
+     mojo::ReportBadMessage(
+         "ReadContentSettings received invalid ContentSettingsType");
+     return;
 diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 --- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 +++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
@@ -1149,7 +1163,7 @@ diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provide
  #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
  #include "components/password_manager/core/browser/manage_passwords_referrer.h"
  #include "components/password_manager/core/common/password_manager_features.h"
-@@ -3628,6 +3632,56 @@ void AddLocalizedStrings(content::WebUIDataSource* html_source,
+@@ -3789,6 +3793,56 @@ void AddLocalizedStrings(content::WebUIDataSource* html_source,
    policy_indicator::AddLocalizedStrings(html_source);
    AddSecurityKeysStrings(html_source);
  
@@ -1218,7 +1232,7 @@ diff --git a/chrome/browser/ui/webui/settings/site_settings_helper.cc b/chrome/b
  #include "components/content_settings/core/common/content_settings.h"
  #include "components/content_settings/core/common/content_settings_pattern.h"
  #include "components/content_settings/core/common/content_settings_utils.h"
-@@ -209,7 +211,7 @@ const ContentSettingsTypeNameEntry kContentSettingsTypeGroupNames[] = {
+@@ -219,7 +221,7 @@ const ContentSettingsTypeNameEntry kContentSettingsTypeGroupNames[] = {
  
  static_assert(std::size(kContentSettingsTypeGroupNames) ==
                    // ContentSettingsType starts at -1, so add 1 here.
@@ -1227,7 +1241,7 @@ diff --git a/chrome/browser/ui/webui/settings/site_settings_helper.cc b/chrome/b
                "kContentSettingsTypeGroupNames should have "
                "CONTENT_SETTINGS_NUM_TYPES elements");
  
-@@ -462,6 +464,13 @@ bool HasRegisteredGroupName(ContentSettingsType type) {
+@@ -471,6 +473,13 @@ bool HasRegisteredGroupName(ContentSettingsType type) {
        return true;
      }
    }
@@ -1241,7 +1255,7 @@ diff --git a/chrome/browser/ui/webui/settings/site_settings_helper.cc b/chrome/b
    return false;
  }
  
-@@ -475,11 +484,24 @@ ContentSettingsType ContentSettingsTypeFromGroupName(base::StringPiece name) {
+@@ -484,11 +493,24 @@ ContentSettingsType ContentSettingsTypeFromGroupName(base::StringPiece name) {
        return entry.type;
      }
    }
@@ -1267,7 +1281,7 @@ diff --git a/chrome/browser/ui/webui/settings/site_settings_helper.cc b/chrome/b
    for (const auto& entry : kContentSettingsTypeGroupNames) {
      if (type == entry.type) {
        // Content setting types that aren't represented in the settings UI
-@@ -494,7 +516,6 @@ base::StringPiece ContentSettingsTypeToGroupName(ContentSettingsType type) {
+@@ -503,7 +525,6 @@ base::StringPiece ContentSettingsTypeToGroupName(ContentSettingsType type) {
        return entry.name ? entry.name : base::StringPiece();
      }
    }
@@ -1275,8 +1289,8 @@ diff --git a/chrome/browser/ui/webui/settings/site_settings_helper.cc b/chrome/b
    NOTREACHED() << static_cast<int32_t>(type)
                 << " is not a recognized content settings type.";
    return base::StringPiece();
-@@ -574,6 +595,13 @@ const std::vector<ContentSettingsType>& GetVisiblePermissionCategories() {
-       base_types->push_back(ContentSettingsType::MIDI_SYSEX);
+@@ -587,6 +608,13 @@ const std::vector<ContentSettingsType>& GetVisiblePermissionCategories() {
+       base_types->push_back(ContentSettingsType::SPEAKER_SELECTION);
      }
  
 +    content_settings::WebsiteSettingsRegistry* website_settings =
@@ -1455,7 +1469,7 @@ diff --git a/components/browser_ui/settings/android/widget/java/src/org/chromium
 diff --git a/components/browser_ui/site_settings/android/BUILD.gn b/components/browser_ui/site_settings/android/BUILD.gn
 --- a/components/browser_ui/site_settings/android/BUILD.gn
 +++ b/components/browser_ui/site_settings/android/BUILD.gn
-@@ -149,6 +149,23 @@ android_library("java") {
+@@ -141,6 +141,23 @@ android_library("java") {
      ":site_settings_jni_headers",
      "//components/content_settings/android:java_pref_names_srcjar",
    ]
@@ -1479,7 +1493,7 @@ diff --git a/components/browser_ui/site_settings/android/BUILD.gn b/components/b
  }
  
  android_library("javatests") {
-@@ -194,6 +211,7 @@ robolectric_library("junit") {
+@@ -186,6 +203,7 @@ robolectric_library("junit") {
  }
  
  android_resources("java_resources") {
@@ -1549,7 +1563,7 @@ new file mode 100644
 +
 +public abstract class BromiteCustomContentSetting {
 +
-+    private @ContentSettingsType int mContentSettingsType;
++    private @ContentSettingsType.EnumType int mContentSettingsType;
 +    private @SiteSettingsCategory.Type int mSiteSettingsCategory;
 +    private @ContentSettingValues Integer mDefaultEnabledValue;
 +    private @ContentSettingValues Integer mDefaultDisabledValue;
@@ -1557,7 +1571,7 @@ new file mode 100644
 +    private String mPreferenceKey;
 +    private String mProfilePrefKey;
 +
-+    public BromiteCustomContentSetting(@ContentSettingsType int contentSettingsType,
++    public BromiteCustomContentSetting(@ContentSettingsType.EnumType int contentSettingsType,
 +                                       @ContentSettingValues Integer defaultEnabledValue,
 +                                       @ContentSettingValues Integer defaultDisabledValue,
 +                                       boolean allowException,
@@ -1571,7 +1585,7 @@ new file mode 100644
 +        mProfilePrefKey = profilePrefKey;
 +    }
 +
-+    public @ContentSettingsType int getContentSetting() {
++    public @ContentSettingsType.EnumType int getContentSetting() {
 +        return mContentSettingsType;
 +    }
 +
@@ -1636,7 +1650,7 @@ new file mode 100644
 +
 +    public abstract @Nullable Boolean considerException(SiteSettingsCategory category, @ContentSettingValues int value);
 +
-+    public ContentSettingException createCustomException(@ContentSettingsType int type,
++    public ContentSettingException createCustomException(@ContentSettingsType.EnumType int type,
 +                                                         @ContentSettingValues int value,
 +                                                         WebsiteAddress websiteAddress) {
 +        return null;
@@ -1753,7 +1767,7 @@ new file mode 100644
 +        return BromiteCustomContentSettingImplBase.NUM_ENTRIES();
 +    }
 +
-+    public static BromiteCustomContentSetting getContentSetting(@ContentSettingsType int type) {
++    public static BromiteCustomContentSetting getContentSetting(@ContentSettingsType.EnumType int type) {
 +        for (BromiteCustomContentSetting cs : mItemList) {
 +            if (type == cs.getContentSetting()) {
 +                return cs;
@@ -1763,7 +1777,7 @@ new file mode 100644
 +    }
 +
 +    public static Preference createWebSitePreference(
-+                                @ContentSettingsType int type,
++                                @ContentSettingsType.EnumType int type,
 +                                Context context,
 +                                @ContentSettingValues @Nullable Integer value) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
@@ -1808,7 +1822,7 @@ new file mode 100644
 +    }
 +
 +    public static void setWebSitePreferenceValue(
-+                                @ContentSettingsType int type,
++                                @ContentSettingsType.EnumType int type,
 +                                Preference preference,
 +                                @ContentSettingValues @Nullable Integer value) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
@@ -1826,7 +1840,7 @@ new file mode 100644
 +    }
 +
 +    public static Integer getWebSitePreferenceValue(
-+                                @ContentSettingsType int type,
++                                @ContentSettingsType.EnumType int type,
 +                                Object newValue) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) {
@@ -1850,13 +1864,13 @@ new file mode 100644
 +        return null;
 +    }
 +
-+   public static String getProfilePrefKey(@ContentSettingsType int type) {
++   public static String getProfilePrefKey(@ContentSettingsType.EnumType int type) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.getProfilePrefKey();
 +        return null;
 +    }
 +
-+    public static @ContentSettingsType int contentSettingsType(@SiteSettingsCategory.Type int type) {
++    public static @ContentSettingsType.EnumType int contentSettingsType(@SiteSettingsCategory.Type int type) {
 +        for (BromiteCustomContentSetting cs : mItemList) {
 +            if (type == cs.getSiteSettingsCategory()) {
 +                return cs.getContentSetting();
@@ -1867,31 +1881,31 @@ new file mode 100644
 +    }
 +
 +    public static WebsitePermissionsFetcher.WebsitePermissionsType getPermissionsType(
-+            @ContentSettingsType int type) {
++            @ContentSettingsType.EnumType int type) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.getPermissionsType();
 +        return null;
 +    }
 +
-+    public static ContentSettingsResources.ResourceItem getResourceItem(@ContentSettingsType int type) {
++    public static ContentSettingsResources.ResourceItem getResourceItem(@ContentSettingsType.EnumType int type) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.getResourceItem();
 +        return null;
 +    }
 +
-+    public static int getCategorySummary(@ContentSettingsType int type, @Nullable @ContentSettingValues int value) {
++    public static int getCategorySummary(@ContentSettingsType.EnumType int type, @Nullable @ContentSettingValues int value) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.getCategorySummary(value);
 +        return 0;
 +    }
 +
-+    public static boolean requiresTriStateContentSetting(@ContentSettingsType int type) {
++    public static boolean requiresTriStateContentSetting(@ContentSettingsType.EnumType int type) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.requiresTriStateContentSetting();
 +        return false;
 +    }
 +
-+    public static int[] getTriStateSettingDescriptionIDs(@ContentSettingsType int type) {
++    public static int[] getTriStateSettingDescriptionIDs(@ContentSettingsType.EnumType int type) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.getTriStateSettingDescriptionIDs();
 +        return null;
@@ -1927,13 +1941,13 @@ new file mode 100644
 +        return false;
 +    }
 +
-+    public static boolean processOnBlockList(@ContentSettingsType int type, @ContentSettingValues Integer value) {
++    public static boolean processOnBlockList(@ContentSettingsType.EnumType int type, @ContentSettingValues Integer value) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
 +        if (cs != null) return cs.processOnBlockList(value);
 +        return false;
 +    }
 +
-+    public static boolean isOnBlockList(@ContentSettingsType int type,
++    public static boolean isOnBlockList(@ContentSettingsType.EnumType int type,
 +                                        WebsitePreference website,
 +                                        @ContentSettingValues Integer contentSetting) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
@@ -2023,7 +2037,7 @@ new file mode 100644
 +        return "";
 +    }
 +
-+    public static ContentSettingException createCustomException(@ContentSettingsType int type,
++    public static ContentSettingException createCustomException(@ContentSettingsType.EnumType int type,
 +                                                                @ContentSettingValues int value,
 +                                                                WebsiteAddress websiteAddress) {
 +        BromiteCustomContentSetting cs = getContentSetting(type);
@@ -2039,7 +2053,7 @@ new file mode 100644
 +        return null;
 +    }
 +
-+    public static AlertDialog.Builder buildPreferenceDialog(Website site, @ContentSettingsType int type,
++    public static AlertDialog.Builder buildPreferenceDialog(Website site, @ContentSettingsType.EnumType int type,
 +                                                            BrowserContextHandle browserContextHandle,
 +                                                            Context context,
 +                                                            final DialogInterface.OnClickListener listener) {
@@ -2133,7 +2147,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
                  int icon,
                  int title,
                  @ContentSettingValues @Nullable Integer defaultEnabledValue,
-@@ -437,6 +437,8 @@ public class ContentSettingsResources {
+@@ -427,6 +427,8 @@ public class ContentSettingsResources {
                          R.string.website_settings_category_vr_blocked,
                          R.string.website_settings_category_vr_a11y);
          }
@@ -2142,20 +2156,22 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          assert false; // NOTREACHED
          return null;
      }
-@@ -617,6 +619,12 @@ public class ContentSettingsResources {
-         }
+@@ -590,6 +592,14 @@ public class ContentSettingsResources {
+         return getResourceItem(contentType, null).getDefaultDisabledValue();
      }
  
-+    public static int getCategorySummary(int contentType, @Nullable @ContentSettingValues int value) {
++    public static int getCategorySummary(int contentType,
++                                         @Nullable @ContentSettingValues int value,
++                                         boolean isOneTime) {
 +        int result = BromiteCustomContentSettingImpl.getCategorySummary(contentType, value);
 +        if (result != 0) return result;
-+        return getCategorySummary(value);
++        return getCategorySummary(value, isOneTime);
 +    }
 +
      /**
-      * Returns the string resource id for a content type to show with a permission category.
-      * @param enabled Whether the content type is enabled.
-@@ -769,6 +777,8 @@ public class ContentSettingsResources {
+      * Returns the string resource id for a given ContentSetting to show with a permission category.
+      *
+@@ -752,6 +762,8 @@ public class ContentSettingsResources {
       *         Blocked states, in that order.
       */
      public static int[] getTriStateSettingDescriptionIDs(int contentType) {
@@ -2167,7 +2183,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleCategorySettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleCategorySettings.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleCategorySettings.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleCategorySettings.java
-@@ -337,6 +337,10 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -329,6 +329,10 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                  website.site()
                          .getContentSetting(
                                  browserContextHandle, mCategory.getContentSettingsType());
@@ -2178,7 +2194,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          if (contentSetting != null) {
              return ContentSettingValues.BLOCK == contentSetting;
          }
-@@ -501,6 +505,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -493,6 +497,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                          ? new HashSet<>(getArguments().getStringArrayList(EXTRA_SELECTED_DOMAINS))
                          : null;
  
@@ -2186,7 +2202,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          configureGlobalToggles();
          if (mCategory.getType() == SiteSettingsCategory.Type.REQUEST_DESKTOP_SITE) {
              RecordUserAction.record("DesktopSiteContentSetting.SettingsPage.Entered");
-@@ -531,7 +536,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -523,7 +528,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                      if (queryHasChanged) getInfoForOrigins();
                  });
  
@@ -2196,7 +2212,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
              MenuItem help =
                      menu.add(
                              Menu.NONE,
-@@ -543,12 +549,20 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -535,12 +541,20 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                              getResources(),
                              R.drawable.ic_help_and_feedback,
                              getContext().getTheme()));
@@ -2217,7 +2233,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
              if (mCategory.getType() == SiteSettingsCategory.Type.PROTECTED_MEDIA) {
                  getSiteSettingsDelegate()
                          .launchProtectedContentHelpAndFeedbackActivity(getActivity());
-@@ -620,6 +634,11 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -612,6 +626,11 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
          BrowserContextHandle browserContextHandle =
                  getSiteSettingsDelegate().getBrowserContextHandle();
          PrefService prefService = UserPrefs.get(browserContextHandle);
@@ -2229,7 +2245,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          if (BINARY_TOGGLE_KEY.equals(preference.getKey())) {
              assert !mCategory.isManaged();
              boolean toggleValue = (boolean) newValue;
-@@ -817,6 +836,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -804,6 +823,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                                          .website_settings_allowed_group_heading_request_desktop_site;
                  break;
          }
@@ -2238,7 +2254,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          assert resource > 0;
          return getString(resource);
      }
-@@ -934,6 +955,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -919,6 +940,8 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
              default:
                  break;
          }
@@ -2247,7 +2263,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          if (allowSpecifyingExceptions) {
              getPreferenceScreen()
                      .addPreference(
-@@ -1122,8 +1145,16 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -1107,8 +1130,16 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
      private boolean isBlocked() {
          switch (mGlobalToggleLayout) {
              case GlobalToggleLayout.TRI_STATE_TOGGLE:
@@ -2264,7 +2280,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
                  return (triStateToggle.getCheckedSetting() == ContentSettingValues.BLOCK);
              case GlobalToggleLayout.TRI_STATE_COOKIE_TOGGLE:
                  TriStateCookieSettingsPreference triStateCookieToggle =
-@@ -1190,7 +1221,11 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -1173,7 +1204,11 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
          } else if (mCategory.getType() == SiteSettingsCategory.Type.STORAGE_ACCESS) {
              infoText.setSummary(getStorageAccessSummary());
          } else {
@@ -2277,7 +2293,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
  
          // Hide the anti-abuse text preferences, as needed.
-@@ -1214,6 +1249,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -1197,6 +1232,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
              screen.removePreference(antiAbuseThingsToConsiderHeader);
              screen.removePreference(antiAbuseThingsToConsiderSectionOne);
          }
@@ -2285,7 +2301,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
  
          if (permissionBlockedByOs) {
              maybeShowOsWarning(screen);
-@@ -1378,7 +1414,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -1348,7 +1384,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
                          getSiteSettingsDelegate().getBrowserContextHandle(), contentType);
          int[] descriptionIds =
                  ContentSettingsResources.getTriStateSettingDescriptionIDs(contentType);
@@ -2294,7 +2310,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
      }
  
      private void configureBinaryToggle(ChromeSwitchPreference binaryToggle, int contentType) {
-@@ -1517,6 +1553,14 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
+@@ -1459,6 +1495,14 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
          @ContentSettingValues
          Integer value = site.getContentSetting(browserContextHandle, contentSettingsType);
  
@@ -2312,7 +2328,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
-@@ -49,6 +49,7 @@ import java.util.Collection;
+@@ -46,6 +46,7 @@ import java.util.Collection;
  import java.util.HashMap;
  import java.util.List;
  import java.util.Map;
@@ -2320,7 +2336,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
  
  /** Shows the permissions and other settings for a particular website. */
  public class SingleWebsiteSettings extends BaseSiteSettingsFragment
-@@ -169,7 +170,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -164,7 +165,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
              case ContentSettingsType.CLIPBOARD_READ_WRITE:
                  return "clipboard_permission_list";
              default:
@@ -2329,14 +2345,14 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
      }
  
-@@ -544,8 +545,21 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -534,8 +535,21 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
  
      private void setupContentSettingsPreferences() {
          mMaxPermissionOrder = findPreference(PREF_PERMISSIONS_HEADER).getOrder();
--        for (@ContentSettingsType int type : SiteSettingsUtil.SETTINGS_ORDER) {
+-        for (@ContentSettingsType.EnumType int type : SiteSettingsUtil.SETTINGS_ORDER) {
 -            Preference preference = new ChromeSwitchPreference(getStyledContext());
 +        List<Integer> order = BromiteCustomContentSettingImpl.getSettingsOrder();
-+        for (@ContentSettingsType int type : order) {
++        for (@ContentSettingsType.EnumType int type : order) {
 +            @ContentSettingValues @Nullable Integer value =
 +                mSite.getContentSetting(
 +                    getSiteSettingsDelegate().getBrowserContextHandle(), type);
@@ -2353,10 +2369,10 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
              preference.setKey(getPreferenceKey(type));
  
              if (type == ContentSettingsType.ADS) {
-@@ -1085,20 +1099,32 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
-             Preference preference,
+@@ -1060,20 +1074,32 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
              @ContentSettingValues @Nullable Integer value,
-             boolean isEmbargoed) {
+             boolean isEmbargoed,
+             boolean isOneTime) {
 -        if (value == null) return;
 +        int content_type = getContentSettingsTypeFromPreferenceKey(preference.getKey());
 +        BromiteCustomContentSetting cs =
@@ -2380,10 +2396,10 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          switchPreference.setSummary(
                  isEmbargoed
                          ? getString(R.string.automatically_blocked)
--                        : getString(ContentSettingsResources.getCategorySummary(value)));
-+                        : getString(ContentSettingsResources.getCategorySummary(content_type, value)));
+-                        : getString(ContentSettingsResources.getCategorySummary(value, isOneTime)));
++                        : getString(ContentSettingsResources.getCategorySummary(content_type, value, isOneTime)));
          switchPreference.setOnPreferenceChangeListener(this);
-         @ContentSettingsType
+         @ContentSettingsType.EnumType
          int contentType = getContentSettingsTypeFromPreferenceKey(preference.getKey());
 -        if (contentType == mHighlightedPermission) {
 -            switchPreference.setBackgroundColor(mHighlightColor);
@@ -2392,16 +2408,16 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
          if (isSessionPermission(contentType)) {
              switchPreference.setSummary(switchPreference.getSummary() + " " +
-@@ -1256,7 +1282,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
-     public @ContentSettingsType int getContentSettingsTypeFromPreferenceKey(String preferenceKey) {
+@@ -1250,7 +1276,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          if (mPreferenceMap == null) {
              mPreferenceMap = new HashMap<>();
--            for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES; type++) {
-+            for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES_BROMITE; type++) {
+             for (@ContentSettingsType.EnumType int type = 0;
+-                    type < ContentSettingsType.NUM_TYPES;
++                    type < ContentSettingsType.NUM_TYPES_BROMITE;
+                     type++) {
                  String key = getPreferenceKey(type);
                  if (key != null) {
-                     mPreferenceMap.put(key, type);
-@@ -1293,11 +1319,17 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -1288,14 +1314,20 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
              permission =
                      (Boolean) newValue ? ContentSettingValues.ALLOW : ContentSettingValues.BLOCK;
          } else {
@@ -2416,20 +2432,23 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
  
          mSite.setContentSetting(browserContextHandle, type, permission);
--        preference.setSummary(getString(ContentSettingsResources.getCategorySummary(permission)));
-+        preference.setSummary(getString(ContentSettingsResources.getCategorySummary(type, permission)));
+         // In Clank, one time grants are only possible via prompt, not via page
+         // info.
+         preference.setSummary(
+-                getString(ContentSettingsResources.getCategorySummary(permission, false)));
++                getString(ContentSettingsResources.getCategorySummary(type, permission, false)));
          preference.setIcon(getContentSettingsIcon(type, permission));
  
          if (mWebsiteSettingsObserver != null) {
-@@ -1325,7 +1357,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
-         // TODO(mvanouwerkerk): Refactor this class so that it does not depend on the screen state
+@@ -1324,7 +1356,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          // for its logic. This class should maintain its own data model, and only update the screen
          // after a change is made.
--        for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES; type++) {
-+        for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES_BROMITE; type++) {
+         for (@ContentSettingsType.EnumType int type = 0;
+-                type < ContentSettingsType.NUM_TYPES;
++                type < ContentSettingsType.NUM_TYPES_BROMITE;
+                 type++) {
              String key = getPreferenceKey(type);
              if (key != null) {
-                 removePreferenceSafely(key);
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettings.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettings.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettings.java
@@ -2459,19 +2478,36 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
              Preference p = findPreference(prefCategory);
              int contentType = SiteSettingsCategory.contentSettingsType(prefCategory);
              // p can be null if the Preference was removed in configurePreferences.
-@@ -139,10 +140,13 @@ public class SiteSettings extends BaseSiteSettingsFragment
+@@ -142,19 +143,21 @@ public class SiteSettings extends BaseSiteSettingsFragment
              } else if (Type.ZOOM == prefCategory) {
                  // Don't want to set a summary for Zoom because we don't want any message to display
                  // under the Zoom row on site settings.
 -            } else if (requiresTriStateSetting) {
--                p.setSummary(ContentSettingsResources.getCategorySummary(setting));
+-                p.setSummary(
+-                        ContentSettingsResources.getCategorySummary(
+-                                setting, /* isOneTime= */ false));
              } else {
--                p.setSummary(ContentSettingsResources.getCategorySummary(contentType, checked));
-+                int summary = ContentSettingsResources.getCategorySummary(contentType, setting);
+-                @ContentSettingValues
+-                int defaultForToggle =
+-                        checked
+-                                ? ContentSettingsResources.getDefaultEnabledValue(contentType)
+-                                : ContentSettingsResources.getDefaultDisabledValue(contentType);
+-                p.setSummary(
+-                        ContentSettingsResources.getCategorySummary(
+-                                defaultForToggle, /* isOneTime= */ false));
++                int summary = ContentSettingsResources.getCategorySummary(
++                                    contentType, setting, /* isOneTime= */ false);
 +                if (summary != 0) {
 +                    p.setSummary(summary);
 +                } else {
-+                    p.setSummary(ContentSettingsResources.getCategorySummary(contentType, checked));
++                    @ContentSettingValues
++                    int defaultForToggle =
++                            checked
++                                    ? ContentSettingsResources.getDefaultEnabledValue(contentType)
++                                    : ContentSettingsResources.getDefaultDisabledValue(contentType);
++                    p.setSummary(
++                            ContentSettingsResources.getCategorySummary(
++                                    defaultForToggle, /* isOneTime= */ false));
 +                }
              }
  
@@ -2508,7 +2544,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
      }
  
 @@ -162,7 +165,7 @@ public class SiteSettingsCategory {
-             @ContentSettingsType int contentSettingsType) {
+             @ContentSettingsType.EnumType int contentSettingsType) {
          assert contentSettingsType != -1;
          assert Type.ALL_SITES == 0;
 -        for (@Type int i = Type.ALL_SITES; i < Type.NUM_ENTRIES; i++) {
@@ -2551,7 +2587,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsDelegate.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsDelegate.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsDelegate.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SiteSettingsDelegate.java
-@@ -152,6 +152,8 @@ public interface SiteSettingsDelegate {
+@@ -149,6 +149,8 @@ public interface SiteSettingsDelegate {
       */
      String getFirstPartySetOwner(String memberOrigin);
  
@@ -2575,7 +2611,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
      private RadioButtonWithDescription mAsk;
      private RadioButtonWithDescription mBlocked;
      private RadioGroup mRadioGroup;
-+    private @ContentSettingsType int mContentType;
++    private @ContentSettingsType.EnumType int mContentType;
  
      public TriStateSiteSettingsPreference(Context context, AttributeSet attrs) {
          super(context, attrs);
@@ -2584,7 +2620,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
       *                       Allowed, Ask and Blocked states, in that order.
       */
 -    public void initialize(@ContentSettingValues int setting, int[] descriptionIds) {
-+    public void initialize(@ContentSettingsType int contentType,
++    public void initialize(@ContentSettingsType.EnumType int contentType,
 +                           @ContentSettingValues int setting, int[] descriptionIds) {
 +        mContentType = contentType;
          mSetting = setting;
@@ -2623,28 +2659,28 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePermissionsFetcher.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePermissionsFetcher.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePermissionsFetcher.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePermissionsFetcher.java
-@@ -114,7 +114,7 @@ public class WebsitePermissionsFetcher {
-                 }
-                 return null;
+@@ -108,7 +108,7 @@ public class WebsitePermissionsFetcher {
+             case ContentSettingsType.USB_GUARD:
+                 return WebsitePermissionsType.CHOSEN_OBJECT_INFO;
              default:
 -                return null;
 +                return BromiteCustomContentSettingImpl.getPermissionsType(contentSettingsType);
          }
      }
  
-@@ -228,7 +228,7 @@ public class WebsitePermissionsFetcher {
-             if (SiteSettingsFeatureMap.isEnabled(SiteSettingsFeatureList.SITE_DATA_IMPROVEMENTS)) {
-                 queue.add(new CookiesInfoFetcher());
-             }
--            for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES; type++) {
-+            for (@ContentSettingsType int type = 0; type < ContentSettingsType.NUM_TYPES_BROMITE; type++) {
+@@ -220,7 +220,7 @@ public class WebsitePermissionsFetcher {
+             addFetcherForStorage(queue);
+             queue.add(new CookiesInfoFetcher());
+             for (@ContentSettingsType.EnumType int type = 0;
+-                    type < ContentSettingsType.NUM_TYPES;
++                    type < ContentSettingsType.NUM_TYPES_BROMITE;
+                     type++) {
                  addFetcherForContentSettingsType(queue, type);
              }
-         }
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java
-@@ -283,7 +283,7 @@ public class WebsitePreferenceBridge {
+@@ -291,7 +291,7 @@ public class WebsitePreferenceBridge {
              case ContentSettingsType.PROTECTED_MEDIA_IDENTIFIER:
                  return true;
              default:
@@ -2653,10 +2689,10 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
      }
  
-@@ -299,7 +299,6 @@ public class WebsitePreferenceBridge {
+@@ -307,7 +307,6 @@ public class WebsitePreferenceBridge {
      public static boolean isCategoryEnabled(
              BrowserContextHandle browserContextHandle,
-             @ContentSettingsType int contentSettingsType) {
+             @ContentSettingsType.EnumType int contentSettingsType) {
 -        assert !requiresTriStateContentSetting(contentSettingsType);
          return isContentSettingEnabled(browserContextHandle, contentSettingsType);
      }
@@ -2729,7 +2765,7 @@ new file mode 100644
 diff --git a/components/content_settings/android/BUILD.gn b/components/content_settings/android/BUILD.gn
 --- a/components/content_settings/android/BUILD.gn
 +++ b/components/content_settings/android/BUILD.gn
-@@ -53,6 +53,7 @@ android_library("content_settings_enums_java") {
+@@ -57,6 +57,7 @@ android_library("content_settings_enums_java") {
  }
  
  java_cpp_enum("content_settings_enums_javagen") {
@@ -2763,7 +2799,7 @@ new file mode 100644
 diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
 --- a/components/content_settings/core/browser/content_settings_registry.cc
 +++ b/components/content_settings/core/browser/content_settings_registry.cc
-@@ -15,6 +15,7 @@
+@@ -16,6 +16,7 @@
  #include "components/content_settings/core/browser/website_settings_registry.h"
  #include "components/content_settings/core/common/content_settings.h"
  #include "components/content_settings/core/common/features.h"
@@ -2771,8 +2807,8 @@ diff --git a/components/content_settings/core/browser/content_settings_registry.
  
  namespace content_settings {
  
-@@ -654,6 +655,7 @@ void ContentSettingsRegistry::Init() {
-            WebsiteSettingsRegistry::DESKTOP,
+@@ -730,6 +731,7 @@ void ContentSettingsRegistry::Init() {
+            WebsiteSettingsRegistry::ALL_PLATFORMS,
             ContentSettingsInfo::INHERIT_IF_LESS_PERMISSIVE,
             ContentSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
 +#include "components/content_settings/core/browser/bromite_content_settings.inc"
@@ -2782,7 +2818,7 @@ diff --git a/components/content_settings/core/browser/content_settings_registry.
 diff --git a/components/content_settings/core/browser/content_settings_uma_util.cc b/components/content_settings/core/browser/content_settings_uma_util.cc
 --- a/components/content_settings/core/browser/content_settings_uma_util.cc
 +++ b/components/content_settings/core/browser/content_settings_uma_util.cc
-@@ -180,8 +180,9 @@ void RecordContentSettingsHistogram(const std::string& name,
+@@ -187,8 +187,9 @@ void RecordContentSettingsHistogram(const std::string& name,
  }
  
  int ContentSettingTypeToHistogramValue(ContentSettingsType content_setting) {
@@ -2802,9 +2838,9 @@ diff --git a/components/content_settings/core/browser/content_settings_utils.cc 
  #include "components/content_settings/core/browser/host_content_settings_map.h"
 +#include "components/content_settings/core/browser/website_settings_registry.h"
  #include "components/content_settings/core/common/content_settings.h"
+ #include "components/content_settings/core/common/content_settings_types.h"
  #include "components/content_settings/core/common/content_settings_utils.h"
- #include "components/content_settings/core/common/features.h"
-@@ -121,6 +122,17 @@ PatternPair ParsePatternString(const std::string& pattern_str) {
+@@ -122,6 +123,17 @@ PatternPair ParsePatternString(const std::string& pattern_str) {
  
  void GetRendererContentSettingRules(const HostContentSettingsMap* map,
                                      RendererContentSettingRules* rules) {
@@ -2819,13 +2855,13 @@ diff --git a/components/content_settings/core/browser/content_settings_utils.cc 
 +      rules->settings_rules.push_back(rule);
 +    }
 +  }
- #if !BUILDFLAG(IS_ANDROID)
+ #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
    rules->image_rules = map->GetSettingsForOneType(ContentSettingsType::IMAGES);
    rules->mixed_content_rules =
 diff --git a/components/content_settings/core/browser/website_settings_info.h b/components/content_settings/core/browser/website_settings_info.h
 --- a/components/content_settings/core/browser/website_settings_info.h
 +++ b/components/content_settings/core/browser/website_settings_info.h
-@@ -132,6 +132,32 @@ class WebsiteSettingsInfo {
+@@ -135,6 +135,32 @@ class WebsiteSettingsInfo {
    ScopingType scoping_type() const { return scoping_type_; }
    IncognitoBehavior incognito_behavior() const { return incognito_behavior_; }
  
@@ -2858,7 +2894,7 @@ diff --git a/components/content_settings/core/browser/website_settings_info.h b/
   private:
    const ContentSettingsType type_;
    const std::string name_;
-@@ -143,6 +169,18 @@ class WebsiteSettingsInfo {
+@@ -147,6 +173,18 @@ class WebsiteSettingsInfo {
    const LossyStatus lossy_status_;
    const ScopingType scoping_type_;
    const IncognitoBehavior incognito_behavior_;
@@ -2880,7 +2916,7 @@ diff --git a/components/content_settings/core/browser/website_settings_info.h b/
 diff --git a/components/content_settings/core/browser/website_settings_registry.cc b/components/content_settings/core/browser/website_settings_registry.cc
 --- a/components/content_settings/core/browser/website_settings_registry.cc
 +++ b/components/content_settings/core/browser/website_settings_registry.cc
-@@ -45,6 +45,12 @@ const WebsiteSettingsInfo* WebsiteSettingsRegistry::Get(
+@@ -46,6 +46,12 @@ const WebsiteSettingsInfo* WebsiteSettingsRegistry::Get(
    return nullptr;
  }
  
@@ -2907,7 +2943,7 @@ diff --git a/components/content_settings/core/browser/website_settings_registry.
 diff --git a/components/content_settings/core/common/BUILD.gn b/components/content_settings/core/common/BUILD.gn
 --- a/components/content_settings/core/common/BUILD.gn
 +++ b/components/content_settings/core/common/BUILD.gn
-@@ -52,6 +52,13 @@ static_library("common") {
+@@ -57,6 +57,13 @@ static_library("common") {
      "//net",
      "//url",
    ]
@@ -2938,7 +2974,7 @@ diff --git a/components/content_settings/core/common/content_settings.cc b/compo
  
  namespace {
  
-@@ -92,6 +93,13 @@ bool ContentSettingPatternSource::operator==(
+@@ -103,6 +104,13 @@ std::ostream& operator<<(std::ostream& os,
  // static
  bool RendererContentSettingRules::IsRendererContentSetting(
      ContentSettingsType content_type) {
@@ -2952,7 +2988,7 @@ diff --git a/components/content_settings/core/common/content_settings.cc b/compo
    return content_type == ContentSettingsType::IMAGES ||
           content_type == ContentSettingsType::JAVASCRIPT ||
           content_type == ContentSettingsType::POPUPS ||
-@@ -101,6 +109,9 @@ bool RendererContentSettingRules::IsRendererContentSetting(
+@@ -112,6 +120,9 @@ bool RendererContentSettingRules::IsRendererContentSetting(
  
  void RendererContentSettingRules::FilterRulesByOutermostMainFrameURL(
      const GURL& outermost_main_frame_url) {
@@ -2962,7 +2998,7 @@ diff --git a/components/content_settings/core/common/content_settings.cc b/compo
    FilterRulesForType(image_rules, outermost_main_frame_url);
    FilterRulesForType(script_rules, outermost_main_frame_url);
    FilterRulesForType(popup_redirect_rules, outermost_main_frame_url);
-@@ -132,3 +143,10 @@ bool RendererContentSettingRules::operator==(
+@@ -143,3 +154,10 @@ bool RendererContentSettingRules::operator==(
                    other.popup_redirect_rules, other.mixed_content_rules,
                    other.auto_dark_content_rules);
  }
@@ -2976,7 +3012,7 @@ diff --git a/components/content_settings/core/common/content_settings.cc b/compo
 diff --git a/components/content_settings/core/common/content_settings.h b/components/content_settings/core/common/content_settings.h
 --- a/components/content_settings/core/common/content_settings.h
 +++ b/components/content_settings/core/common/content_settings.h
-@@ -66,10 +66,20 @@ struct ContentSettingPatternSource {
+@@ -71,10 +71,20 @@ std::ostream& operator<<(std::ostream& os,
  
  typedef std::vector<ContentSettingPatternSource> ContentSettingsForOneType;
  
@@ -3000,8 +3036,8 @@ diff --git a/components/content_settings/core/common/content_settings.h b/compon
 diff --git a/components/content_settings/core/common/content_settings.mojom b/components/content_settings/core/common/content_settings.mojom
 --- a/components/content_settings/core/common/content_settings.mojom
 +++ b/components/content_settings/core/common/content_settings.mojom
-@@ -79,6 +79,11 @@ struct RuleMetaData {
-   mojo_base.mojom.TimeDelta lifetime;
+@@ -78,6 +78,11 @@ struct RuleMetaData {
+   TpcdMetadataRuleSource tpcd_metadata_rule_source;
  };
  
 +struct ContentSettingRuleSource {
@@ -3012,7 +3048,7 @@ diff --git a/components/content_settings/core/common/content_settings.mojom b/co
  // This mirrors the C++ type in content_settings.h.
  struct ContentSettingPatternSource {
    ContentSettingsPattern primary_pattern;
-@@ -92,6 +97,7 @@ struct ContentSettingPatternSource {
+@@ -91,6 +96,7 @@ struct ContentSettingPatternSource {
  // This mirrors the C++ type in content_settings.h.
  // TODO(https://crbug.com/1485360): This should be removed.
  struct RendererContentSettingRules {
@@ -3023,7 +3059,7 @@ diff --git a/components/content_settings/core/common/content_settings.mojom b/co
 diff --git a/components/content_settings/core/common/content_settings_mojom_traits.cc b/components/content_settings/core/common/content_settings_mojom_traits.cc
 --- a/components/content_settings/core/common/content_settings_mojom_traits.cc
 +++ b/components/content_settings/core/common/content_settings_mojom_traits.cc
-@@ -154,12 +154,22 @@ bool StructTraits<content_settings::mojom::ContentSettingPatternSourceDataView,
+@@ -155,12 +155,22 @@ bool StructTraits<content_settings::mojom::ContentSettingPatternSourceDataView,
           data.ReadMetadata(&out->metadata) && data.ReadSource(&out->source);
  }
  
@@ -3050,7 +3086,7 @@ diff --git a/components/content_settings/core/common/content_settings_mojom_trai
 diff --git a/components/content_settings/core/common/content_settings_mojom_traits.h b/components/content_settings/core/common/content_settings_mojom_traits.h
 --- a/components/content_settings/core/common/content_settings_mojom_traits.h
 +++ b/components/content_settings/core/common/content_settings_mojom_traits.h
-@@ -169,10 +169,34 @@ struct StructTraits<
+@@ -174,10 +174,34 @@ struct StructTraits<
        ContentSettingPatternSource* out);
  };
  
@@ -3097,24 +3133,22 @@ diff --git a/components/content_settings/core/common/content_settings_param_trai
                                1)
  
  #endif  // COMPONENTS_CONTENT_SETTINGS_CORE_COMMON_CONTENT_SETTINGS_PARAM_TRAITS_H_
-diff --git a/components/content_settings/core/common/content_settings_types.h b/components/content_settings/core/common/content_settings_types.h
---- a/components/content_settings/core/common/content_settings_types.h
-+++ b/components/content_settings/core/common/content_settings_types.h
-@@ -371,7 +371,9 @@ enum class ContentSettingsType : int32_t {
-   // shown to the user, for a given origin.
-   FILE_SYSTEM_ACCESS_RESTORE_PERMISSION,
+diff --git a/components/content_settings/core/common/content_settings_types.mojom b/components/content_settings/core/common/content_settings_types.mojom
+--- a/components/content_settings/core/common/content_settings_types.mojom
++++ b/components/content_settings/core/common/content_settings_types.mojom
+@@ -399,5 +399,7 @@ enum ContentSettingsType {
+   SPEAKER_SELECTION,
+ 
  
 -  NUM_TYPES,
 +  NUM_TYPES_CHROMIUM,
 +#include "components/content_settings/core/common/bromite_content_settings.inc"
 +  NUM_TYPES_BROMITE,
  };
- 
- struct ContentSettingsTypeHash {
 diff --git a/components/content_settings/renderer/content_settings_agent_impl.cc b/components/content_settings/renderer/content_settings_agent_impl.cc
 --- a/components/content_settings/renderer/content_settings_agent_impl.cc
 +++ b/components/content_settings/renderer/content_settings_agent_impl.cc
-@@ -202,6 +202,39 @@ void ContentSettingsAgentImpl::SendRendererContentSettingRules(
+@@ -200,6 +200,39 @@ void ContentSettingsAgentImpl::SendRendererContentSettingRules(
        std::move(renderer_settings));
  }
  
@@ -3157,7 +3191,7 @@ diff --git a/components/content_settings/renderer/content_settings_agent_impl.cc
 diff --git a/components/content_settings/renderer/content_settings_agent_impl.h b/components/content_settings/renderer/content_settings_agent_impl.h
 --- a/components/content_settings/renderer/content_settings_agent_impl.h
 +++ b/components/content_settings/renderer/content_settings_agent_impl.h
-@@ -75,6 +75,11 @@ class ContentSettingsAgentImpl
+@@ -76,6 +76,11 @@ class ContentSettingsAgentImpl
    static mojom::ContentSettingsManager::StorageType ConvertToMojoStorageType(
        StorageType storage_type);
  
@@ -3226,7 +3260,7 @@ diff --git a/components/page_info/android/page_info_controller_android.cc b/comp
    std::map<ContentSettingsType, ContentSetting>
        user_specified_settings_to_display;
    std::map<ContentSettingsType, bool>
-@@ -211,6 +221,14 @@ absl::optional<ContentSetting> PageInfoControllerAndroid::GetSettingToDisplay(
+@@ -211,6 +221,14 @@ std::optional<ContentSetting> PageInfoControllerAndroid::GetSettingToDisplay(
      return permission.setting;
    }
  
@@ -3245,14 +3279,14 @@ diff --git a/components/page_info/page_info.cc b/components/page_info/page_info.
 --- a/components/page_info/page_info.cc
 +++ b/components/page_info/page_info.cc
 @@ -24,6 +24,7 @@
+ #include "build/chromeos_buildflags.h"
  #include "components/browsing_data/content/browsing_data_helper.h"
- #include "components/browsing_data/core/features.h"
  #include "components/content_settings/browser/page_specific_content_settings.h"
 +#include "components/content_settings/core/browser/website_settings_registry.h"
  #include "components/content_settings/browser/ui/cookie_controls_controller.h"
  #include "components/content_settings/core/browser/content_settings_registry.h"
  #include "components/content_settings/core/browser/content_settings_uma_util.h"
-@@ -1249,6 +1250,14 @@ void PageInfo::PopulatePermissionInfo(PermissionInfo& permission_info,
+@@ -1225,6 +1226,14 @@ void PageInfo::PopulatePermissionInfo(PermissionInfo& permission_info,
  // applies to permissions listed in |kPermissionType|.
  bool PageInfo::ShouldShowPermission(
      const PageInfo::PermissionInfo& info) const {
@@ -3267,7 +3301,7 @@ diff --git a/components/page_info/page_info.cc b/components/page_info/page_info.
    // Note |ContentSettingsType::ADS| will show up regardless of its default
    // value when it has been activated on the current origin.
    if (info.type == ContentSettingsType::ADS) {
-@@ -1375,7 +1384,19 @@ void PageInfo::PresentSitePermissions() {
+@@ -1331,7 +1340,19 @@ void PageInfo::PresentSitePermissions() {
  
    HostContentSettingsMap* content_settings = GetContentSettings();
    DCHECK(web_contents_);
@@ -3299,7 +3333,7 @@ diff --git a/components/page_info/page_info_ui.cc b/components/page_info/page_in
  #include "components/page_info/core/features.h"
  #include "components/page_info/page_info.h"
  #include "components/page_info/page_info_ui_delegate.h"
-@@ -622,6 +623,12 @@ PageInfoUI::~PageInfoUI() = default;
+@@ -615,6 +616,12 @@ PageInfoUI::~PageInfoUI() = default;
  
  // static
  std::u16string PageInfoUI::PermissionTypeToUIString(ContentSettingsType type) {
@@ -3312,7 +3346,7 @@ diff --git a/components/page_info/page_info_ui.cc b/components/page_info/page_in
    for (const PermissionUIInfo& info : GetContentSettingsUIInfo()) {
      if (info.type == type)
        return l10n_util::GetStringUTF16(info.string_id);
-@@ -633,6 +640,12 @@ std::u16string PageInfoUI::PermissionTypeToUIString(ContentSettingsType type) {
+@@ -626,6 +633,12 @@ std::u16string PageInfoUI::PermissionTypeToUIString(ContentSettingsType type) {
  // static
  std::u16string PageInfoUI::PermissionTypeToUIStringMidSentence(
      ContentSettingsType type) {
@@ -3325,7 +3359,7 @@ diff --git a/components/page_info/page_info_ui.cc b/components/page_info/page_in
    for (const PermissionUIInfo& info : GetContentSettingsUIInfo()) {
      if (info.type == type)
        return l10n_util::GetStringUTF16(info.string_id_mid_sentence);
-@@ -1067,6 +1080,11 @@ bool PageInfoUI::ContentSettingsTypeInPageInfo(ContentSettingsType type) {
+@@ -1060,6 +1073,11 @@ bool PageInfoUI::ContentSettingsTypeInPageInfo(ContentSettingsType type) {
      if (info.type == type)
        return true;
    }
