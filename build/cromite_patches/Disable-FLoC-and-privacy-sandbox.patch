@@ -12,20 +12,20 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/chrome_content_browser_client.cc  |  3 +++
  .../privacy_sandbox_settings_delegate.cc      |  1 +
  .../privacy_sandbox/privacy_sandbox_prompt.cc |  1 +
- .../history/core/browser/history_backend.cc   | 13 +---------
+ .../history/core/browser/history_backend.cc   | 13 +------------
  .../privacy_sandbox_attestations.cc           |  2 --
- .../privacy_sandbox_features.cc               |  6 ++++-
+ .../privacy_sandbox_features.cc               |  4 ++++
  .../privacy_sandbox/privacy_sandbox_prefs.cc  |  4 ++--
- .../privacy_sandbox_settings_impl.cc          | 24 +++++++++++++------
+ .../privacy_sandbox_settings_impl.cc          | 19 ++++++++++++++-----
  .../Disable-FLoC-and-privacy-sandbox.inc      |  1 +
  third_party/blink/common/features.cc          |  1 +
- 10 files changed, 32 insertions(+), 24 deletions(-)
+ 10 files changed, 28 insertions(+), 21 deletions(-)
  create mode 100644 cromite_flags/third_party/blink/common/features_cc/Disable-FLoC-and-privacy-sandbox.inc
 
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -3381,6 +3381,9 @@ bool ChromeContentBrowserClient::IsAttributionReportingOperationAllowed(
+@@ -3239,6 +3239,9 @@ bool ChromeContentBrowserClient::IsAttributionReportingOperationAllowed(
      const url::Origin* destination_origin,
      const url::Origin* reporting_origin,
      bool* can_bypass) {
@@ -59,7 +59,7 @@ diff --git a/chrome/browser/ui/privacy_sandbox/privacy_sandbox_prompt.cc b/chrom
 diff --git a/components/history/core/browser/history_backend.cc b/components/history/core/browser/history_backend.cc
 --- a/components/history/core/browser/history_backend.cc
 +++ b/components/history/core/browser/history_backend.cc
-@@ -655,18 +655,7 @@ void HistoryBackend::SetBrowsingTopicsAllowed(ContextID context_id,
+@@ -656,18 +656,7 @@ void HistoryBackend::SetBrowsingTopicsAllowed(ContextID context_id,
    if (!visit_id)
      return;
  
@@ -82,7 +82,7 @@ diff --git a/components/history/core/browser/history_backend.cc b/components/his
 diff --git a/components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc b/components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc
 --- a/components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc
 +++ b/components/privacy_sandbox/privacy_sandbox_attestations/privacy_sandbox_attestations.cc
-@@ -405,8 +405,6 @@ void PrivacySandboxAttestations::OnAttestationsParsed(
+@@ -478,8 +478,6 @@ void PrivacySandboxAttestations::OnAttestationsParsed(
    if (attestations_map.has_value() &&
        (!file_version_.IsValid() || file_version_.CompareTo(version) < 0)) {
      // Parsing succeeded and the attestations file has newer version.
@@ -94,15 +94,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_attestations/privacy_san
 diff --git a/components/privacy_sandbox/privacy_sandbox_features.cc b/components/privacy_sandbox/privacy_sandbox_features.cc
 --- a/components/privacy_sandbox/privacy_sandbox_features.cc
 +++ b/components/privacy_sandbox/privacy_sandbox_features.cc
-@@ -145,11 +145,15 @@ BASE_FEATURE(kAttributionDebugReportingCookieDeprecationTesting,
- BASE_FEATURE(kPrivateAggregationDebugReportingCookieDeprecationTesting,
-              "PrivateAggregationDebugReportingCookieDeprecationTesting",
-              base::FEATURE_DISABLED_BY_DEFAULT);
--             
-+
- #if BUILDFLAG(IS_ANDROID)
- BASE_FEATURE(kTrackingProtectionNoticeRequestTracking,
-              "TrackingProtectionNoticeRequestTracking",
+@@ -167,4 +167,8 @@ BASE_FEATURE(kTrackingProtectionNoticeRequestTracking,
               base::FEATURE_DISABLED_BY_DEFAULT);
  #endif  // BUILDFLAG(IS_ANDROID)
  
@@ -121,21 +113,21 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_prefs.cc b/components/pr
 -      prefs::kPrivacySandboxApisEnabled, true,
 +      prefs::kPrivacySandboxApisEnabled, false,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
-   registry->RegisterBooleanPref(prefs::kPrivacySandboxApisEnabledV2, false);
    registry->RegisterBooleanPref(prefs::kPrivacySandboxM1ConsentDecisionMade,
-@@ -28,7 +28,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+                                 false);
+@@ -27,7 +27,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
    registry->RegisterBooleanPref(prefs::kPrivacySandboxM1FledgeEnabled, false);
    registry->RegisterBooleanPref(prefs::kPrivacySandboxM1AdMeasurementEnabled,
                                  false);
 -  registry->RegisterBooleanPref(prefs::kPrivacySandboxM1Restricted, false);
 +  registry->RegisterBooleanPref(prefs::kPrivacySandboxM1Restricted, true);
  
-   registry->RegisterBooleanPref(prefs::kPrivacySandboxManuallyControlledV2,
-                                 false);
+   registry->RegisterTimePref(prefs::kPrivacySandboxTopicsDataAccessibleSince,
+                              base::Time());
 diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/components/privacy_sandbox/privacy_sandbox_settings_impl.cc
 --- a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc
 +++ b/components/privacy_sandbox/privacy_sandbox_settings_impl.cc
-@@ -121,7 +121,7 @@ std::set<browsing_topics::Topic> GetTopicsSetFromString(
+@@ -123,7 +123,7 @@ std::set<browsing_topics::Topic> GetTopicsSetFromString(
  
  // static
  bool PrivacySandboxSettingsImpl::IsAllowed(Status status) {
@@ -144,7 +136,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
  }
  
  // static
-@@ -230,7 +230,8 @@ PrivacySandboxSettingsImpl::GetFinchPrioritizedTopics() {
+@@ -232,7 +232,8 @@ PrivacySandboxSettingsImpl::GetFinchPrioritizedTopics() {
    return finch_prioritized_topics_;
  }
  
@@ -154,7 +146,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    Status status = GetM1TopicAllowedStatus();
    JoinHistogram(kIsTopicsAllowedHistogram, status);
    return IsAllowed(status);
-@@ -262,7 +263,8 @@ bool PrivacySandboxSettingsImpl::IsTopicsAllowedForContext(
+@@ -264,7 +265,8 @@ bool PrivacySandboxSettingsImpl::IsTopicsAllowedForContext(
    return IsAllowed(status);
  }
  
@@ -164,7 +156,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    const auto& blocked_topics =
        pref_service_->GetList(prefs::kPrivacySandboxBlockedTopics);
  
-@@ -464,6 +466,7 @@ bool PrivacySandboxSettingsImpl::
+@@ -466,6 +468,7 @@ bool PrivacySandboxSettingsImpl::
  void PrivacySandboxSettingsImpl::SetFledgeJoiningAllowed(
      const std::string& top_frame_etld_plus1,
      bool allowed) {
@@ -172,7 +164,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    ScopedDictPrefUpdate scoped_pref_update(
        pref_service_, prefs::kPrivacySandboxFledgeJoinBlocked);
  
-@@ -534,7 +537,8 @@ void PrivacySandboxSettingsImpl::ClearFledgeJoiningAllowedSettings(
+@@ -536,7 +539,8 @@ void PrivacySandboxSettingsImpl::ClearFledgeJoiningAllowedSettings(
  }
  
  bool PrivacySandboxSettingsImpl::IsFledgeJoiningAllowed(
@@ -182,27 +174,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    ScopedDictPrefUpdate scoped_pref_update(
        pref_service_, prefs::kPrivacySandboxFledgeJoinBlocked);
    auto& pref_data = scoped_pref_update.Get();
-@@ -693,7 +697,8 @@ bool PrivacySandboxSettingsImpl::IsPrivateAggregationDebugModeAllowed(
-          delegate_->AreThirdPartyCookiesBlockedByCookieDeprecationExperiment();
- }
- 
--bool PrivacySandboxSettingsImpl::IsPrivacySandboxEnabled() const {
-+bool PrivacySandboxSettingsImpl::IsPrivacySandboxEnabled() const { // disabled in Bromite
-+  if ((true)) return false;
-   PrivacySandboxSettingsImpl::Status status = GetPrivacySandboxAllowedStatus();
-   if (!IsAllowed(status)) {
-     return false;
-@@ -720,7 +725,8 @@ void PrivacySandboxSettingsImpl::SetTopicsBlockedForTesting() {
-   pref_service_->SetBoolean(prefs::kPrivacySandboxM1TopicsEnabled, false);
- }
- 
--void PrivacySandboxSettingsImpl::SetPrivacySandboxEnabled(bool enabled) {
-+void PrivacySandboxSettingsImpl::SetPrivacySandboxEnabled(bool enabled) { // disabled in Bromite
-+  enabled = false;
-   pref_service_->SetBoolean(prefs::kPrivacySandboxApisEnabledV2, enabled);
- }
- 
-@@ -767,7 +773,10 @@ void PrivacySandboxSettingsImpl::SetDelegateForTesting(
+@@ -782,7 +786,10 @@ void PrivacySandboxSettingsImpl::SetDelegateForTesting(
    delegate_ = std::move(delegate);
  }
  
@@ -214,7 +186,7 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    pref_service_->SetTime(prefs::kPrivacySandboxTopicsDataAccessibleSince,
                           base::Time::Now());
  
-@@ -780,6 +789,7 @@ PrivacySandboxSettingsImpl::Status
+@@ -795,6 +802,7 @@ PrivacySandboxSettingsImpl::Status
  PrivacySandboxSettingsImpl::GetSiteAccessAllowedStatus(
      const url::Origin& top_frame_origin,
      const GURL& url) const {
@@ -222,6 +194,14 @@ diff --git a/components/privacy_sandbox/privacy_sandbox_settings_impl.cc b/compo
    // Relying on |host_content_settings_map_| instead of |cookie_settings_|
    // allows to query whether the site associated with the |url| is allowed to
    // access Site data (aka ContentSettingsType::COOKIES) without considering any
+@@ -809,6 +817,7 @@ PrivacySandboxSettingsImpl::GetSiteAccessAllowedStatus(
+ PrivacySandboxSettingsImpl::Status
+ PrivacySandboxSettingsImpl::GetPrivacySandboxAllowedStatus(
+     bool should_ignore_restriction /*=false*/) const {
++  if ((true)) return Status::kRestricted;
+   if (delegate_->IsIncognitoProfile()) {
+     return Status::kIncognitoProfile;
+   }
 diff --git a/cromite_flags/third_party/blink/common/features_cc/Disable-FLoC-and-privacy-sandbox.inc b/cromite_flags/third_party/blink/common/features_cc/Disable-FLoC-and-privacy-sandbox.inc
 new file mode 100644
 --- /dev/null
@@ -231,7 +211,7 @@ new file mode 100644
 diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
 --- a/third_party/blink/common/features.cc
 +++ b/third_party/blink/common/features.cc
-@@ -2239,6 +2239,7 @@ bool IsAllowPageWithIDBConnectionAndTransactionInBFCacheEnabled() {
+@@ -2462,6 +2462,7 @@ bool IsAllowPageWithIDBConnectionAndTransactionInBFCacheEnabled() {
  }
  
  bool IsAllowURNsInIframeEnabled() {
