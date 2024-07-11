@@ -1,0 +1,118 @@
+From 8ff36892c33d9d520d2a250998f29ce70f306402 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Thu, 11 Jul 2024 11:11:15 +0530
+Subject: [PATCH] Browser: Hide settings when parental control is active
+
+---
+ .../chrome/browser/app/ChromeActivity.java    |  2 +-
+ .../AppMenuPropertiesDelegateImpl.java        |  5 ++++
+ .../browser/app/flags/ChromeCachedFlags.java  | 29 +++++++++++++++++++
+ .../chrome/browser/settings/MainSettings.java |  4 +++
+ 4 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index c496be7249fee..ccb1666c7b796 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -2498,7 +2498,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+         @BrowserProfileType
+         int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
+ 
+-        if (id == R.id.preferences_id) {
++        if (id == R.id.preferences_id && !ChromeCachedFlags.isAdminActive()) {
+             SettingsLauncher settingsLauncher = new SettingsLauncherImpl();
+             settingsLauncher.launchSettingsActivity(this);
+             RecordUserAction.record("MobileMenuSettings");
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+index 326be6126a152..04a23d4632af4 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+@@ -36,6 +36,7 @@ import org.chromium.base.supplier.ObservableSupplier;
+ import org.chromium.base.supplier.OneshotSupplier;
+ import org.chromium.base.supplier.Supplier;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
+ import org.chromium.chrome.browser.ActivityTabProvider;
+ import org.chromium.chrome.browser.AlwaysIncognitoLinkInterceptor;
+ import org.chromium.chrome.browser.bookmarks.BookmarkFeatures;
+@@ -668,6 +669,10 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate
+                 item.setEnabled(isIncognitoEnabled() && !isIncognitoReauthShowing);
+             }
+ 
++            if (item.getItemId() == R.id.preferences_id && item.isVisible()) {
++                item.setEnabled(!ChromeCachedFlags.isAdminActive());
++            }
++
+             if (item.getItemId() == R.id.divider_line_id) {
+                 item.setEnabled(false);
+             }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
+index 51b65247e38a6..e981722ceecfc 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
+@@ -43,6 +43,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabUiFeatureUtilities;
+ import org.chromium.chrome.browser.toolbar.ToolbarFeatures;
+ import org.chromium.chrome.features.start_surface.StartSurfaceConfiguration;
+ 
++import java.lang.reflect.Method;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -215,4 +216,32 @@ public class ChromeCachedFlags {
+ 
+         return cachedFlag.isEnabled();
+     }
++
++    /**
++     * Retrieves the system property value for the given key.
++     *
++     * @param key The name of the system property.
++     * @return The value of the system property or "0" if not found or an error occurs.
++     */
++    public static String getSystemProperty(String key) {
++        String value = "0";
++        try {
++            Class<?> systemProperties = Class.forName("android.os.SystemProperties");
++            Method get = systemProperties.getMethod("get", String.class);
++            value = (String) get.invoke(null, key);
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++        return value;
++    }
++
++    /**
++     * Checks if the system property value for the hardcoded key "persist.sys.mdm_active" is "1".
++     *
++     * @return true if the property value is "1", false otherwise.
++     */
++    public static boolean isAdminActive() {
++        String propertyValue = getSystemProperty("persist.sys.mdm_active");
++        return "1".equals(propertyValue);
++    }
+ }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index a710f667f3868..b5222372f39af 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -20,6 +20,7 @@ import org.chromium.base.BuildInfo;
+ import org.chromium.base.ContextUtils;
+ import org.chromium.base.supplier.ObservableSupplier;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
+ import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
+ import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
+ import org.chromium.chrome.browser.autofill.settings.SettingsLauncherHelper;
+@@ -138,6 +139,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
+ 
+     @Override
+     public void onStart() {
++        if (ChromeCachedFlags.isAdminActive()) {
++            getActivity().finish();
++        }
+         super.onStart();
+         SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(getProfile());
+         if (signinManager.isSigninSupported(/* requireUpdatedPlayServices= */ false)) {
+-- 
+2.43.0
+
