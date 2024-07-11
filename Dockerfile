@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 
 ENV CHROMIUM_DIR "/srv/chromium"
+ENV CHROMIUM_VER "123.0.6312.122"
 
 RUN dpkg --add-architecture i386
 
@@ -11,7 +12,7 @@ RUN apt-get update &&\
 
 RUN mkdir ${CHROMIUM_DIR}
 
-RUN curl -s https://raw.githubusercontent.com/chromium/chromium/123.0.6312.122/build/install-build-deps.py \
+RUN curl -s https://raw.githubusercontent.com/chromium/chromium/${CHROMIUM_VER}/build/install-build-deps.py \
        | python - --android --lib32 --no-chromeos-fonts --no-prompt
 
 RUN git config --global user.name "John Doe"

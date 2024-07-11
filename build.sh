@@ -2,12 +2,12 @@
 
 set -e
 
-chromium_dir="${chromium_dir:-/srv/chromium}"
+chromium_dir="${CHROMIUM_DIR}"
 root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version="123.0.6312.122"
+chromium_version=$(grep 'ENV CHROMIUM_VER' Dockerfile | awk -F'"' '{print $2}')
 chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
 chromium_url=https://github.com/chromium/chromium.git
 clean=0
