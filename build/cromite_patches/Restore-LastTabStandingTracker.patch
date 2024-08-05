@@ -54,14 +54,14 @@ diff --git a/chrome/browser/content_settings/host_content_settings_map_factory.c
 +#include "chrome/browser/permissions/last_tab_standing_tracker_factory.h"
  #include "chrome/browser/profiles/off_the_record_profile_impl.h"
  #include "chrome/browser/profiles/profile.h"
- #include "chrome/browser/profiles/profiles_state.h"
-@@ -57,6 +58,7 @@ HostContentSettingsMapFactory::HostContentSettingsMapFactory()
-               // Guest mode.
+ #include "chrome/browser/profiles/profile_key.h"
+@@ -56,6 +57,7 @@ HostContentSettingsMapFactory::HostContentSettingsMapFactory()
                .WithGuest(ProfileSelection::kOwnInstance)
                .Build()) {
-+  DependsOn(LastTabStandingTrackerFactory::GetInstance());
- #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
    DependsOn(SupervisedUserSettingsServiceFactory::GetInstance());
++  DependsOn(LastTabStandingTrackerFactory::GetInstance());
+ #if BUILDFLAG(IS_ANDROID)
+   DependsOn(TemplateURLServiceFactory::GetInstance());
  #endif
 diff --git a/chrome/browser/permissions/last_tab_standing_tracker.cc b/chrome/browser/permissions/last_tab_standing_tracker.cc
 new file mode 100644
@@ -372,7 +372,7 @@ new file mode 100644
 + private:
 +  explicit LastTabStandingTrackerTabHelper(content::WebContents* webContents);
 +  friend class content::WebContentsUserData<LastTabStandingTrackerTabHelper>;
-+  absl::optional<url::Origin> last_committed_origin_;
++  std::optional<url::Origin> last_committed_origin_;
 +
 +  WEB_CONTENTS_USER_DATA_KEY_DECL();
 +};
@@ -381,7 +381,7 @@ new file mode 100644
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -112,6 +112,7 @@
+@@ -114,6 +114,7 @@
  #include "chrome/browser/password_manager/password_reuse_manager_factory.h"
  #include "chrome/browser/password_manager/profile_password_store_factory.h"
  #include "chrome/browser/permissions/adaptive_quiet_notification_permission_ui_enabler.h"
@@ -389,18 +389,18 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  #include "chrome/browser/permissions/notifications_engagement_service_factory.h"
  #include "chrome/browser/permissions/one_time_permissions_tracker_factory.h"
  #include "chrome/browser/permissions/origin_keyed_permission_action_service_factory.h"
-@@ -963,6 +964,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -1006,6 +1007,7 @@ void ChromeBrowserMainExtraPartsProfiles::
  #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
    OnDeviceTailModelServiceFactory::GetInstance();
  #endif
 +  LastTabStandingTrackerFactory::GetInstance();
  #if !BUILDFLAG(IS_ANDROID)
    OneGoogleBarServiceFactory::GetInstance();
-   if (base::FeatureList::IsEnabled(permissions::features::kOneTimePermission)) {
+   OneTimePermissionsTrackerFactory::GetInstance();
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
-@@ -52,6 +52,7 @@
+@@ -55,6 +55,7 @@
  #include "chrome/browser/page_info/page_info_features.h"
  #include "chrome/browser/page_load_metrics/page_load_metrics_initialize.h"
  #include "chrome/browser/password_manager/chrome_password_manager_client.h"
@@ -408,8 +408,8 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  #include "chrome/browser/permissions/one_time_permissions_tracker_helper.h"
  #include "chrome/browser/predictors/loading_predictor_factory.h"
  #include "chrome/browser/predictors/loading_predictor_tab_helper.h"
-@@ -400,6 +401,7 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
-   HistoryClustersTabHelper::CreateForWebContents(web_contents);
+@@ -421,6 +422,7 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+   HistoryEmbeddingsTabHelper::CreateForWebContents(web_contents);
    HttpsOnlyModeTabHelper::CreateForWebContents(web_contents);
    webapps::InstallableManager::CreateForWebContents(web_contents);
 +  LastTabStandingTrackerTabHelper::CreateForWebContents(web_contents);

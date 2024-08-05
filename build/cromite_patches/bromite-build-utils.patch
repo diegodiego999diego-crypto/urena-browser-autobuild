@@ -8,7 +8,7 @@ Subject: bromite build utils
  build/bromite/bromite_utils.gni               |  79 +++++++++++++
  build/bromite/gyp/cpp_bromite_include.py      |  35 ++++++
  build/bromite/gyp/cpp_bromite_include.pydeps  |   9 ++
- build/bromite/gyp/java_bromite_impl.py        | 108 ++++++++++++++++++
+ build/bromite/gyp/java_bromite_impl.py        | 107 ++++++++++++++++++
  build/bromite/gyp/java_bromite_impl.pydeps    |   9 ++
  build/config/BUILDCONFIG.gn                   |   1 +
  build/config/android/rules.gni                |   6 +-
@@ -20,7 +20,7 @@ Subject: bromite build utils
  mojo/public/tools/mojom/mojom_parser.py       |  22 +++-
  tools/grit/grit/grd_reader.py                 |  27 ++++-
  tools/grit/preprocess_if_expr.py              |  32 +++++-
- 17 files changed, 488 insertions(+), 19 deletions(-)
+ 17 files changed, 487 insertions(+), 19 deletions(-)
  create mode 100644 build/bromite/bromite_utils.gni
  create mode 100644 build/bromite/gyp/cpp_bromite_include.py
  create mode 100644 build/bromite/gyp/cpp_bromite_include.pydeps
@@ -41,7 +41,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
    single_line_comment_re = re.compile(r'\s*//\s*([^\n]*)')
    multi_line_comment_start_re = re.compile(r'\s*/\*')
    enum_line_re = re.compile(r'^\s*(\w+)(\s*\=\s*([^,\n]+))?,?')
-@@ -195,7 +196,7 @@ class HeaderParser:
+@@ -200,7 +201,7 @@ class HeaderParser:
    enum_single_line_re = re.compile(
        r'^\s*(?:\[cpp.*\])?\s*enum.*{(?P<enum_entries>.*)}.*$')
  
@@ -50,15 +50,15 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      self._lines = lines
      self._path = path
      self._enum_definitions = []
-@@ -205,6 +206,7 @@ class HeaderParser:
+@@ -217,6 +218,7 @@ class HeaderParser:
      self._generator_directives = DirectiveSet()
      self._multi_line_generator_directive = None
      self._current_enum_entry = ''
 +    self._options = options
  
-   def _ApplyGeneratorDirectives(self):
-     self._generator_directives.UpdateDefinition(self._current_definition)
-@@ -228,6 +230,24 @@ class HeaderParser:
+   def _ShouldIgnoreLine(self):
+     return self._in_preprocessor_block and not self._in_buildflag_android
+@@ -260,6 +262,24 @@ class HeaderParser:
        raise Exception('Multi-line comments in enums are not supported in ' +
                        self._path)
  
@@ -83,7 +83,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      enum_comment = HeaderParser.single_line_comment_re.match(line)
      if enum_comment:
        comment = enum_comment.groups()[0]
-@@ -328,9 +348,9 @@ class HeaderParser:
+@@ -360,9 +380,9 @@ class HeaderParser:
          self._ParseSingleLineEnum(single_line_enum.group('enum_entries'))
  
  
@@ -95,7 +95,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
      if not enum_definitions:
        raise Exception('No enums found in %s\n'
                        'Did you forget prefixing enums with '
-@@ -343,9 +363,9 @@ def DoGenerate(source_paths):
+@@ -375,9 +395,9 @@ def DoGenerate(source_paths):
        yield output_path, output
  
  
@@ -107,7 +107,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
  
  
  def GenerateOutput(source_path, enum_definition):
-@@ -424,6 +444,10 @@ def DoMain(argv):
+@@ -456,6 +476,10 @@ def DoMain(argv):
    parser.add_option('--srcjar',
                      help='When specified, a .srcjar at the given path is '
                      'created instead of individual .java files.')
@@ -118,7 +118,7 @@ diff --git a/build/android/gyp/java_cpp_enum.py b/build/android/gyp/java_cpp_enu
  
    options, args = parser.parse_args(argv)
  
-@@ -433,7 +457,7 @@ def DoMain(argv):
+@@ -465,7 +489,7 @@ def DoMain(argv):
  
    with action_helpers.atomic_output(options.srcjar) as f:
      with zipfile.ZipFile(f, 'w', zipfile.ZIP_STORED) as srcjar:
@@ -301,7 +301,7 @@ diff --git a/build/bromite/gyp/java_bromite_impl.py b/build/bromite/gyp/java_bro
 new file mode 100644
 --- /dev/null
 +++ b/build/bromite/gyp/java_bromite_impl.py
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,107 @@
 +#!/usr/bin/env python3
 +
 +import argparse
@@ -338,8 +338,7 @@ new file mode 100644
 +
 +  import_clause = '\n'.join(
 +      ['import ' + namespace + '.' + f + ';' for f in strings])
-+  print(namespace)
-+  print(static_classes)
++
 +  if static_classes:
 +    add_clause = '\n\t'.join(['\tadd(' + f + '.getInstance());' for f in strings])
 +  else:
@@ -427,7 +426,7 @@ new file mode 100644
 diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
 --- a/build/config/BUILDCONFIG.gn
 +++ b/build/config/BUILDCONFIG.gn
-@@ -655,6 +655,7 @@ set_defaults("component") {
+@@ -726,6 +726,7 @@ set_defaults("component") {
    configs = default_component_configs
  }
  
@@ -438,7 +437,7 @@ diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
 diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
 --- a/build/config/android/rules.gni
 +++ b/build/config/android/rules.gni
-@@ -214,7 +214,7 @@ if (enable_java_templates && is_android) {
+@@ -207,7 +207,7 @@ if (!is_robolectric && enable_java_templates) {
    #   }
    template("java_cpp_enum") {
      action_with_pydeps(target_name) {
@@ -447,7 +446,7 @@ diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
  
        # The sources aren't compiled so don't check their dependencies.
        check_includes = false
-@@ -225,6 +225,10 @@ if (enable_java_templates && is_android) {
+@@ -218,6 +218,10 @@ if (!is_robolectric && enable_java_templates) {
        _rebased_sources = rebase_path(invoker.sources, root_build_dir)
  
        args = [ "--srcjar=$_rebased_srcjar_path" ] + _rebased_sources
@@ -461,7 +460,7 @@ diff --git a/build/config/android/rules.gni b/build/config/android/rules.gni
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/accessibility/settings/ChromeAccessibilitySettingsDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/accessibility/settings/ChromeAccessibilitySettingsDelegate.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/accessibility/settings/ChromeAccessibilitySettingsDelegate.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/accessibility/settings/ChromeAccessibilitySettingsDelegate.java
-@@ -23,6 +23,11 @@ import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
+@@ -10,6 +10,11 @@ import org.chromium.components.browser_ui.accessibility.AccessibilitySettingsDel
  import org.chromium.components.user_prefs.UserPrefs;
  import org.chromium.content_public.browser.BrowserContextHandle;
  
@@ -472,7 +471,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/accessibility/s
 +
  /** The Chrome implementation of AccessibilitySettingsDelegate. */
  public class ChromeAccessibilitySettingsDelegate implements AccessibilitySettingsDelegate {
-     private static class ReaderForAccessibilityDelegate implements BooleanPreferenceDelegate {
+     private static class TextSizeContrastAccessibilityDelegate
 diff --git a/chrome/browser/flags/BUILD.gn b/chrome/browser/flags/BUILD.gn
 --- a/chrome/browser/flags/BUILD.gn
 +++ b/chrome/browser/flags/BUILD.gn

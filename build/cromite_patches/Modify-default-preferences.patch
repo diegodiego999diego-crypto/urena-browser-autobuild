@@ -19,10 +19,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../core/browser/cookie_settings.cc            |  2 +-
  components/payments/core/payment_prefs.cc      |  2 +-
  .../core/common/safe_browsing_prefs.cc         |  4 ++--
- .../primary_account_manager.cc                 |  4 ++--
+ .../primary_account_manager.cc                 |  2 +-
  .../Modify-default-preferences.inc             |  8 ++++++++
  .../features_cc/Modify-default-preferences.inc |  1 +
- 18 files changed, 67 insertions(+), 17 deletions(-)
+ 18 files changed, 66 insertions(+), 16 deletions(-)
  create mode 100644 components/bookmarks/browser/features.cc
  create mode 100644 components/bookmarks/browser/features.h
  create mode 100755 cromite_flags/chrome/browser/about_flags_cc/Modify-default-preferences.inc
@@ -31,14 +31,14 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -78,6 +78,7 @@
+@@ -76,6 +76,7 @@
  #include "components/autofill/core/common/autofill_payments_features.h"
  #include "components/autofill/core/common/autofill_switches.h"
  #include "components/autofill/core/common/autofill_util.h"
 +#include "components/bookmarks/browser/features.h"
  #include "components/browser_sync/browser_sync_switches.h"
- #include "components/browsing_data/core/features.h"
  #include "components/commerce/core/commerce_feature_list.h"
+ #include "components/commerce/core/flag_descriptions.h"
 diff --git a/chrome/browser/background/background_mode_manager.cc b/chrome/browser/background/background_mode_manager.cc
 --- a/chrome/browser/background/background_mode_manager.cc
 +++ b/chrome/browser/background/background_mode_manager.cc
@@ -54,7 +54,7 @@ diff --git a/chrome/browser/background/background_mode_manager.cc b/chrome/brows
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -1477,7 +1477,7 @@ void ChromeContentBrowserClient::RegisterLocalStatePrefs(
+@@ -1548,7 +1548,7 @@ void ChromeContentBrowserClient::RegisterLocalStatePrefs(
  void ChromeContentBrowserClient::RegisterProfilePrefs(
      user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(prefs::kDisable3DAPIs, false);
@@ -78,7 +78,7 @@ diff --git a/chrome/browser/preloading/preloading_prefs.h b/chrome/browser/prelo
 diff --git a/chrome/browser/profiles/profile.cc b/chrome/browser/profiles/profile.cc
 --- a/chrome/browser/profiles/profile.cc
 +++ b/chrome/browser/profiles/profile.cc
-@@ -308,7 +308,7 @@ const char Profile::kProfileKey[] = "__PROFILE__";
+@@ -318,7 +318,7 @@ const char Profile::kProfileKey[] = "__PROFILE__";
  void Profile::RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(
        prefs::kSearchSuggestEnabled,
@@ -102,7 +102,7 @@ diff --git a/chrome/browser/resources/settings/reset_page/reset_profile_dialog.h
 diff --git a/chrome/browser/ui/browser_ui_prefs.cc b/chrome/browser/ui/browser_ui_prefs.cc
 --- a/chrome/browser/ui/browser_ui_prefs.cc
 +++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -85,10 +85,10 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -91,10 +91,10 @@ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(prefs::kWebAppCreateInAppsMenu, true);
    registry->RegisterBooleanPref(prefs::kWebAppCreateInQuickLaunchBar, true);
    registry->RegisterBooleanPref(
@@ -118,18 +118,18 @@ diff --git a/chrome/browser/ui/browser_ui_prefs.cc b/chrome/browser/ui/browser_u
 diff --git a/components/bookmarks/browser/BUILD.gn b/components/bookmarks/browser/BUILD.gn
 --- a/components/bookmarks/browser/BUILD.gn
 +++ b/components/bookmarks/browser/BUILD.gn
-@@ -23,6 +23,7 @@ static_library("browser") {
-     "bookmark_undo_provider.h",
+@@ -24,6 +24,7 @@ static_library("browser") {
      "bookmark_utils.h",
      "bookmark_uuids.h",
+     "core_bookmark_model.h",
 +    "features.h",
      "history_bookmark_model.h",
      "model_loader.h",
      "scoped_group_bookmark_actions.h",
-@@ -45,6 +46,7 @@ static_library("browser") {
-     "bookmark_storage.cc",
+@@ -47,6 +48,7 @@ static_library("browser") {
      "bookmark_utils.cc",
      "bookmark_uuids.cc",
+     "core_bookmark_model.cc",
 +    "features.cc",
      "model_loader.cc",
      "scoped_group_bookmark_actions.cc",
@@ -145,7 +145,7 @@ diff --git a/components/bookmarks/browser/bookmark_utils.cc b/components/bookmar
  #include "components/bookmarks/browser/scoped_group_bookmark_actions.h"
  #include "components/bookmarks/common/bookmark_pref_names.h"
  #include "components/pref_registry/pref_registry_syncable.h"
-@@ -487,11 +488,13 @@ bool DoesBookmarkContainWords(const std::u16string& title,
+@@ -491,11 +492,13 @@ bool DoesBookmarkContainWords(const std::u16string& title,
  
  void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(
@@ -160,7 +160,7 @@ diff --git a/components/bookmarks/browser/bookmark_utils.cc b/components/bookmar
 +                                                                      : true,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    registry->RegisterBooleanPref(
-       prefs::kShowManagedBookmarksInBookmarkBar, true,
+       prefs::kShowTabGroupsInBookmarkBar, true,
 diff --git a/components/bookmarks/browser/features.cc b/components/bookmarks/browser/features.cc
 new file mode 100644
 --- /dev/null
@@ -209,7 +209,7 @@ new file mode 100644
 diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
 --- a/components/content_settings/core/browser/content_settings_registry.cc
 +++ b/components/content_settings/core/browser/content_settings_registry.cc
-@@ -245,7 +245,7 @@ void ContentSettingsRegistry::Init() {
+@@ -238,7 +238,7 @@ void ContentSettingsRegistry::Init() {
             ContentSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
  
    Register(ContentSettingsType::BACKGROUND_SYNC, "background-sync",
@@ -218,8 +218,8 @@ diff --git a/components/content_settings/core/browser/content_settings_registry.
             /*allowlisted_primary_schemes=*/{},
             /*valid_settings=*/{CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK},
             WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
-@@ -370,7 +370,7 @@ void ContentSettingsRegistry::Init() {
-   // TODO(crbug.com/904439): Update this to "SECURE_ONLY" once
+@@ -374,7 +374,7 @@ void ContentSettingsRegistry::Init() {
+   // TODO(crbug.com/40602007): Update this to "SECURE_ONLY" once
    // DeviceOrientationEvents and DeviceMotionEvents are only fired in secure
    // contexts.
 -  Register(ContentSettingsType::SENSORS, "sensors", CONTENT_SETTING_ALLOW,
@@ -254,7 +254,7 @@ diff --git a/components/payments/core/payment_prefs.cc b/components/payments/cor
 diff --git a/components/safe_browsing/core/common/safe_browsing_prefs.cc b/components/safe_browsing/core/common/safe_browsing_prefs.cc
 --- a/components/safe_browsing/core/common/safe_browsing_prefs.cc
 +++ b/components/safe_browsing/core/common/safe_browsing_prefs.cc
-@@ -173,13 +173,13 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+@@ -168,13 +168,13 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
    registry->RegisterBooleanPref(
        prefs::kSafeBrowsingSawInterstitialScoutReporting, false);
    registry->RegisterBooleanPref(
@@ -273,18 +273,15 @@ diff --git a/components/safe_browsing/core/common/safe_browsing_prefs.cc b/compo
 diff --git a/components/signin/internal/identity_manager/primary_account_manager.cc b/components/signin/internal/identity_manager/primary_account_manager.cc
 --- a/components/signin/internal/identity_manager/primary_account_manager.cc
 +++ b/components/signin/internal/identity_manager/primary_account_manager.cc
-@@ -226,9 +226,9 @@ void PrimaryAccountManager::RegisterProfilePrefs(PrefRegistrySimple* registry) {
+@@ -245,7 +245,7 @@ void PrimaryAccountManager::RegisterProfilePrefs(PrefRegistrySimple* registry) {
        prefs::kGoogleServicesSyncingGaiaIdMigratedToSignedIn, std::string());
    registry->RegisterStringPref(
        prefs::kGoogleServicesSyncingUsernameMigratedToSignedIn, std::string());
--  registry->RegisterBooleanPref(prefs::kAutologinEnabled, true);
-+  registry->RegisterBooleanPref(prefs::kAutologinEnabled, false);
-   registry->RegisterListPref(prefs::kReverseAutologinRejectedEmailList);
 -  registry->RegisterBooleanPref(prefs::kSigninAllowed, true);
 +  registry->RegisterBooleanPref(prefs::kSigninAllowed, false);
    registry->RegisterBooleanPref(prefs::kSignedInWithCredentialProvider, false);
-   registry->RegisterBooleanPref(prefs::kExplicitBrowserSignin, false);
- }
+   registry->RegisterBooleanPref(kExplicitBrowserSigninWithoutFeatureEnabled,
+                                 false);
 diff --git a/cromite_flags/chrome/browser/about_flags_cc/Modify-default-preferences.inc b/cromite_flags/chrome/browser/about_flags_cc/Modify-default-preferences.inc
 new file mode 100755
 --- /dev/null

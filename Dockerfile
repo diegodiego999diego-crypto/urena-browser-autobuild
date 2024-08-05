@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 
 ENV CHROMIUM_DIR "/srv/chromium"
-ENV CHROMIUM_VER "123.0.6312.122"
+ENV CHROMIUM_VER "127.0.6533.94"
 
 RUN dpkg --add-architecture i386
 

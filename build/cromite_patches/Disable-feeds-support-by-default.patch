@@ -4,17 +4,114 @@ Subject: Disable feeds support by default
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/prefs/browser_prefs.cc           |  4 ++--
- components/feed/core/common/pref_names.cc       | 13 +------------
- components/feed/core/shared_prefs/pref_names.cc |  2 +-
- components/feed/feed_feature_list.cc            |  2 ++
- 4 files changed, 6 insertions(+), 15 deletions(-)
+ chrome/browser/BUILD.gn                        |  9 +++++++++
+ chrome/browser/feed/android/web_feed_bridge.cc | 18 ++++++++++++++++++
+ chrome/browser/prefs/browser_prefs.cc          |  4 ++--
+ components/feed/core/common/pref_names.cc      | 13 +------------
+ .../feed/core/shared_prefs/pref_names.cc       |  2 +-
+ components/feed/feed_feature_list.cc           |  3 +++
+ 6 files changed, 34 insertions(+), 15 deletions(-)
 
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -2663,6 +2663,15 @@ static_library("browser") {
+     ]
+   }
+ 
++  if (is_android && !enable_feed_v2) {
++    sources += [
++      "feed/feed_service_factory.cc",
++      "feed/feed_service_factory.h",
++    ]
++    deps += [
++      "//components/feed:feature_list",
++    ]
++  }
+   if (enable_feed_v2) {
+     sources += [
+       "feed/feed_service_factory.cc",
+diff --git a/chrome/browser/feed/android/web_feed_bridge.cc b/chrome/browser/feed/android/web_feed_bridge.cc
+--- a/chrome/browser/feed/android/web_feed_bridge.cc
++++ b/chrome/browser/feed/android/web_feed_bridge.cc
+@@ -24,6 +24,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "components/country_codes/country_codes.h"
++#include "components/feed/buildflags.h"
+ #include "components/feed/core/v2/config.h"
+ #include "components/feed/core/v2/public/feed_service.h"
+ #include "components/feed/core/v2/public/types.h"
+@@ -80,10 +81,14 @@ base::android::ScopedJavaLocalRef<jbyteArray> ToJavaWebFeedId(
+ }
+ 
+ WebFeedSubscriptions* GetSubscriptions() {
++#if BUILDFLAG(ENABLE_FEED_V2)
+   Profile* profile = ProfileManager::GetLastUsedProfile();
+   if (!profile)
+     return nullptr;
+   return GetSubscriptionsForProfile(profile);
++#else
++  return nullptr;
++#endif
+ }
+ 
+ FeedApi* GetStream() {
+@@ -219,10 +224,14 @@ static void JNI_WebFeedBridge_FollowWebFeed(
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_FEED_V2)
+   FollowWebFeed(
+       page_info.web_contents,
+       static_cast<feedwire::webfeed::WebFeedChangeReason>(change_reason),
+       std::move(callback));
++#else
++  std::move(callback).Run({});
++#endif
+ }
+ 
+ static jboolean JNI_WebFeedBridge_IsCormorantEnabledForLocale(JNIEnv* env) {
+@@ -266,11 +275,16 @@ static void JNI_WebFeedBridge_UnfollowWebFeed(
+   auto callback =
+       AdaptCallbackForJava<WebFeedSubscriptions::UnfollowWebFeedResult>(
+           env, j_callback);
++
++#if BUILDFLAG(ENABLE_FEED_V2)
+   UnfollowWebFeed(
+       ToNativeWebFeedId(env, webFeedId),
+       /*is_durable_request=*/is_durable,
+       static_cast<feedwire::webfeed::WebFeedChangeReason>(change_reason),
+       std::move(callback));
++#else
++  std::move(callback).Run({});
++#endif
+ }
+ 
+ static void JNI_WebFeedBridge_FindWebFeedInfoForPage(
+@@ -282,6 +296,7 @@ static void JNI_WebFeedBridge_FindWebFeedInfoForPage(
+       AdaptCallbackForJava<WebFeedMetadata>(env, j_callback);
+ 
+   PageInformation page_info = ToNativePageInformation(env, pageInfo);
++#if BUILDFLAG(ENABLE_FEED_V2)
+   // Make sure web_contents is not NULL since the user might navigate away from
+   // the current tab that is requested to find info.
+   if (!page_info.web_contents) {
+@@ -292,6 +307,9 @@ static void JNI_WebFeedBridge_FindWebFeedInfoForPage(
+       page_info.web_contents,
+       static_cast<WebFeedPageInformationRequestReason>(reason),
+       std::move(callback));
++#else
++  std::move(callback).Run({});
++#endif
+ }
+ 
+ static void JNI_WebFeedBridge_FindWebFeedInfoForWebFeedId(
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -1840,10 +1840,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
-   supervised_user::RegisterProfilePrefs(registry);
+@@ -2109,10 +2109,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+   ChromeRLZTrackerDelegate::RegisterProfilePrefs(registry);
  #endif
  
 -#if BUILDFLAG(ENABLE_FEED_V2)
@@ -29,7 +126,7 @@ diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browse
 diff --git a/components/feed/core/common/pref_names.cc b/components/feed/core/common/pref_names.cc
 --- a/components/feed/core/common/pref_names.cc
 +++ b/components/feed/core/common/pref_names.cc
-@@ -105,18 +105,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+@@ -107,18 +107,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
  }
  
  void MigrateObsoleteProfilePrefsOct_2022(PrefService* prefs) {
@@ -64,11 +161,12 @@ diff --git a/components/feed/core/shared_prefs/pref_names.cc b/components/feed/c
 diff --git a/components/feed/feed_feature_list.cc b/components/feed/feed_feature_list.cc
 --- a/components/feed/feed_feature_list.cc
 +++ b/components/feed/feed_feature_list.cc
-@@ -164,4 +164,6 @@ BASE_FEATURE(kRefreshFeedOnRestart,
-              "RefreshFeedOnRestart",
-              base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -161,4 +161,7 @@ bool IsWebFeedEnabledForLocale(const std::string& country) {
+          !base::FeatureList::IsEnabled(kWebFeedKillSwitch);
+ }
  
 +SET_CROMITE_FEATURE_DISABLED(kInterestFeedV2);
-+SET_CROMITE_FEATURE_DISABLED(kWebFeed);
++SET_CROMITE_FEATURE_ENABLED(kWebFeedKillSwitch);
++
  }  // namespace feed
 --

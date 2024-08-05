@@ -134,7 +134,13 @@ patch() {
 rename() {
     cd $chromium_dir/src
 
-    replacements=("Chrome browser=Browser" "Chrome=Browser" "Bromite=Browser" "Cromite=Browser")
+    replacements=(
+        "Chrome browser=Browser"
+        "Chrome=Browser"
+        "Bromite=Browser"
+        "Cromite=Browser"
+        "Google Password Manager=Password Manager"
+    )
 
     for replacement in "${replacements[@]}"; do
         replaced_string=${replacement%%=*}
