@@ -183,9 +183,9 @@ sync() {
         fi
     fi
     if [ $history -eq 1 ]; then
-        gclient sync -D --nohooks -R
+        gclient sync -D --nohooks -R --force
     else
-        gclient sync --no-history -D --nohooks -R
+        gclient sync --no-history -D --nohooks -R --force
     fi
     gclient runhooks
     patch
