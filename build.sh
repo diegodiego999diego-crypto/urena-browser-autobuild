@@ -13,6 +13,7 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
+patchonly=0
 arch=""
 
 usage() {
@@ -25,6 +26,7 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
+    echo "    -p Apply patches - Only after synced"
     echo
     exit 1
 }
@@ -214,20 +216,21 @@ init_repo(){
     fi
 }
 
-while getopts ":a:cur:sh" opt; do
+while getopts ":a:cur:shp" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
     s) gsync=1  ;;
     h) history=0 ;;
+    p) patchonly=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
         usage
         ;;
     \?)
-        echo "Invalid option:-$OPTARG"
+        echo "Invalid option: -$OPTARG"
         echo
         usage
         ;;
@@ -272,6 +275,12 @@ if [ $gsync -eq 1 ]; then
         init_repo
     fi
     sync
+elif [ $patchonly -eq 1 ]; then
+    cd $chromium_dir/src
+    git fetch origin refs/tags/$chromium_version
+    git checkout main
+    git reset --hard FETCH_HEAD
+    patch
 fi
 
 cd $chromium_dir/src
