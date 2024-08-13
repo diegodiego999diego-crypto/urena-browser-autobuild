@@ -6,22 +6,19 @@ because of
 https://bugs.chromium.org/p/chromium/issues/detail?id=1491776#c10
 ---
  BUILD.gn                                           |  1 -
- .../chrome_browsing_data_model_delegate.cc         |  1 +
  .../navigation_predictor_metrics_document_data.h   |  2 ++
  chrome/browser/safe_browsing/BUILD.gn              |  1 +
  .../omnibox/browser/autocomplete_classifier.cc     |  4 ++--
  components/omnibox/browser/omnibox_field_trial.cc  |  4 ++--
  .../phishing_classifier/phishing_image_embedder.cc | 14 +++-----------
  content/browser/browser_interface_binders.cc       |  1 +
- crypto/BUILD.gn                                    |  3 +++
  net/BUILD.gn                                       |  1 +
- third_party/libevent/BUILD.gn                      |  2 ++
- 11 files changed, 18 insertions(+), 16 deletions(-)
+ 8 files changed, 12 insertions(+), 16 deletions(-)
 
 diff --git a/BUILD.gn b/BUILD.gn
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -410,7 +410,6 @@ group("gn_all") {
+@@ -415,7 +415,6 @@ group("gn_all") {
            "//android_webview:empty_group",
            "//android_webview/test",
            "//android_webview/tools/automated_ui_tests:webview_ui_test_app",
@@ -29,17 +26,6 @@ diff --git a/BUILD.gn b/BUILD.gn
            "//android_webview/tools/sdk_sandbox",
            "//android_webview/tools/system_webview_shell",
            "//chrome/android:chrome_junit_tests",
-diff --git a/chrome/browser/browsing_data/chrome_browsing_data_model_delegate.cc b/chrome/browser/browsing_data/chrome_browsing_data_model_delegate.cc
---- a/chrome/browser/browsing_data/chrome_browsing_data_model_delegate.cc
-+++ b/chrome/browser/browsing_data/chrome_browsing_data_model_delegate.cc
-@@ -262,6 +262,7 @@ bool ChromeBrowsingDataModelDelegate::IsCookieDeletionDisabled(
-     auto* client = permissions::PermissionsClient::Get();
-     return client->IsCookieDeletionDisabled(profile_, url);
-   }
-+  return false;
- #endif
-   return false;
- }
 diff --git a/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h b/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
 --- a/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
 +++ b/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
@@ -55,7 +41,7 @@ diff --git a/chrome/browser/navigation_predictor/navigation_predictor_metrics_do
 diff --git a/chrome/browser/safe_browsing/BUILD.gn b/chrome/browser/safe_browsing/BUILD.gn
 --- a/chrome/browser/safe_browsing/BUILD.gn
 +++ b/chrome/browser/safe_browsing/BUILD.gn
-@@ -182,6 +182,7 @@ static_library("safe_browsing") {
+@@ -186,6 +186,7 @@ static_library("safe_browsing") {
        "//components/version_info",
        "//content/public/browser",
        "//services/preferences/public/mojom:mojom",
@@ -66,7 +52,7 @@ diff --git a/chrome/browser/safe_browsing/BUILD.gn b/chrome/browser/safe_browsin
 diff --git a/components/omnibox/browser/autocomplete_classifier.cc b/components/omnibox/browser/autocomplete_classifier.cc
 --- a/components/omnibox/browser/autocomplete_classifier.cc
 +++ b/components/omnibox/browser/autocomplete_classifier.cc
-@@ -97,8 +97,8 @@ void AutocompleteClassifier::Classify(
+@@ -96,8 +96,8 @@ void AutocompleteClassifier::Classify(
      metrics::OmniboxEventProto::PageClassification page_classification,
      AutocompleteMatch* match,
      GURL* alternate_nav_url) {
@@ -80,7 +66,7 @@ diff --git a/components/omnibox/browser/autocomplete_classifier.cc b/components/
 diff --git a/components/omnibox/browser/omnibox_field_trial.cc b/components/omnibox/browser/omnibox_field_trial.cc
 --- a/components/omnibox/browser/omnibox_field_trial.cc
 +++ b/components/omnibox/browser/omnibox_field_trial.cc
-@@ -1083,11 +1083,11 @@ MLConfig& MLConfig::operator=(const MLConfig& other) = default;
+@@ -1068,11 +1068,11 @@ MLConfig& MLConfig::operator=(const MLConfig& other) = default;
  
  ScopedMLConfigForTesting::ScopedMLConfigForTesting()
      : original_config_(std::make_unique<MLConfig>(GetMLConfig())) {
@@ -97,10 +83,10 @@ diff --git a/components/omnibox/browser/omnibox_field_trial.cc b/components/omni
 diff --git a/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc b/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
 --- a/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
 +++ b/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
-@@ -52,17 +52,9 @@ void PhishingImageEmbedder::BeginImageEmbedding(DoneCallback done_callback) {
- }
+@@ -53,17 +53,9 @@ void PhishingImageEmbedder::BeginImageEmbedding(DoneCallback done_callback) {
  
  void PhishingImageEmbedder::OnPlaybackDone(std::unique_ptr<SkBitmap> bitmap) {
+ #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 -  if (bitmap) {
 -    bitmap_ = std::move(bitmap);
 -    ScorerStorage::GetInstance()
@@ -115,13 +101,13 @@ diff --git a/components/safe_browsing/content/renderer/phishing_classifier/phish
 +  // (UAZO) removed due error:
 +  // no member named 'ApplyVisualTfLiteModelImageEmbedding' in 'safe_browsing::Scorer'
 +  RunFailureCallback();
- }
- 
- void PhishingImageEmbedder::CancelPendingImageEmbedding() {
+ #else
+   RunFailureCallback();
+ #endif
 diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
 --- a/content/browser/browser_interface_binders.cc
 +++ b/content/browser/browser_interface_binders.cc
-@@ -362,6 +362,7 @@ void BindDateTimeChooserForFrame(
+@@ -370,6 +370,7 @@ void BindDateTimeChooserForFrame(
  void BindTextSuggestionHostForFrame(
      RenderFrameHost* host,
      mojo::PendingReceiver<blink::mojom::TextSuggestionHost> receiver) {
@@ -129,40 +115,15 @@ diff --git a/content/browser/browser_interface_binders.cc b/content/browser/brow
    auto* view =
        RenderWidgetHostViewAndroid::FromRenderWidgetHostView(host->GetView());
    if (!view || !view->text_suggestion_host())
-diff --git a/crypto/BUILD.gn b/crypto/BUILD.gn
---- a/crypto/BUILD.gn
-+++ b/crypto/BUILD.gn
-@@ -14,6 +14,9 @@ buildflag_header("buildflags") {
- }
- 
- component("crypto") {
-+  # fix error
-+  # [chromium-rawptr] Use raw_ptr<T> instead of a raw pointer.
-+  configs -= [ "//build/config/clang:find_bad_constructs" ]
-   output_name = "crcrypto"  # Avoid colliding with OpenSSL's libcrypto.
-   sources = [
-     "aead.cc",
 diff --git a/net/BUILD.gn b/net/BUILD.gn
 --- a/net/BUILD.gn
 +++ b/net/BUILD.gn
-@@ -1584,6 +1584,7 @@ component("net") {
-     configs -= [ "//build/config/compiler:default_optimization" ]
-     configs += [ "//build/config/compiler:optimize_max" ]
+@@ -1630,6 +1630,7 @@ component("net") {
+   if (!is_cronet_build) {
+     deps += [ "//mojo/public/cpp/bindings:default_construct_tag" ]
    }
-+  configs -= [ "//build/config/clang:find_bad_constructs" ]
++  # test: configs -= [ "//build/config/clang:find_bad_constructs" ]
  }
  
  # net_export.h has its own build target so that code (eg
-diff --git a/third_party/libevent/BUILD.gn b/third_party/libevent/BUILD.gn
---- a/third_party/libevent/BUILD.gn
-+++ b/third_party/libevent/BUILD.gn
-@@ -58,6 +58,8 @@ static_library("libevent") {
-     configs += [ "//build/config/compiler:optimize_max" ]
-   }
- 
-+  configs -= [ "//build/config/clang:find_bad_constructs" ]
-+
-   configs -= [ "//build/config/compiler:chromium_code" ]
-   configs += [ "//build/config/compiler:no_chromium_code" ]
- }
 --

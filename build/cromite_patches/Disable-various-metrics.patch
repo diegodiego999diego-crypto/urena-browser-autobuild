@@ -36,15 +36,15 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
 diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/browser/android/ntp/most_visited_sites_bridge.cc
 --- a/chrome/browser/android/ntp/most_visited_sites_bridge.cc
 +++ b/chrome/browser/android/ntp/most_visited_sites_bridge.cc
-@@ -26,7 +26,6 @@
- #include "chrome/browser/profiles/profile_android.h"
+@@ -23,7 +23,6 @@
+ #include "chrome/browser/profiles/profile.h"
  #include "components/favicon_base/favicon_types.h"
  #include "components/history/core/browser/history_service.h"
 -#include "components/ntp_tiles/metrics.h"
  #include "components/ntp_tiles/most_visited_sites.h"
  #include "components/ntp_tiles/section_type.h"
  #include "ui/gfx/android/java_bitmap.h"
-@@ -46,7 +45,6 @@ using ntp_tiles::NTPTilesVector;
+@@ -43,7 +42,6 @@ using ntp_tiles::NTPTilesVector;
  using ntp_tiles::SectionType;
  using ntp_tiles::TileTitleSource;
  using ntp_tiles::TileSource;
@@ -52,7 +52,7 @@ diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/br
  
  namespace {
  
-@@ -233,7 +231,6 @@ void MostVisitedSitesBridge::RecordPageImpression(
+@@ -219,7 +217,6 @@ void MostVisitedSitesBridge::RecordPageImpression(
      JNIEnv* env,
      const JavaParamRef<jobject>& obj,
      jint jtiles_count) {
@@ -60,11 +60,11 @@ diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/br
  }
  
  void MostVisitedSitesBridge::RecordTileImpression(
-@@ -245,15 +242,6 @@ void MostVisitedSitesBridge::RecordTileImpression(
+@@ -231,15 +228,6 @@ void MostVisitedSitesBridge::RecordTileImpression(
      jint jtitle_source,
      jint jsource,
      const JavaParamRef<jobject>& jurl) {
--  std::unique_ptr<GURL> url = url::GURLAndroid::ToNativeGURL(env, jurl);
+-  GURL url = url::GURLAndroid::ToNativeGURL(env, jurl);
 -  TileTitleSource title_source = static_cast<TileTitleSource>(jtitle_source);
 -  TileSource source = static_cast<TileSource>(jsource);
 -  TileVisualType visual_type = static_cast<TileVisualType>(jvisual_type);
@@ -72,11 +72,11 @@ diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/br
 -      static_cast<favicon_base::IconType>(jicon_type);
 -
 -  ntp_tiles::metrics::RecordTileImpression(ntp_tiles::NTPTileImpression(
--      jindex, source, title_source, visual_type, icon_type, *url));
+-      jindex, source, title_source, visual_type, icon_type, url));
  }
  
  void MostVisitedSitesBridge::RecordOpenedMostVisitedItem(
-@@ -263,11 +251,6 @@ void MostVisitedSitesBridge::RecordOpenedMostVisitedItem(
+@@ -249,11 +237,6 @@ void MostVisitedSitesBridge::RecordOpenedMostVisitedItem(
      jint tile_type,
      jint title_source,
      jint source) {
@@ -87,11 +87,11 @@ diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/br
 -      /*url_for_rappor=*/GURL()));
  }
  
- static jlong JNI_MostVisitedSitesBridge_Init(
+ static jlong JNI_MostVisitedSitesBridge_Init(JNIEnv* env,
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -1081,7 +1081,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -1099,7 +1099,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
  #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  
    registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
@@ -103,15 +103,15 @@ diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_pro
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -83,7 +83,6 @@
- #include "chrome/browser/hid/chrome_hid_delegate.h"
+@@ -85,7 +85,6 @@
+ #include "chrome/browser/history/history_service_factory.h"
  #include "chrome/browser/interstitials/enterprise_util.h"
  #include "chrome/browser/lifetime/browser_shutdown.h"
 -#include "chrome/browser/lookalikes/lookalike_url_navigation_throttle.h"
  #include "chrome/browser/media/audio_service_util.h"
  #include "chrome/browser/media/prefs/capture_device_ranking.h"
  #include "chrome/browser/media/router/media_router_feature.h"
-@@ -4908,16 +4907,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+@@ -5106,16 +5105,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
      content::NavigationHandle* handle) {
    std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
  
@@ -125,11 +125,11 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
 -        page_load_metrics::MetricsNavigationThrottle::Create(handle));
 -  }
 -
- #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-   MaybeAddThrottle(
-       SupervisedUserNavigationThrottle::MaybeCreateThrottleFor(handle),
-@@ -5018,10 +5007,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
-     throttle_manager->MaybeAppendNavigationThrottles(handle, &throttles);
+ #if BUILDFLAG(IS_ANDROID)
+   // TODO(davidben): This is insufficient to integrate with prerender properly.
+   // https://crbug.com/370595
+@@ -5223,10 +5212,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+     }
    }
  
 -  MaybeAddThrottle(
@@ -142,7 +142,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
 diff --git a/chrome/browser/metrics/chrome_metrics_services_manager_client.cc b/chrome/browser/metrics/chrome_metrics_services_manager_client.cc
 --- a/chrome/browser/metrics/chrome_metrics_services_manager_client.cc
 +++ b/chrome/browser/metrics/chrome_metrics_services_manager_client.cc
-@@ -92,6 +92,10 @@ BASE_FEATURE(kPostFREFixMetricsReportingFeature,
+@@ -93,6 +93,10 @@ BASE_FEATURE(kPostFREFixMetricsReportingFeature,
  // Name of the variations param that defines the sampling rate.
  const char kRateParamName[] = "sampling_rate_per_mille";
  
@@ -179,7 +179,7 @@ diff --git a/chrome/browser/ui/search/ntp_user_data_logger.cc b/chrome/browser/u
 diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
 --- a/components/ntp_tiles/BUILD.gn
 +++ b/components/ntp_tiles/BUILD.gn
-@@ -23,8 +23,6 @@ static_library("ntp_tiles") {
+@@ -24,8 +24,6 @@ static_library("ntp_tiles") {
      "icon_cacher.h",
      "icon_cacher_impl.cc",
      "icon_cacher_impl.h",
@@ -188,7 +188,7 @@ diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
      "most_visited_sites.cc",
      "most_visited_sites.h",
      "ntp_tile.cc",
-@@ -91,7 +89,6 @@ source_set("unit_tests") {
+@@ -97,7 +95,6 @@ source_set("unit_tests") {
      "custom_links_manager_impl_unittest.cc",
      "custom_links_store_unittest.cc",
      "icon_cacher_impl_unittest.cc",
@@ -199,7 +199,7 @@ diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
 diff --git a/components/ntp_tiles/custom_links_manager_impl.cc b/components/ntp_tiles/custom_links_manager_impl.cc
 --- a/components/ntp_tiles/custom_links_manager_impl.cc
 +++ b/components/ntp_tiles/custom_links_manager_impl.cc
-@@ -203,7 +203,6 @@ void CustomLinksManagerImpl::RemoveCustomLinksForPreinstalledApps() {
+@@ -217,7 +217,6 @@ void CustomLinksManagerImpl::RemoveCustomLinksForPreinstalledApps() {
        }
      }
      if (default_app_links_deleted) {
@@ -210,7 +210,7 @@ diff --git a/components/ntp_tiles/custom_links_manager_impl.cc b/components/ntp_
 diff --git a/components/ntp_tiles/most_visited_sites.cc b/components/ntp_tiles/most_visited_sites.cc
 --- a/components/ntp_tiles/most_visited_sites.cc
 +++ b/components/ntp_tiles/most_visited_sites.cc
-@@ -704,8 +704,6 @@ void MostVisitedSites::SaveTilesAndNotify(
+@@ -747,8 +747,6 @@ void MostVisitedSites::SaveTilesAndNotify(
                                     : new_tiles;
  
    if (fixed_tiles.size() != new_tiles.size()) {

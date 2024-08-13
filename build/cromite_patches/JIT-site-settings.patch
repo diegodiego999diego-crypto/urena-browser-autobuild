@@ -22,7 +22,8 @@ Require: Content-settings-infrastructure.patch
  .../javascript_jit.grdp                       |  21 ++++
  .../javascript_jit.inc                        |  12 +++
  .../core/browser/content_settings_registry.cc |   2 +-
- 9 files changed, 127 insertions(+), 1 deletion(-)
+ .../renderer_host/render_process_host_impl.cc |   9 +-
+ 10 files changed, 129 insertions(+), 8 deletions(-)
  create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-hdpi/permission_javascript_jit.png
  create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-mdpi/permission_javascript_jit.png
  create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-xhdpi/permission_javascript_jit.png
@@ -242,10 +243,10 @@ new file mode 100644
 +    Enable the JIT compiler and WebAssembly support in V8
 +  </message>
 +  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_ENABLED" desc="Summary text explaining that sites are allowed to compile JavaScript in JIT mode." formatter_data="android_java">
-+    Allow JIT and WebAssembly on a specific site.
++    Allow JIT and WebAssembly
 +  </message>
 +  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_DISABLED" desc="Summary text explaining that sites are running JavaScript in JITless mode." formatter_data="android_java">
-+    Block JIT and WebAssembly on a specific site.
++    Block JIT and WebAssembly
 +  </message>
 +  <message name="IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_ALLOW" desc="The description for the allow Javascript JIT for website dialog." formatter_data="android_java">
 +    Allow sites to use just-in-time compilation; more performant but a constant source of security vulnerabilities.
@@ -274,7 +275,7 @@ new file mode 100644
 diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
 --- a/components/content_settings/core/browser/content_settings_registry.cc
 +++ b/components/content_settings/core/browser/content_settings_registry.cc
-@@ -582,7 +582,7 @@ void ContentSettingsRegistry::Init() {
+@@ -589,7 +589,7 @@ void ContentSettingsRegistry::Init() {
             ContentSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
  
    Register(ContentSettingsType::JAVASCRIPT_JIT, "javascript-jit",
@@ -283,4 +284,23 @@ diff --git a/components/content_settings/core/browser/content_settings_registry.
             /*allowlisted_primary_schemes=*/{},
             /*valid_settings=*/{CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK},
             WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -3396,13 +3396,8 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
+   }
+ 
+   if (IsJitDisabled()) {
+-    if (IsPdf()) {
+-      command_line->AppendSwitchASCII(blink::switches::kJavaScriptFlags,
+-                                      "--jitless");
+-    } else {
+-      command_line->AppendSwitchASCII(blink::switches::kJavaScriptFlags,
+-                                      "--no-maglev,--no-turbofan");
+-    }
++    command_line->AppendSwitchASCII(blink::switches::kJavaScriptFlags,
++                                    "--jitless");
+   }
+ 
+   if (features::IsTouchTextEditingRedesignEnabled()) {
 --

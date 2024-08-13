@@ -13,6 +13,7 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
+patchonly=0
 arch=""
 
 usage() {
@@ -25,13 +26,15 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
+    echo "    -p Apply patches - Only after synced"
     echo
     exit 1
 }
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
+    apks="ChromePublic MonochromePublic SystemWebView TrichromeChrome \
+        TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
         TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
@@ -65,6 +68,7 @@ build() {
     gn gen "out/$1" --args="$build_args"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
         build_targets="trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
+        build_targets="$build_targets chrome_public_apk system_webview_apk monochrome_public_apk"
     else
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
@@ -91,12 +95,10 @@ build() {
     gn gen "out/$1" --args="$build_args"
     ninja -C out/$1 $build_targets
 
-    for apk in $apks; do
-        if [ -f "out/${1}/apks/$apk.apk" ]; then
-            echo ">> [$(date)] Moving debug $apk for ${apk_arch} to output folder"
-            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g')_debug.apk"
-        fi
-    done
+    # Create the 7z archive
+    echo ">> [$(date)] Creating archive with debug apks"
+    archive_name="${root_dir}/apks/${apk_arch}/browser_${apk_arch}_debug_apks.7z"
+    7z a -t7z -mx=9 "$archive_name" "out/${1}/apks"/*.apk
 }
 
 setup_ccache() {
@@ -134,7 +136,13 @@ patch() {
 rename() {
     cd $chromium_dir/src
 
-    replacements=("Chrome browser=Browser" "Chrome=Browser" "Bromite=Browser" "Cromite=Browser")
+    replacements=(
+        "Chrome browser=Browser"
+        "Chrome=Browser"
+        "Bromite=Browser"
+        "Cromite=Browser"
+        "Google Password Manager=Password Manager"
+    )
 
     for replacement in "${replacements[@]}"; do
         replaced_string=${replacement%%=*}
@@ -175,9 +183,9 @@ sync() {
         fi
     fi
     if [ $history -eq 1 ]; then
-        gclient sync -D --nohooks -R
+        gclient sync -D --nohooks -R --force
     else
-        gclient sync --no-history -D --nohooks -R
+        gclient sync --no-history -D --nohooks -R --force
     fi
     gclient runhooks
     patch
@@ -208,20 +216,21 @@ init_repo(){
     fi
 }
 
-while getopts ":a:cur:sh" opt; do
+while getopts ":a:cur:shp" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
     s) gsync=1  ;;
     h) history=0 ;;
+    p) patchonly=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
         usage
         ;;
     \?)
-        echo "Invalid option:-$OPTARG"
+        echo "Invalid option: -$OPTARG"
         echo
         usage
         ;;
@@ -266,6 +275,12 @@ if [ $gsync -eq 1 ]; then
         init_repo
     fi
     sync
+elif [ $patchonly -eq 1 ]; then
+    cd $chromium_dir/src
+    git fetch origin refs/tags/$chromium_version
+    git checkout main
+    git reset --hard FETCH_HEAD
+    patch
 fi
 
 cd $chromium_dir/src

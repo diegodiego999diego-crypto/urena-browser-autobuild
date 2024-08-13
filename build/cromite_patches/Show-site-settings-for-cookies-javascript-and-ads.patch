@@ -8,14 +8,14 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  .../site_settings/SingleWebsiteSettings.java  | 51 ++++++++++++-------
  .../browser_ui/site_settings/Website.java     | 14 ++++-
- .../bromite_content_settings/javascript.inc   |  3 ++
- 3 files changed, 49 insertions(+), 19 deletions(-)
+ .../bromite_content_settings/javascript.inc   |  4 ++
+ 3 files changed, 50 insertions(+), 19 deletions(-)
  create mode 100644 components/content_settings/core/browser/bromite_content_settings/javascript.inc
 
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/SingleWebsiteSettings.java
-@@ -558,6 +558,8 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -560,6 +560,8 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
                  setUpSoundPreference(preference);
              } else if (type == ContentSettingsType.JAVASCRIPT) {
                  setUpJavascriptPreference(preference);
@@ -24,7 +24,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
              } else if (type == ContentSettingsType.GEOLOCATION) {
                  setUpLocationPreference(preference);
              } else if (type == ContentSettingsType.NOTIFICATIONS) {
-@@ -991,17 +993,8 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -1010,17 +1012,8 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
      private void setUpAdsInformationalBanner() {
          // Add the informational banner which shows at the top of the UI if ad blocking is
          // activated on this site.
@@ -42,7 +42,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
      }
  
      private SiteSettingsCategory getWarningCategory() {
-@@ -1199,12 +1192,13 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -1219,12 +1212,13 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          @Nullable
          Integer currentValue =
                  mSite.getContentSetting(browserContextHandle, ContentSettingsType.JAVASCRIPT);
@@ -62,7 +62,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
          }
          // Not possible to embargo JAVASCRIPT.
          setupContentSettingsPreference(
-@@ -1214,6 +1208,29 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -1234,6 +1228,29 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
                  isOneTime(ContentSettingsType.JAVASCRIPT));
      }
  
@@ -92,7 +92,7 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
      /**
       * Updates the ads list preference based on whether the site is a candidate for blocking. This
       * has some custom behavior.
-@@ -1232,9 +1249,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
+@@ -1252,9 +1269,7 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
          }
          // If the ad blocker is activated, then this site will have ads blocked unless there is an
          // explicit permission disallowing the blocking.
@@ -106,13 +106,13 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
 --- a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
 +++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/Website.java
-@@ -280,7 +280,19 @@ public final class Website implements WebsiteEntry {
+@@ -281,7 +281,19 @@ public final class Website implements WebsiteEntry {
                          new ContentSettingException(
                                  ContentSettingsType.ADS,
                                  getAddress().getOrigin(),
 -                                ContentSettingValues.BLOCK,
 +                                value,
-+                                "",
++                                ProviderType.NONE,
 +                                /* isEmbargoed= */ false);
 +                setContentSettingException(type, exception);
 +            }
@@ -124,15 +124,16 @@ diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/c
 +                                ContentSettingsType.COOKIES,
 +                                getAddress().getOrigin(),
 +                                value,
-                                 "",
+                                 ProviderType.NONE,
                                  /* isEmbargoed= */ false);
                  setContentSettingException(type, exception);
 diff --git a/components/content_settings/core/browser/bromite_content_settings/javascript.inc b/components/content_settings/core/browser/bromite_content_settings/javascript.inc
 new file mode 100644
 --- /dev/null
 +++ b/components/content_settings/core/browser/bromite_content_settings/javascript.inc
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,4 @@
 +  content_settings::WebsiteSettingsRegistry::GetInstance()
 +    ->GetMutable(ContentSettingsType::JAVASCRIPT)
-+    ->set_show_into_info_page();
++    ->set_show_into_info_page()
++    .set_is_renderer_content_setting();
 --

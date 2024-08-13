@@ -38,7 +38,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -108,6 +108,12 @@ found in the LICENSE file.
+@@ -124,6 +124,12 @@ found in the LICENSE file.
          android:title="@string/cablev2_paask_title"
          android:summary="@string/cablev2_paask_body"
          android:fragment="org.chromium.chrome.browser.webauthn.PrivacySettingsFragment" />
@@ -54,15 +54,15 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -45,6 +45,7 @@ import org.chromium.chrome.browser.sync.settings.GoogleServicesSettings;
- import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+@@ -44,6 +44,7 @@ import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
  import org.chromium.chrome.browser.usage_stats.UsageStatsConsentDialog;
  import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
+ import org.chromium.components.browser_ui.settings.FragmentSettingsLauncher;
 +import org.chromium.components.browser_ui.settings.SpinnerPreference;
  import org.chromium.components.browser_ui.settings.SettingsLauncher;
  import org.chromium.components.browser_ui.settings.SettingsUtils;
  import org.chromium.components.browser_ui.site_settings.ContentSettingsResources;
-@@ -64,6 +65,9 @@ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+@@ -62,6 +63,9 @@ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
  import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
  import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
  
@@ -71,8 +71,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 +
  /** Fragment to keep track of the all the privacy related preferences. */
  public class PrivacySettings extends ChromeBaseSettingsFragment
-         implements Preference.OnPreferenceChangeListener {
-@@ -99,6 +103,8 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+         implements Preference.OnPreferenceChangeListener, FragmentSettingsLauncher {
+@@ -104,6 +108,8 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
      private ChromeSwitchPreference allowCustomTabIntentsPref;
      private ChromeSwitchPreference openExternalLinksPref;
  
@@ -81,9 +81,9 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
      @Override
      public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
          getActivity().setTitle(R.string.prefs_privacy_security);
-@@ -221,6 +227,40 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -236,6 +242,40 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          Preference syncAndServicesLink = findPreference(PREF_SYNC_AND_SERVICES_LINK);
-         syncAndServicesLink.setSummary(buildSyncAndServicesLink());
+         syncAndServicesLink.setSummary(buildFooterString());
  
 +        // set up history expire days threshold preference
 +        List<TimeFrequencySpinnerOption> options = new ArrayList<>();
@@ -122,8 +122,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
          Preference thirdPartyCookies = findPreference(PREF_THIRD_PARTY_COOKIES);
          Preference doNotTrackPref = findPreference(PREF_DO_NOT_TRACK);
  
-@@ -437,6 +477,29 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
-                 || ChromeFeatureList.isEnabled(ChromeFeatureList.TRACKING_PROTECTION_3PCD);
+@@ -479,6 +519,29 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+                 && ChromeFeatureList.isEnabled(ChromeFeatureList.FINGERPRINTING_PROTECTION_SETTING);
      }
  
 +    class TimeFrequencySpinnerOption {
@@ -155,7 +155,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
 --- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
 +++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-@@ -36,6 +36,7 @@
+@@ -37,6 +37,7 @@
  #include "components/content_settings/core/common/pref_names.h"
  #include "components/dom_distiller/core/pref_names.h"
  #include "components/drive/drive_pref_names.h"
@@ -163,9 +163,9 @@ diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chro
  #include "components/embedder_support/pref_names.h"
  #include "components/language/core/browser/pref_names.h"
  #include "components/live_caption/pref_names.h"
-@@ -211,6 +212,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
- #endif
-   (*s_allowlist)[::prefs::kShowHomeButton] = settings_api::PrefType::kBoolean;
+@@ -210,6 +211,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+   (*s_allowlist)[::prefs::kShowForwardButton] =
+       settings_api::PrefType::kBoolean;
  
 +  (*s_allowlist)[::prefs::kExpireDaysThreshold] =
 +      settings_api::PrefType::kNumber;
@@ -188,7 +188,7 @@ diff --git a/chrome/browser/history/history_service_factory.cc b/chrome/browser/
 diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
 --- a/chrome/browser/profiles/profile_impl.cc
 +++ b/chrome/browser/profiles/profile_impl.cc
-@@ -377,6 +377,7 @@ std::unique_ptr<Profile> Profile::CreateProfile(const base::FilePath& path,
+@@ -375,6 +375,7 @@ std::unique_ptr<Profile> Profile::CreateProfile(const base::FilePath& path,
  void ProfileImpl::RegisterProfilePrefs(
      user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(prefs::kSavingBrowserHistoryDisabled, false);
@@ -218,7 +218,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html b/
 diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 --- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 +++ b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
-@@ -80,6 +80,23 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+@@ -81,6 +81,23 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
  
    static get properties() {
      return {
@@ -245,7 +245,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/ch
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1213,6 +1213,18 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -1281,6 +1281,18 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_CLEAR_HISTORY_TITLE" desc="Title for Clear History in Clear Browsing Data dialog">
          Browsing history
        </message>
@@ -267,7 +267,7 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
 diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 --- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 +++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
-@@ -1717,6 +1717,11 @@ void AddPrivacyStrings(content::WebUIDataSource* html_source,
+@@ -1814,6 +1814,11 @@ void AddPrivacyStrings(content::WebUIDataSource* html_source,
        {"safeBrowsingStandardDesc", IDS_SETTINGS_SAFEBROWSING_STANDARD_DESC},
        {"safeBrowsingStandardDescUpdated",
         IDS_SETTINGS_SAFEBROWSING_STANDARD_DESC_UPDATED},
@@ -427,7 +427,7 @@ diff --git a/components/history/core/browser/expire_history_backend.cc b/compone
  void ExpireHistoryBackend::DeleteFaviconsIfPossible(DeleteEffects* effects) {
    if (!favicon_db_)
      return;
-@@ -629,6 +634,12 @@ void ExpireHistoryBackend::DoExpireIteration() {
+@@ -651,6 +656,12 @@ void ExpireHistoryBackend::DoExpireIteration() {
      return;
    }
  
@@ -464,7 +464,7 @@ diff --git a/components/history/core/browser/history_backend.cc b/components/his
  
  // The maximum number of days for which domain visit metrics are computed
  // each time HistoryBackend::GetDomainDiversity() is called.
-@@ -1309,6 +1309,19 @@ void HistoryBackend::InitImpl(
+@@ -1311,6 +1311,19 @@ void HistoryBackend::InitImpl(
    expirer_.StartExpiringOldStuff(base::Days(kExpireDaysThreshold));
  }
  
@@ -487,7 +487,7 @@ diff --git a/components/history/core/browser/history_backend.cc b/components/his
 diff --git a/components/history/core/browser/history_backend.h b/components/history/core/browser/history_backend.h
 --- a/components/history/core/browser/history_backend.h
 +++ b/components/history/core/browser/history_backend.h
-@@ -221,6 +221,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
+@@ -233,6 +233,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
    void Init(bool force_fail,
              const HistoryDatabaseParams& history_database_params);
  
@@ -509,18 +509,8 @@ diff --git a/components/history/core/browser/history_service.cc b/components/his
  #include "components/history/core/browser/download_row.h"
  #include "components/history/core/browser/features.h"
  #include "components/history/core/browser/history_backend.h"
-@@ -1382,6 +1385,9 @@ void HistoryService::Cleanup() {
-     return;
-   }
- 
-+  active_user_pref_change_registrar_.reset();
-+  active_user_pref_service_ = nullptr;
-+
-   NotifyHistoryServiceBeingDeleted();
- 
-   weak_ptr_factory_.InvalidateWeakPtrs();
-@@ -1458,6 +1464,33 @@ bool HistoryService::Init(
-   return true;
+@@ -568,6 +571,33 @@ base::CancelableTaskTracker::TaskId HistoryService::ScheduleDBTask(
+   return task_id;
  }
  
 +void HistoryService::InitFromPreferences(PrefService* prefs) {
@@ -550,9 +540,19 @@ diff --git a/components/history/core/browser/history_service.cc b/components/his
 +  history_backend_->SetExpireDaysThreshold(kExpireDaysThreshold);
 +}
 +
- void HistoryService::ScheduleAutocomplete(
+ void HistoryService::ScheduleDBTaskForUI(
      base::OnceCallback<void(HistoryBackend*, URLDatabase*)> callback) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+@@ -1492,6 +1522,9 @@ void HistoryService::Cleanup() {
+     return;
+   }
+ 
++  active_user_pref_change_registrar_.reset();
++  active_user_pref_service_ = nullptr;
++
+   NotifyHistoryServiceBeingDeleted();
+ 
+   weak_ptr_factory_.InvalidateWeakPtrs();
 diff --git a/components/history/core/browser/history_service.h b/components/history/core/browser/history_service.h
 --- a/components/history/core/browser/history_service.h
 +++ b/components/history/core/browser/history_service.h
@@ -565,16 +565,16 @@ diff --git a/components/history/core/browser/history_service.h b/components/hist
  #include "components/history/core/browser/history_types.h"
  #include "components/history/core/browser/keyword_id.h"
  #include "components/history/core/browser/url_row.h"
-@@ -114,6 +116,8 @@ class HistoryService : public KeyedService,
-     return Init(false, history_database_params);
-   }
+@@ -116,6 +118,8 @@ class HistoryService : public KeyedService,
+   // Returns the directory containing the History databases.
+   const base::FilePath& history_dir() const { return history_dir_; }
  
 +  void InitFromPreferences(PrefService* prefs);
 +
    // Triggers the backend to load if it hasn't already, and then returns whether
    // it's finished loading.
    // Note: Virtual needed for mocking.
-@@ -1169,6 +1173,10 @@ class HistoryService : public KeyedService,
+@@ -1217,6 +1221,10 @@ class HistoryService : public KeyedService,
    raw_ptr<syncer::LocalDeviceInfoProvider> local_device_info_provider_ =
        nullptr;
  
