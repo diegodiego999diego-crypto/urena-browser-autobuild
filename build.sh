@@ -204,7 +204,7 @@ sync() {
 }
 
 gclient_config() {
-    cat <<EOF > "$chromium_dir/.gclient"
+    cat <<EOF >"$chromium_dir/.gclient"
 solutions = [{
     "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
@@ -217,7 +217,7 @@ target_os = ["android"]
 EOF
 }
 
-init_repo(){
+init_repo() {
     echo ">> [$(date)] Init chromium $chromium_version"
     cd $chromium_dir
     rm -rf .gclient*
@@ -233,7 +233,7 @@ while getopts ":a:cur:shp" opt; do
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
-    s) gsync=1  ;;
+    s) gsync=1 ;;
     h) history=0 ;;
     p) patchonly=1 ;;
     :)
@@ -275,9 +275,9 @@ if [ $gsync -eq 1 ]; then
     cd $chromium_dir/src
     # Check if a rebase is in progress
     if [ -d "$(git rev-parse --git-dir)/rebase-apply" ] || [ -d "$(git rev-parse --git-dir)/rebase-merge" ]; then
-      git am --skip 2>/dev/null || true
-      git rebase --abort 2>/dev/null || true
-      echo ">> [$(date)] Rebase aborted."
+        git am --skip 2>/dev/null || true
+        git rebase --abort 2>/dev/null || true
+        echo ">> [$(date)] Rebase aborted."
     fi
     find ".git" -name "*.lock" -delete
     if [ ! -z $(find .git -name "*.lock") ]; then
