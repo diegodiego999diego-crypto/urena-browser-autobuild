@@ -99,6 +99,18 @@ build() {
     echo ">> [$(date)] Creating archive with debug apks"
     archive_name="${root_dir}/apks/${apk_arch}/browser_${apk_arch}_debug_apks.7z"
     7z a -t7z -mx=9 "$archive_name" "out/${1}/apks"/*.apk
+
+    if [ $1 '==' "x64" ]; then
+        echo ">> [$(date)] Building chromium subresource_filter_tools"
+        mkdir -p "${root_dir}/bin"
+        build_args=$(cat "${root_dir}"/build/filters.gn_args)
+        build_args+=' cc_wrapper="ccache"'
+        gn gen out/${1} --args="$build_args"
+        autoninja -C out/${1} subresource_filter_tools
+        if [ -f "out/${1}/ruleset_converter" ]; then
+            cp -r out/${1}/ruleset_converter ${root_dir}/bin/ruleset_converter
+        fi
+    fi
 }
 
 setup_ccache() {
