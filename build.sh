@@ -33,8 +33,7 @@ usage() {
 
 build() {
     echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-    apks="ChromePublic MonochromePublic SystemWebView TrichromeChrome \
-        TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
+    apks="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
         TrichromeLibrary6432 TrichromeWebView6432"
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
@@ -68,7 +67,6 @@ build() {
     gn gen "out/$1" --args="$build_args"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
         build_targets="trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
-        build_targets="$build_targets chrome_public_apk system_webview_apk monochrome_public_apk"
     else
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
@@ -95,10 +93,12 @@ build() {
     gn gen "out/$1" --args="$build_args"
     ninja -C out/$1 $build_targets
 
-    # Create the 7z archive
-    echo ">> [$(date)] Creating archive with debug apks"
-    archive_name="${root_dir}/apks/${apk_arch}/browser_${apk_arch}_debug_apks.7z"
-    7z a -t7z -mx=9 "$archive_name" "out/${1}/apks"/*.apk
+    for apk in $apks; do
+        if [ -f "out/${1}/apks/$apk.apk" ]; then
+            echo ">> [$(date)] Moving debug $apk for ${apk_arch} to output folder"
+            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g')_debug.apk"
+        fi
+    done
 
     if [ $1 '==' "x64" ]; then
         echo ">> [$(date)] Building chromium subresource_filter_tools"

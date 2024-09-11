@@ -10,9 +10,6 @@ RUN apt-get update &&\
     apt-get -f -y install sudo lsb-release cl-base64 bash wget apt-utils ccache jq python3 \
     python-is-python3 sed tzdata build-essential lib32gcc-9-dev g++-multilib dos2unix wiggle git curl
 
-RUN apt-get update &&\
-    apt-get -y install p7zip-full
-
 RUN mkdir ${CHROMIUM_DIR}
 
 RUN curl -s https://raw.githubusercontent.com/chromium/chromium/${CHROMIUM_VER}/build/install-build-deps.py \
