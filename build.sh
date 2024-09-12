@@ -99,6 +99,18 @@ build() {
     echo ">> [$(date)] Creating archive with debug apks"
     archive_name="${root_dir}/apks/${apk_arch}/browser_${apk_arch}_debug_apks.7z"
     7z a -t7z -mx=9 "$archive_name" "out/${1}/apks"/*.apk
+
+    if [ $1 '==' "x64" ]; then
+        echo ">> [$(date)] Building chromium subresource_filter_tools"
+        mkdir -p "${root_dir}/bin"
+        build_args=$(cat "${root_dir}"/build/filters.gn_args)
+        build_args+=' cc_wrapper="ccache"'
+        gn gen out/${1} --args="$build_args"
+        autoninja -C out/${1} subresource_filter_tools
+        if [ -f "out/${1}/ruleset_converter" ]; then
+            cp -r out/${1}/ruleset_converter ${root_dir}/bin/ruleset_converter
+        fi
+    fi
 }
 
 setup_ccache() {
@@ -192,7 +204,7 @@ sync() {
 }
 
 gclient_config() {
-    cat <<EOF > "$chromium_dir/.gclient"
+    cat <<EOF >"$chromium_dir/.gclient"
 solutions = [{
     "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
@@ -205,7 +217,7 @@ target_os = ["android"]
 EOF
 }
 
-init_repo(){
+init_repo() {
     echo ">> [$(date)] Init chromium $chromium_version"
     cd $chromium_dir
     rm -rf .gclient*
@@ -221,7 +233,7 @@ while getopts ":a:cur:shp" opt; do
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
     u) usage ;;
-    s) gsync=1  ;;
+    s) gsync=1 ;;
     h) history=0 ;;
     p) patchonly=1 ;;
     :)
@@ -263,9 +275,9 @@ if [ $gsync -eq 1 ]; then
     cd $chromium_dir/src
     # Check if a rebase is in progress
     if [ -d "$(git rev-parse --git-dir)/rebase-apply" ] || [ -d "$(git rev-parse --git-dir)/rebase-merge" ]; then
-      git am --skip 2>/dev/null || true
-      git rebase --abort 2>/dev/null || true
-      echo ">> [$(date)] Rebase aborted."
+        git am --skip 2>/dev/null || true
+        git rebase --abort 2>/dev/null || true
+        echo ">> [$(date)] Rebase aborted."
     fi
     find ".git" -name "*.lock" -delete
     if [ ! -z $(find .git -name "*.lock") ]; then
