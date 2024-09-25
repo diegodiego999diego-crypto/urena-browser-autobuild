@@ -63,6 +63,13 @@ build() {
 
     build_args+=' cc_wrapper="ccache"'
 
+    echo ">> [$(date)] Using AOSP test-key for release build"
+    keystore_path="${root_dir}/platform.jks"
+    build_args+=' android_keystore_path="'$keystore_path'"'
+    build_args+=' android_keystore_name="platform"'
+    build_args+=' android_keystore_password="platform"'
+    build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
+
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
@@ -71,32 +78,13 @@ build() {
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
 
-    mkdir -p "${root_dir}/apks/${apk_arch}"
-
-    echo ">> [$(date)] Using chromium test-key for release build"
     ninja -C out/$1 $build_targets
+    mkdir -p "${root_dir}/apks/${apk_arch}"
 
     for apk in $apks; do
         if [ -f "out/${1}/apks/$apk.apk" ]; then
             echo ">> [$(date)] Moving release $apk for ${apk_arch} to output folder"
             mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
-        fi
-    done
-
-    keystore_path="${root_dir}/platform.jks"
-    build_args+=' android_keystore_path="'$keystore_path'"'
-    build_args+=' android_keystore_name="platform"'
-    build_args+=' android_keystore_password="platform"'
-    build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
-
-    echo ">> [$(date)] Using AOSP test-key for debug build"
-    gn gen "out/$1" --args="$build_args"
-    ninja -C out/$1 $build_targets
-
-    for apk in $apks; do
-        if [ -f "out/${1}/apks/$apk.apk" ]; then
-            echo ">> [$(date)] Moving debug $apk for ${apk_arch} to output folder"
-            mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g')_debug.apk"
         fi
     done
 
