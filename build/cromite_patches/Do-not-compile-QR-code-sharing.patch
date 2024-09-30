@@ -6,15 +6,20 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  chrome/android/BUILD.gn                       |  1 -
  .../chrome/browser/ui/RootUiCoordinator.java  |  5 ----
+ chrome/browser/prefs/browser_prefs.cc         |  2 +-
  chrome/browser/share/BUILD.gn                 |  1 -
  ...omeProvidedSharingOptionsProviderBase.java | 23 -------------------
  chrome/browser/share/android/java_sources.gni | 11 ---------
- 5 files changed, 41 deletions(-)
+ .../sharing_hub/sharing_hub_features.cc       |  2 +-
+ .../browser/ui/browser_command_controller.cc  |  6 ++---
+ chrome/browser/ui/browser_commands.cc         |  1 +
+ .../qrcode_generator_bubble_controller.cc     |  1 +
+ 10 files changed, 7 insertions(+), 46 deletions(-)
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -3606,7 +3606,6 @@ generate_jni("chrome_jni_headers") {
+@@ -3643,7 +3643,6 @@ generate_jni("chrome_jni_headers") {
      "../browser/share/android/java/src/org/chromium/chrome/browser/share/link_to_text/LinkToTextBridge.java",
      "../browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabService.java",
      "../browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabServiceFactory.java",
@@ -25,7 +30,7 @@ diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-@@ -114,7 +114,6 @@ import org.chromium.chrome.browser.share.ShareButtonController;
+@@ -120,7 +120,6 @@ import org.chromium.chrome.browser.share.ShareButtonController;
  import org.chromium.chrome.browser.share.ShareDelegate;
  import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
  import org.chromium.chrome.browser.share.ShareUtils;
@@ -33,7 +38,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordi
  import org.chromium.chrome.browser.share.scroll_capture.ScrollCaptureManager;
  import org.chromium.chrome.browser.tab.AccessibilityVisibilityHandler;
  import org.chromium.chrome.browser.tab.AutofillSessionLifetimeController;
-@@ -604,10 +603,6 @@ public class RootUiCoordinator
+@@ -614,10 +613,6 @@ public class RootUiCoordinator
      }
  
      public void onAttachFragment(Fragment fragment) {
@@ -44,10 +49,22 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordi
      }
  
      @Override
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1780,7 +1780,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+   registry->RegisterBooleanPref(prefs::kUiAutomationProviderEnabled, false);
+ #endif
+ 
+-  registry->RegisterBooleanPref(prefs::kQRCodeGeneratorEnabled, true);
++  registry->RegisterBooleanPref(prefs::kQRCodeGeneratorEnabled, false);
+ 
+   // This is intentionally last.
+   RegisterLocalStatePrefsForMigration(registry);
 diff --git a/chrome/browser/share/BUILD.gn b/chrome/browser/share/BUILD.gn
 --- a/chrome/browser/share/BUILD.gn
 +++ b/chrome/browser/share/BUILD.gn
-@@ -45,7 +45,6 @@ source_set("share") {
+@@ -47,7 +47,6 @@ source_set("share") {
        "link_to_text_bridge.cc",
        "page_info_sharing_bridge.cc",
        "page_info_sharing_bridge.h",
@@ -123,4 +140,55 @@ diff --git a/chrome/browser/share/android/java_sources.gni b/chrome/browser/shar
    "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/EditorScreenshotSource.java",
    "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/EditorScreenshotTask.java",
    "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/ScreenshotCoordinator.java",
+diff --git a/chrome/browser/sharing_hub/sharing_hub_features.cc b/chrome/browser/sharing_hub/sharing_hub_features.cc
+--- a/chrome/browser/sharing_hub/sharing_hub_features.cc
++++ b/chrome/browser/sharing_hub/sharing_hub_features.cc
+@@ -72,7 +72,7 @@ BASE_FEATURE(kDesktopScreenshots,
+ 
+ #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterBooleanPref(prefs::kDesktopSharingHubEnabled, true);
++  registry->RegisterBooleanPref(prefs::kDesktopSharingHubEnabled, false);
+ }
+ #endif
+ 
+diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -1781,10 +1781,10 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
+   command_updater_.UpdateCommandEnabled(IDC_CHROME_WHATS_NEW, show_main_ui);
+ #endif
+   command_updater_.UpdateCommandEnabled(IDC_CONTENT_CONTEXT_SHARING_SUBMENU,
+-                                        show_main_ui);
+-  command_updater_.UpdateCommandEnabled(IDC_SHARING_HUB, show_main_ui);
++                                        false);
++  command_updater_.UpdateCommandEnabled(IDC_SHARING_HUB, false);
+   command_updater_.UpdateCommandEnabled(IDC_SHARING_HUB_SCREENSHOT,
+-                                        show_main_ui);
++                                        false);
+   command_updater_.UpdateCommandEnabled(IDC_SHOW_APP_MENU, show_main_ui);
+   command_updater_.UpdateCommandEnabled(IDC_SHOW_MANAGEMENT_PAGE, true);
+ 
+diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_commands.cc
+--- a/chrome/browser/ui/browser_commands.cc
++++ b/chrome/browser/ui/browser_commands.cc
+@@ -1667,6 +1667,7 @@ void SendTabToSelf(Browser* browser) {
+ }
+ 
+ bool CanGenerateQrCode(const Browser* browser) {
++  if ((true)) return false;
+   return !sharing_hub::SharingIsDisabledByPolicy(browser->profile()) &&
+          qrcode_generator::QRCodeGeneratorBubbleController::
+              IsGeneratorAvailable(browser->tab_strip_model()
+diff --git a/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc b/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
+--- a/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
++++ b/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
+@@ -37,6 +37,7 @@ QRCodeGeneratorBubbleController::~QRCodeGeneratorBubbleController() {
+ 
+ // static
+ bool QRCodeGeneratorBubbleController::IsGeneratorAvailable(const GURL& url) {
++  if ((true)) return false;
+   if (!url.SchemeIsHTTPOrHTTPS())
+     return false;
+ 
 --

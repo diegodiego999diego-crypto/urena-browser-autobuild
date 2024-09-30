@@ -21,14 +21,14 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  components/variations/net/BUILD.gn            |  2 --
  .../variations/net/omnibox_http_headers.cc    |  4 +--
  .../variations/net/variations_http_headers.cc |  3 ++
- .../variations_field_trial_creator_base.cc    |  8 ++---
+ .../variations_field_trial_creator_base.cc    |  6 ++--
  .../variations/service/variations_service.cc  | 15 ++------
  .../browser/loader/url_loader_throttles.cc    |  7 ----
  .../origin_trials/origin_trials_utils.cc      |  2 +-
  .../variations_render_thread_observer.cc      |  9 -----
  .../Disable-fetching-of-all-field-trials.inc  |  1 +
  .../renderer/core/loader/document_loader.cc   |  7 ----
- 21 files changed, 29 insertions(+), 89 deletions(-)
+ 21 files changed, 29 insertions(+), 87 deletions(-)
  create mode 100644 cromite_flags/content/public/common/content_features_cc/Disable-fetching-of-all-field-trials.inc
 
 diff --git a/android_webview/browser/component_updater/origin_trials_component_loader.cc b/android_webview/browser/component_updater/origin_trials_component_loader.cc
@@ -93,7 +93,7 @@ diff --git a/android_webview/nonembedded/java/src/org/chromium/android_webview/s
 diff --git a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
 --- a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
 +++ b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
-@@ -88,11 +88,6 @@ public class SafeModeVariationsSeedContentProvider extends ContentProvider {
+@@ -86,11 +86,6 @@ public class SafeModeVariationsSeedContentProvider extends ContentProvider {
  
      private Boolean awaitSeedResults() {
          CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -141,7 +141,7 @@ diff --git a/chrome/browser/metrics/chrome_browser_sampling_trials.cc b/chrome/b
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -856,7 +856,6 @@ void SystemNetworkContextManager::AddSSLConfigToNetworkContextParams(
+@@ -841,7 +841,6 @@ void SystemNetworkContextManager::AddSSLConfigToNetworkContextParams(
  
  void SystemNetworkContextManager::ConfigureDefaultNetworkContextParams(
      network::mojom::NetworkContextParams* network_context_params) {
@@ -152,7 +152,7 @@ diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/brows
 diff --git a/components/ukm/ukm_recorder_impl.cc b/components/ukm/ukm_recorder_impl.cc
 --- a/components/ukm/ukm_recorder_impl.cc
 +++ b/components/ukm/ukm_recorder_impl.cc
-@@ -189,6 +189,9 @@ std::string WebDXFeaturesToStringForDebug(const std::set<int32_t>& features) {
+@@ -194,6 +194,9 @@ std::string WebDXFeaturesToStringForDebug(const std::set<int32_t>& features) {
  
  UkmRecorderImpl::UkmRecorderImpl()
      : sampling_seed_(static_cast<uint32_t>(base::RandUint64())) {
@@ -177,7 +177,7 @@ diff --git a/components/variations/android/java/src/org/chromium/components/vari
 diff --git a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
 --- a/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
 +++ b/components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
-@@ -469,39 +469,13 @@ public class VariationsSeedFetcher {
+@@ -472,39 +472,13 @@ public class VariationsSeedFetcher {
       */
      public void fetchSeed(String restrictMode, String milestone, String channel) {
          assert !ThreadUtils.runningOnUiThread();
@@ -221,7 +221,7 @@ diff --git a/components/variations/android/java/src/org/chromium/components/vari
      }
  
      private void recordFetchResultOrCode(int resultOrCode) {
-@@ -553,7 +527,7 @@ public class VariationsSeedFetcher {
+@@ -556,7 +530,7 @@ public class VariationsSeedFetcher {
       * @param curSeedInfo optional currently saved seed info to set the `If-None-Match` header.
       * @return the object holds the request result and seed data with its related header fields.
       */
@@ -280,19 +280,17 @@ diff --git a/components/variations/service/variations_field_trial_creator_base.c
  // Determines whether the field trial testing config defined in
  // testing/variations/fieldtrial_testing_config.json should be applied. If the
  // "disable_fieldtrial_testing_config" GN flag is set to true, then the testing
-@@ -330,11 +331,6 @@ bool VariationsFieldTrialCreatorBase::SetUpFieldTrials(
+@@ -330,9 +331,6 @@ bool VariationsFieldTrialCreatorBase::SetUpFieldTrials(
                               safe_seed_manager, synthetic_trial_registry);
    }
  
 -  platform_field_trials->SetUpClientSideFieldTrials(
 -      used_seed, *entropy_providers, feature_list.get());
 -
--  platform_field_trials->RegisterFeatureOverrides(feature_list.get());
--
-   base::FeatureList::SetInstance(std::move(feature_list));
+   platform_field_trials->RegisterFeatureOverrides(feature_list.get());
  
-   // For testing Variations Safe Mode, maybe crash here.
-@@ -629,6 +625,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
+   base::FeatureList::SetInstance(std::move(feature_list));
+@@ -629,6 +627,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
      base::FeatureList* feature_list,
      SafeSeedManagerBase* safe_seed_manager,
      SyntheticTrialRegistry* synthetic_trial_registry) {
@@ -300,7 +298,7 @@ diff --git a/components/variations/service/variations_field_trial_creator_base.c
    // This histogram name uses "VariationsFieldTrialCreator" rather than
    // "VariationsFieldTrialCreatorBase" for consistency with historical data
    TRACE_EVENT0("startup", "VariationsFieldTrialCreator::CreateTrialsFromSeed");
-@@ -744,6 +741,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
+@@ -744,6 +743,7 @@ bool VariationsFieldTrialCreatorBase::CreateTrialsFromSeed(
  
  void VariationsFieldTrialCreatorBase::LoadSeedFromJsonFile(
      const base::FilePath& json_seed_path) {
@@ -352,7 +350,7 @@ diff --git a/content/browser/loader/url_loader_throttles.cc b/content/browser/lo
  
    ClientHintsControllerDelegate* client_hint_delegate =
        browser_context->GetClientHintsControllerDelegate();
-@@ -137,11 +135,6 @@ CreateContentBrowserURLLoaderThrottlesForKeepAlive(
+@@ -138,11 +136,6 @@ CreateContentBrowserURLLoaderThrottlesForKeepAlive(
        GetContentClient()->browser()->CreateURLLoaderThrottlesForKeepAlive(
            request, browser_context, wc_getter, frame_tree_node_id);
    variations::OmniboxURLLoaderThrottle::AppendThrottleIfNeeded(&throttles);
@@ -404,7 +402,7 @@ new file mode 100644
 diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
 --- a/third_party/blink/renderer/core/loader/document_loader.cc
 +++ b/third_party/blink/renderer/core/loader/document_loader.cc
-@@ -202,13 +202,6 @@ WebVector<int> CopyInitiatorOriginTrials(
+@@ -207,13 +207,6 @@ WebVector<int> CopyInitiatorOriginTrials(
      const Vector<mojom::blink::OriginTrialFeature>&
          initiator_origin_trial_features) {
    WebVector<int> result;

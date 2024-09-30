@@ -18,8 +18,9 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  components/ntp_tiles/BUILD.gn                   |  3 ---
  .../ntp_tiles/custom_links_manager_impl.cc      |  1 -
  components/ntp_tiles/most_visited_sites.cc      |  2 --
+ .../site_data/leveldb_site_data_store.cc        |  2 +-
  services/metrics/public/cpp/ukm_recorder.cc     |  1 +
- 10 files changed, 7 insertions(+), 44 deletions(-)
+ 11 files changed, 8 insertions(+), 45 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
@@ -91,7 +92,7 @@ diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/br
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -1099,7 +1099,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -1095,7 +1095,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
  #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  
    registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
@@ -103,7 +104,7 @@ diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_pro
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -85,7 +85,6 @@
+@@ -88,7 +88,6 @@
  #include "chrome/browser/history/history_service_factory.h"
  #include "chrome/browser/interstitials/enterprise_util.h"
  #include "chrome/browser/lifetime/browser_shutdown.h"
@@ -111,7 +112,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
  #include "chrome/browser/media/audio_service_util.h"
  #include "chrome/browser/media/prefs/capture_device_ranking.h"
  #include "chrome/browser/media/router/media_router_feature.h"
-@@ -5106,16 +5105,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+@@ -5357,16 +5356,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
      content::NavigationHandle* handle) {
    std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
  
@@ -128,7 +129,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
  #if BUILDFLAG(IS_ANDROID)
    // TODO(davidben): This is insufficient to integrate with prerender properly.
    // https://crbug.com/370595
-@@ -5223,10 +5212,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
+@@ -5481,10 +5470,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
      }
    }
  
@@ -188,7 +189,7 @@ diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
      "most_visited_sites.cc",
      "most_visited_sites.h",
      "ntp_tile.cc",
-@@ -97,7 +95,6 @@ source_set("unit_tests") {
+@@ -98,7 +96,6 @@ source_set("unit_tests") {
      "custom_links_manager_impl_unittest.cc",
      "custom_links_store_unittest.cc",
      "icon_cacher_impl_unittest.cc",
@@ -210,7 +211,7 @@ diff --git a/components/ntp_tiles/custom_links_manager_impl.cc b/components/ntp_
 diff --git a/components/ntp_tiles/most_visited_sites.cc b/components/ntp_tiles/most_visited_sites.cc
 --- a/components/ntp_tiles/most_visited_sites.cc
 +++ b/components/ntp_tiles/most_visited_sites.cc
-@@ -747,8 +747,6 @@ void MostVisitedSites::SaveTilesAndNotify(
+@@ -775,8 +775,6 @@ void MostVisitedSites::SaveTilesAndNotify(
                                     : new_tiles;
  
    if (fixed_tiles.size() != new_tiles.size()) {
@@ -219,10 +220,22 @@ diff --git a/components/ntp_tiles/most_visited_sites.cc b/components/ntp_tiles/m
    }
    if (!current_tiles_.has_value() || (*current_tiles_ != fixed_tiles)) {
      current_tiles_.emplace(std::move(fixed_tiles));
+diff --git a/components/performance_manager/persistence/site_data/leveldb_site_data_store.cc b/components/performance_manager/persistence/site_data/leveldb_site_data_store.cc
+--- a/components/performance_manager/persistence/site_data/leveldb_site_data_store.cc
++++ b/components/performance_manager/persistence/site_data/leveldb_site_data_store.cc
+@@ -30,7 +30,7 @@ namespace performance_manager {
+ 
+ namespace {
+ 
+-std::atomic<bool> g_use_in_memory_db_for_testing = false;
++std::atomic<bool> g_use_in_memory_db_for_testing = true;
+ 
+ // The name of the following histograms is the same as the one used in the
+ // //c/b/resource_coordinator version of this file. It's fine to keep the same
 diff --git a/services/metrics/public/cpp/ukm_recorder.cc b/services/metrics/public/cpp/ukm_recorder.cc
 --- a/services/metrics/public/cpp/ukm_recorder.cc
 +++ b/services/metrics/public/cpp/ukm_recorder.cc
-@@ -138,4 +138,5 @@ void UkmRecorder::RemoveObserver(Observer* observer) {
+@@ -151,4 +151,5 @@ void UkmRecorder::RemoveObserver(Observer* observer) {
    observers_.RemoveObserver(observer);
  }
  

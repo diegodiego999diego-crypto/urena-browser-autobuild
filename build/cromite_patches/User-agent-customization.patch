@@ -17,13 +17,13 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../layout/custom_useragent_preferences.xml   | 106 ++++++++++
  .../android/java/res/xml/main_preferences.xml |   5 +
  .../java/res/xml/useragent_preferences.xml    |  25 +++
- .../chrome/browser/app/ChromeActivity.java    |   2 +-
+ .../chrome/browser/app/ChromeActivity.java    |   1 +
  .../init/ChromeBrowserInitializer.java        |   3 +
  .../PrivacyPreferencesManagerImpl.java        |  42 ++++
  .../settings/UserAgentPreferences.java        | 183 ++++++++++++++++++
  .../browser/tab/RequestDesktopUtils.java      |   1 +
- .../chromium/chrome/browser/tab/TabImpl.java  |  62 +++++-
- .../chromium/chrome/browser/tab/TabUtils.java |  17 +-
+ .../chromium/chrome/browser/tab/TabImpl.java  |  64 +++++-
+ .../chromium/chrome/browser/tab/TabUtils.java |  11 +-
  .../browser/android/content/content_utils.cc  |  30 +++
  .../preferences/browser_prefs_android.cc      |   7 +
  .../privacy_preferences_manager_impl.cc       | 124 ++++++++++++
@@ -46,7 +46,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/web_contents/web_contents_impl.cc |   6 +-
  .../framehost/NavigationControllerImpl.java   |   3 +-
  content/renderer/render_thread_impl.cc        |   1 -
- 36 files changed, 794 insertions(+), 23 deletions(-)
+ 36 files changed, 796 insertions(+), 16 deletions(-)
  create mode 100644 chrome/android/java/res/layout/custom_useragent_preferences.xml
  create mode 100644 chrome/android/java/res/xml/useragent_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/settings/UserAgentPreferences.java
@@ -80,7 +80,7 @@ diff --git a/base/base_switches.h b/base/base_switches.h
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -640,4 +640,6 @@ chrome_java_resources = [
+@@ -643,4 +643,6 @@ chrome_java_resources = [
    "java/res/xml/search_widget_info.xml",
    "java/res/xml/tracing_preferences.xml",
    "java/res/xml/unified_account_settings_preferences.xml",
@@ -90,7 +90,7 @@ diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_ja
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -944,6 +944,7 @@ chrome_java_sources = [
+@@ -931,6 +931,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/payments/ui/DimmingDialog.java",
    "java/src/org/chromium/chrome/browser/payments/ui/LineItem.java",
    "java/src/org/chromium/chrome/browser/payments/ui/PaymentAppComparator.java",
@@ -257,15 +257,14 @@ new file mode 100644
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-@@ -2767,7 +2767,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -2742,6 +2742,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
              TabUtils.switchUserAgent(
                      currentTab,
                      usingDesktopUserAgent,
--                    /* forcedByUser= */ false,
 +                    /* forcedByUser= */ true,
                      UseDesktopUserAgentCaller.ON_MENU_OR_KEYBOARD_ACTION);
-             // TODO(crbug.com/40917998): Remove this IPH when the usage is low.
-             RequestDesktopUtils.maybeShowUserEducationPromptForAppMenuSelection(
+             TrackerFactory.getTrackerForProfile(profile)
+                     .notifyEvent(EventConstants.APP_MENU_DESKTOP_SITE_EXCEPTION_ADDED);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeBrowserInitializer.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeBrowserInitializer.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeBrowserInitializer.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeBrowserInitializer.java
@@ -540,18 +539,18 @@ new file mode 100644
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/RequestDesktopUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/tab/RequestDesktopUtils.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tab/RequestDesktopUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tab/RequestDesktopUtils.java
-@@ -137,6 +137,7 @@ public class RequestDesktopUtils {
+@@ -133,6 +133,7 @@ public class RequestDesktopUtils {
       */
      public static void setRequestDesktopSiteContentSettingsForUrl(
              Profile profile, GURL url, boolean useDesktopUserAgent) {
 +        if ((true)) return;
-         boolean isIncognito =
-                 Profile.getBrowserProfileTypeFromProfile(profile) == BrowserProfileType.INCOGNITO;
+         boolean isOffTheRecord = profile.isOffTheRecord();
          String domainWildcardPattern =
+                 WebsitePreferenceBridge.toDomainWildcardPattern(url.getSpec());
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
-@@ -66,6 +66,9 @@ import org.chromium.components.autofill.AutofillFeatures;
+@@ -65,6 +65,9 @@ import org.chromium.components.autofill.AutofillFeatures;
  import org.chromium.components.autofill.AutofillProvider;
  import org.chromium.components.autofill.AutofillSelectionActionMenuDelegate;
  import org.chromium.components.autofill.AutofillSelectionMenuItemHelper;
@@ -559,8 +558,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.jav
 +import org.chromium.components.content_settings.ContentSettingsType;
 +import org.chromium.components.browser_ui.site_settings.WebsitePreferenceBridge;
  import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
+ import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
  import org.chromium.components.embedder_support.util.UrlConstants;
- import org.chromium.components.embedder_support.view.ContentView;
 @@ -98,6 +101,9 @@ import org.chromium.chrome.browser.preferences.Pref;
  import org.chromium.chrome.browser.profiles.ProfileManager;
  import org.chromium.components.user_prefs.UserPrefs;
@@ -571,7 +570,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.jav
  /**
   * Implementation of the interface {@link Tab}. Contains and manages a {@link ContentView}. This
   * class is not intended to be extended.
-@@ -1923,9 +1929,6 @@ class TabImpl implements Tab {
+@@ -1968,9 +1974,6 @@ class TabImpl implements Tab {
              }
  
              if (mWebContents != null) {
@@ -581,7 +580,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.jav
                  mWebContents.getNavigationController().loadIfNecessary();
              }
              mIsBeingRestored = true;
-@@ -2239,6 +2242,11 @@ class TabImpl implements Tab {
+@@ -2289,6 +2292,11 @@ class TabImpl implements Tab {
              url = webContents.getVisibleUrl();
          }
  
@@ -593,8 +592,17 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.jav
          // Do not override UA if there is a tab level setting.
          if (tabUserAgent != TabUserAgent.DEFAULT) {
              recordHistogramUseDesktopUserAgent(currentRequestDesktopSite);
-@@ -2318,6 +2326,54 @@ class TabImpl implements Tab {
+@@ -2334,7 +2342,7 @@ class TabImpl implements Tab {
          }
+         boolean usingDesktopUserAgent =
+                 getWebContents().getNavigationController().getUseDesktopUserAgent();
+-        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent, caller);
++        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent, /* forcedByUser= */ false, caller);
+     }
+ 
+     /** Sets the TabLaunchType for tabs launched with an unset launch type. */
+@@ -2371,6 +2379,54 @@ class TabImpl implements Tab {
+         return mWebContentsDelegate.isTrustedWebActivity(getWebContents());
      }
  
 +    int overrideUserAgentWhenUnFrozen = (int)UserAgentOverrideOption.INHERIT;
@@ -651,7 +659,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.jav
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.java
-@@ -37,6 +37,10 @@ import org.chromium.ui.display.DisplayAndroidManager;
+@@ -41,6 +41,10 @@ import org.chromium.ui.display.DisplayAndroidManager;
  import org.chromium.ui.display.DisplayUtil;
  import org.chromium.url.GURL;
  
@@ -662,22 +670,16 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.ja
  import java.lang.annotation.Retention;
  import java.lang.annotation.RetentionPolicy;
  
-@@ -125,18 +129,7 @@ public class TabUtils {
-     // TODO(crbug.com/40891239): Remove param forcedByUser from TabUtils#switchUserAgent.
-     public static void switchUserAgent(
-             Tab tab, boolean switchToDesktop, boolean forcedByUser, int caller) {
+@@ -125,11 +129,8 @@ public class TabUtils {
+      * @param switchToDesktop Whether switching the user agent to desktop.
+      * @param caller The caller of this method.
+      */
+-    public static void switchUserAgent(Tab tab, boolean switchToDesktop, int caller) {
 -        final boolean reloadOnChange = !tab.isNativePage();
 -        tab.getWebContents()
 -                .getNavigationController()
 -                .setUseDesktopUserAgent(switchToDesktop, reloadOnChange, caller);
--        if (forcedByUser) {
--            @TabUserAgent
--            int tabUserAgent = switchToDesktop ? TabUserAgent.DESKTOP : TabUserAgent.MOBILE;
--            if (isDesktopSiteGlobalEnabled(tab.getProfile()) == switchToDesktop) {
--                tabUserAgent = TabUserAgent.DEFAULT;
--            }
--            tab.setUserAgent(tabUserAgent);
--        }
++    public static void switchUserAgent(Tab tab, boolean switchToDesktop, boolean forcedByUser, int caller) {
 +        tab.SetOverrideUserAgent(switchToDesktop, forcedByUser);
      }
  
@@ -954,7 +956,7 @@ diff --git a/chrome/browser/content_settings/request_desktop_site_web_contents_o
 diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
 --- a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
 +++ b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
-@@ -1043,8 +1043,6 @@ public final class ChromePreferenceKeys {
+@@ -1040,8 +1040,6 @@ public final class ChromePreferenceKeys {
                  SIGNIN_PROMO_NTP_LAST_SHOWN_TIME,
                  SYNC_PROMO_TOTAL_SHOW_COUNT,
                  SEARCH_RESUMPTION_MODULE_COLLAPSE_ON_NTP,
@@ -984,7 +986,7 @@ diff --git a/chrome/browser/privacy/settings/java/src/org/chromium/chrome/browse
 diff --git a/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java b/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java
 --- a/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java
 +++ b/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java
-@@ -315,6 +315,8 @@ public interface Tab extends TabLifecycle {
+@@ -331,6 +331,8 @@ public interface Tab extends TabLifecycle {
      /** Goes to the navigation entry after the current one. */
      void goForward();
  
@@ -1004,11 +1006,11 @@ diff --git a/chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browse
 +
      /**
       * Finds the {@link TabModelSelector} bound to an Activity instance of a given index.
-      * @param index The index of {@link TabModelSelector} to get.
+      *
 diff --git a/chrome/browser/tabmodel/internal/android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerImpl.java b/chrome/browser/tabmodel/internal/android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerImpl.java
 --- a/chrome/browser/tabmodel/internal/android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerImpl.java
 +++ b/chrome/browser/tabmodel/internal/android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerImpl.java
-@@ -414,6 +414,24 @@ public class TabWindowManagerImpl implements ActivityStateListener, TabWindowMan
+@@ -416,6 +416,24 @@ public class TabWindowManagerImpl implements ActivityStateListener, TabWindowMan
          return null;
      }
  
@@ -1036,7 +1038,7 @@ diff --git a/chrome/browser/tabmodel/internal/android/java/src/org/chromium/chro
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -231,6 +231,32 @@ CHAR_LIMIT guidelines:
+@@ -232,6 +232,32 @@ CHAR_LIMIT guidelines:
          Visit help page
        </message>
  
@@ -1072,7 +1074,7 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -1880,6 +1880,14 @@ inline constexpr char kNaviOnboardGroup[] = "browser.navi_onboard_group";
+@@ -1928,6 +1928,14 @@ inline constexpr char kNaviOnboardGroup[] = "browser.navi_onboard_group";
  inline constexpr char kHadThreeConsecutiveNotificationPermissionDenies[] =
      "profile.content_settings.had_three_consecutive_denies.notifications";
  
@@ -1236,7 +1238,7 @@ diff --git a/content/browser/renderer_host/navigation_controller_android.cc b/co
      const JavaParamRef<jobject>& j_initiator_origin,
      jboolean has_user_gesture,
      jboolean should_clear_history_list,
-@@ -354,6 +355,9 @@ base::android::ScopedJavaLocalRef<jobject> NavigationControllerAndroid::LoadUrl(
+@@ -351,6 +352,9 @@ base::android::ScopedJavaLocalRef<jobject> NavigationControllerAndroid::LoadUrl(
  
    params.navigation_ui_data = std::move(navigation_ui_data);
  
@@ -1260,7 +1262,7 @@ diff --git a/content/browser/renderer_host/navigation_controller_android.h b/con
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc
-@@ -3644,6 +3644,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
+@@ -3445,6 +3445,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
        switches::kLacrosUseChromeosProtectedMedia,
        switches::kLacrosUseChromeosProtectedAv1,
  #endif
@@ -1271,15 +1273,15 @@ diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content
 diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
 --- a/content/browser/web_contents/web_contents_impl.cc
 +++ b/content/browser/web_contents/web_contents_impl.cc
-@@ -17,6 +17,7 @@
+@@ -16,6 +16,7 @@
+ #include <utility>
  #include <vector>
  
- #include "base/allocator/partition_allocator/src/partition_alloc/partition_alloc_buildflags.h"
 +#include "base/base_switches.h"
+ #include "base/base_switches.h"
  #include "base/check_op.h"
  #include "base/command_line.h"
- #include "base/containers/contains.h"
-@@ -2163,8 +2164,6 @@ void WebContentsImpl::SetUserAgentOverride(
+@@ -2211,8 +2212,6 @@ void WebContentsImpl::SetUserAgentOverride(
    OPTIONAL_TRACE_EVENT2("content", "WebContentsImpl::SetUserAgentOverride",
                          "ua_override", ua_override.ua_string_override,
                          "override_in_new_tabs", override_in_new_tabs);
@@ -1288,7 +1290,7 @@ diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser
  
    if (GetUserAgentOverride() == ua_override) {
      return;
-@@ -3229,6 +3228,9 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences() {
+@@ -3247,6 +3246,9 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences() {
  #else
      prefs.viewport_meta_enabled = false;
  #endif
@@ -1321,7 +1323,7 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/frameh
 diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
 --- a/content/renderer/render_thread_impl.cc
 +++ b/content/renderer/render_thread_impl.cc
-@@ -864,7 +864,6 @@ void RenderThreadImpl::InitializeRenderer(
+@@ -887,7 +887,6 @@ void RenderThreadImpl::InitializeRenderer(
      const blink::UserAgentMetadata& user_agent_metadata,
      const std::vector<std::string>& cors_exempt_header_list,
      blink::mojom::OriginTrialsSettingsPtr origin_trials_settings) {

@@ -12,8 +12,8 @@ deactivation of all pop-ups (default disabled)
 ---
  .../android/java/res/xml/main_preferences.xml |   19 +-
  chrome/browser/BUILD.gn                       |    2 -
- .../adblock/adblock_content_browser_client.cc |  291 +-
- .../adblock/adblock_content_browser_client.h  |   54 +-
+ .../adblock/adblock_content_browser_client.cc |  283 +-
+ .../adblock/adblock_content_browser_client.h  |   46 +-
  .../browser/chrome_content_browser_client.cc  |    6 +-
  .../browser/chrome_content_browser_client.h   |    6 +-
  .../adblock_private/adblock_private_api.cc    |   74 +-
@@ -23,7 +23,7 @@ deactivation of all pop-ups (default disabled)
  .../resources/adblock_internals/BUILD.gn      |    8 +-
  chrome/browser/resources/settings/BUILD.gn    |    2 +
  .../settings/adblock_page/adblock_page.html   |  212 +
- .../settings/adblock_page/adblock_page.ts     |  286 ++
+ .../settings/adblock_page/adblock_page.ts     |  286 +
  .../settings/basic_page/basic_page.html       |    7 +
  .../settings/basic_page/basic_page.ts         |    1 +
  .../resources/settings/page_visibility.ts     |    1 +
@@ -55,8 +55,7 @@ deactivation of all pop-ups (default disabled)
  .../browser/adblock_url_loader_factory.h      |    7 +-
  .../browser/adblock_webcontents_observer.cc   |   25 +-
  .../browser/adblock_webcontents_observer.h    |    5 +-
- .../content_security_policy_injector_impl.cc  |    1 +
- .../content/browser/element_hider_impl.cc     |    2 +-
+ .../content/browser/element_hider_impl.cc     |   10 +-
  .../browser/frame_hierarchy_builder.cc        |    3 +-
  .../browser/resource_classification_runner.h  |    9 +
  .../resource_classification_runner_impl.cc    |   83 +-
@@ -64,7 +63,7 @@ deactivation of all pop-ups (default disabled)
  .../subscription_service_factory_base.cc      |   11 +-
  .../subscription_service_factory_base.h       |    1 +
  components/adblock/core/BUILD.gn              |   39 -
- .../activeping_telemetry_topic_provider.cc    |  285 --
+ .../activeping_telemetry_topic_provider.cc    |  285 -
  .../activeping_telemetry_topic_provider.h     |   87 -
  .../adblock/core/adblock_controller_impl.cc   |   10 +-
  components/adblock/core/adblock_switches.cc   |    1 -
@@ -85,10 +84,11 @@ deactivation of all pop-ups (default disabled)
  .../core/converter/parser/test/test_rules.txt |   21 +
  .../core/converter/parser/url_filter.cc       |   10 +-
  .../converter/parser/url_filter_options.cc    |   21 +-
- .../serializer/flatbuffer_serializer.cc       |   82 +-
+ .../converter/parser/url_filter_options.h     |    1 +
+ .../serializer/flatbuffer_serializer.cc       |   83 +-
  components/adblock/core/features.cc           |    3 +-
  components/adblock/core/hash/schema_hash.h    |   10 +
- .../adblock/core/sitekey_storage_impl.cc      |    7 +
+ .../adblock/core/sitekey_storage_impl.cc      |   11 +-
  .../core/subscription/conversion_executors.h  |    1 +
  .../filtering_configuration_maintainer.h      |    4 +
  ...filtering_configuration_maintainer_impl.cc |   31 +-
@@ -98,7 +98,7 @@ deactivation of all pop-ups (default disabled)
  .../adblock/core/subscription/subscription.cc |   18 +
  .../adblock/core/subscription/subscription.h  |    3 +
  .../subscription_collection_impl.cc           |    1 +
- .../core/subscription/subscription_config.cc  |   20 +-
+ .../core/subscription/subscription_config.cc  |   24 +-
  .../core/subscription/subscription_config.h   |    6 +-
  .../subscription_downloader_impl.cc           |   21 +-
  .../subscription_persistent_metadata.h        |    1 +
@@ -116,21 +116,20 @@ deactivation of all pop-ups (default disabled)
  components/resources/BUILD.gn                 |    1 -
  components/resources/adblock_resources.grdp   |    3 -
  components/resources/adblocking/.gitignore    |    2 +-
- components/resources/adblocking/BUILD.gn      |   34 +-
+ components/resources/adblocking/BUILD.gn      |   37 +-
  .../adblocking/elemhide_for_selector.jst      |    2 +-
  .../resources/adblocking/elemhideemu.jst      |    2 +
  .../snippets/dist/isolated-first.jst          |   66 +
- .../snippets/dist/isolated-first.source.jst   | 4215 +++++++++++++++++
+ .../snippets/dist/isolated-first.source.jst   | 4793 +++++++++++++++++
  .../websockets/websocket_connector_impl.cc    |    6 +-
  .../public/browser/content_browser_client.cc  |    4 +-
  .../public/browser/content_browser_client.h   |    4 +-
- content/public/common/isolated_world_ids.h    |    6 +-
  .../about_flags_cc/Stricter-popup-blocker.inc |   14 +
  .../blink/renderer/core/css/style_engine.cc   |    8 +
  .../blink/renderer/core/css/style_engine.h    |    1 +
  .../renderer/core/exported/web_document.cc    |   15 +-
  .../definitions/adblock_private.d.ts          |   14 +
- 120 files changed, 6147 insertions(+), 1309 deletions(-)
+ 119 files changed, 6723 insertions(+), 1309 deletions(-)
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.html
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.ts
  rename components/adblock/android/java/res/xml/{adblock_preferences.xml => eyeo_adblock_preferences.xml} (56%)
@@ -189,7 +188,7 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -158,8 +158,6 @@ static_library("browser") {
+@@ -159,8 +159,6 @@ static_library("browser") {
      "adblock/adblock_content_browser_client.h",
      "adblock/adblock_controller_factory.cc",
      "adblock/adblock_controller_factory.h",
@@ -350,8 +349,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.cc b/chrome/b
      const GURL& url,
 +    const url::Origin& initiator_origin,
      const net::SiteForCookies& site_for_cookies,
--    const std::optional<std::string>& user_agent,
-+    const std::optional<std::string>& user_agent,
+     const std::optional<std::string>& user_agent,
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
          handshake_client) {
 -  if (IsFilteringNeeded(frame)) {
@@ -378,8 +376,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.cc b/chrome/b
      const GURL& url,
 +    const url::Origin& initiator_origin,
      const net::SiteForCookies& site_for_cookies,
--    const std::optional<std::string>& user_agent,
-+    const std::optional<std::string>& user_agent,
+     const std::optional<std::string>& user_agent,
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
          handshake_client) {
 -  auto* frame = content::RenderFrameHost::FromID(render_frame_host_id);
@@ -413,8 +410,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.cc b/chrome/b
      const GURL& url,
 +    const url::Origin& initiator_origin,
      const net::SiteForCookies& site_for_cookies,
--    const std::optional<std::string>& user_agent,
-+    const std::optional<std::string>& user_agent,
+     const std::optional<std::string>& user_agent,
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
          handshake_client,
      adblock::FilterMatchResult result) {
@@ -563,9 +559,8 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.cc b/chrome/b
      int render_process_id,
      URLLoaderFactoryType type,
      const url::Origin& request_initiator,
--    std::optional<int64_t> navigation_id,
 +    const net::IsolationInfo& isolation_info,
-+    std::optional<int64_t> navigation_id,
+     std::optional<int64_t> navigation_id,
      ukm::SourceIdObj ukm_source_id,
 -    mojo::PendingReceiver<network::mojom::URLLoaderFactory>* factory_receiver,
 +    network::URLLoaderFactoryBuilder& factory_builder,
@@ -643,8 +638,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
        const GURL& url,
 +      const url::Origin& initiator_origin,
        const net::SiteForCookies& site_for_cookies,
--      const std::optional<std::string>& user_agent,
-+      const std::optional<std::string>& user_agent,
+       const std::optional<std::string>& user_agent,
        mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
            handshake_client) override;
  
@@ -664,9 +658,8 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
        int render_process_id,
        URLLoaderFactoryType type,
        const url::Origin& request_initiator,
--      std::optional<int64_t> navigation_id,
 +      const net::IsolationInfo& isolation_info,
-+      std::optional<int64_t> navigation_id,
+       std::optional<int64_t> navigation_id,
        ukm::SourceIdObj ukm_source_id,
 -      mojo::PendingReceiver<network::mojom::URLLoaderFactory>* factory_receiver,
 +      network::URLLoaderFactoryBuilder& factory_builder,
@@ -699,8 +692,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
        const GURL& url,
 +      const url::Origin& initiator_origin,
        const net::SiteForCookies& site_for_cookies,
--      const std::optional<std::string>& user_agent,
-+      const std::optional<std::string>& user_agent,
+       const std::optional<std::string>& user_agent,
        mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
            handshake_client);
    void OnWebSocketFilterCheckCompleted(
@@ -710,8 +702,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
        const GURL& url,
 +      const url::Origin& initiator_origin,
        const net::SiteForCookies& site_for_cookies,
--      const std::optional<std::string>& user_agent,
-+      const std::optional<std::string>& user_agent,
+       const std::optional<std::string>& user_agent,
        mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
            handshake_client,
        adblock::FilterMatchResult result);
@@ -731,7 +722,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -6399,7 +6399,9 @@ ChromeContentBrowserClient::
+@@ -6696,7 +6696,9 @@ ChromeContentBrowserClient::
  }
  
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
@@ -742,7 +733,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
  #if BUILDFLAG(ENABLE_EXTENSIONS)
    if (!frame) {
      return false;
-@@ -6422,9 +6424,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
+@@ -6719,9 +6721,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
  }
  
  void ChromeContentBrowserClient::CreateWebSocket(
@@ -757,7 +748,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
 diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
 --- a/chrome/browser/chrome_content_browser_client.h
 +++ b/chrome/browser/chrome_content_browser_client.h
-@@ -663,11 +663,15 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+@@ -677,11 +677,15 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
    CreateURLLoaderHandlerForServiceWorkerNavigationPreload(
        int frame_tree_node_id,
        const network::ResourceRequest& resource_request) override;
@@ -1009,15 +1000,15 @@ diff --git a/chrome/browser/extensions/api/eyeo_filtering_private/eyeo_filtering
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -18,7 +18,6 @@
- #include "chrome/browser/accessibility/page_colors_factory.h"
+@@ -19,7 +19,6 @@
  #include "chrome/browser/affiliations/affiliation_service_factory.h"
+ #include "chrome/browser/ai/ai_manager_keyed_service_factory.h"
  #include "chrome/browser/adblock/adblock_controller_factory.h"
 -#include "chrome/browser/adblock/adblock_telemetry_service_factory.h"
  #include "chrome/browser/adblock/content_security_policy_injector_factory.h"
  #include "chrome/browser/adblock/element_hider_factory.h"
  #include "chrome/browser/adblock/resource_classification_runner_factory.h"
-@@ -861,7 +860,6 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -877,7 +876,6 @@ void ChromeBrowserMainExtraPartsProfiles::
    FakeSmartCardDeviceServiceFactory::GetInstance();
  #endif
    adblock::AdblockControllerFactory::GetInstance();
@@ -1051,7 +1042,7 @@ diff --git a/chrome/browser/resources/adblock_internals/BUILD.gn b/chrome/browse
 diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resources/settings/BUILD.gn
 --- a/chrome/browser/resources/settings/BUILD.gn
 +++ b/chrome/browser/resources/settings/BUILD.gn
-@@ -62,6 +62,7 @@ build_webui("build") {
+@@ -64,6 +64,7 @@ build_webui("build") {
      "a11y_page/a11y_page.ts",
      "about_page/about_page.ts",
      "ai_page/ai_page.ts",
@@ -1059,7 +1050,7 @@ diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resourc
      "appearance_page/appearance_fonts_page.ts",
      "appearance_page/appearance_page.ts",
      "appearance_page/home_url_input.ts",
-@@ -397,6 +398,7 @@ build_webui("build") {
+@@ -402,6 +403,7 @@ build_webui("build") {
    ts_definitions = [
      "//tools/typescript/definitions/autofill_private.d.ts",
      "//tools/typescript/definitions/chrome_event.d.ts",
@@ -1259,7 +1250,7 @@ new file mode 100644
 +            <div class="list-frame vertical-list">
 +                <template is="dom-repeat" items="{{customFilters}}">
 +                    <div class="list-item">
-+                        <div class="start cr-padded-text">
++                        <div class="start cr-padded-text ad-fixed-width">
 +                            <div data-qa="custom-filters-list-item">
 +                                [[item]]
 +                            </div>
@@ -1617,7 +1608,7 @@ diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/brows
 diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
 --- a/chrome/browser/resources/settings/route.ts
 +++ b/chrome/browser/resources/settings/route.ts
-@@ -215,6 +215,10 @@ function createRoutes(): SettingsRoutes {
+@@ -213,6 +213,10 @@ function createRoutes(): SettingsRoutes {
      r.FONTS = r.APPEARANCE.createChild('/fonts');
    }
  
@@ -1668,7 +1659,7 @@ diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.html 
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
-@@ -20,6 +20,7 @@
+@@ -21,6 +21,7 @@
  #include "chrome/browser/adblock/element_hider_factory.h"
  #include "chrome/browser/adblock/sitekey_storage_factory.h"
  #include "chrome/browser/adblock/subscription_service_factory.h"
@@ -1676,7 +1667,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  #include "chrome/browser/bookmarks/bookmark_model_factory.h"
  #include "chrome/browser/breadcrumbs/breadcrumb_manager_tab_helper.h"
  #include "chrome/browser/browser_process.h"
-@@ -382,6 +383,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -377,6 +378,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
      }
    }
  
@@ -1685,7 +1676,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
    AdblockWebContentObserver::CreateForWebContents(
        web_contents,
        adblock::SubscriptionServiceFactory::GetForBrowserContext(
-@@ -390,7 +393,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -385,7 +388,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
            web_contents->GetBrowserContext()),
        adblock::SitekeyStorageFactory::GetForBrowserContext(
            web_contents->GetBrowserContext()),
@@ -1768,7 +1759,7 @@ diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/ext
    }, {
      "channel": "stable",
      "contexts": ["webui"],
-@@ -523,7 +523,7 @@
+@@ -517,7 +517,7 @@
    },
    "eyeoFilteringPrivate": [{
      "dependencies": ["permission:eyeoFilteringPrivate"],
@@ -2900,21 +2891,10 @@ diff --git a/components/adblock/content/browser/adblock_webcontents_observer.h b
 +  raw_ptr<HostContentSettingsMap> settings_map_ = nullptr;
  };
  #endif  // COMPONENTS_ADBLOCK_CONTENT_BROWSER_ADBLOCK_WEBCONTENTS_OBSERVER_H_
-diff --git a/components/adblock/content/browser/content_security_policy_injector_impl.cc b/components/adblock/content/browser/content_security_policy_injector_impl.cc
---- a/components/adblock/content/browser/content_security_policy_injector_impl.cc
-+++ b/components/adblock/content/browser/content_security_policy_injector_impl.cc
-@@ -36,6 +36,7 @@ std::set<base::StringPiece> GetCspInjections(
-     const std::vector<GURL> frame_hierarchy_chain) {
-   TRACE_EVENT1("eyeo", "GetCspInjection", "url", request_url.spec());
-   std::set<base::StringPiece> injections;
-+  if ((true)) return injections;
-   for (const auto& collection : subscription_collections) {
-     const auto injection =
-         collection->GetCspInjections(request_url, frame_hierarchy_chain);
 diff --git a/components/adblock/content/browser/element_hider_impl.cc b/components/adblock/content/browser/element_hider_impl.cc
 --- a/components/adblock/content/browser/element_hider_impl.cc
 +++ b/components/adblock/content/browser/element_hider_impl.cc
-@@ -208,7 +208,7 @@ void InsertUserCSSAndApplyElemHidingEmuJS(
+@@ -211,7 +211,7 @@ void InsertUserCSSAndApplyElemHidingEmuJS(
    if (!frame_host) {
      // Render frame host was destroyed before element hiding could be applied.
      // This is not a bug, just legitimate a race condition.
@@ -2923,6 +2903,22 @@ diff --git a/components/adblock/content/browser/element_hider_impl.cc b/componen
      return;
    }
    auto* info = ElementHiderInfo::GetOrCreateForCurrentDocument(frame_host);
+@@ -239,13 +239,9 @@ void InsertUserCSSAndApplyElemHidingEmuJS(
+   }
+ 
+   if (!input.snippet_js.empty()) {
+-    // PK: Extension API ends up generating isolated world for injected script
+-    // execution. See GetIsolatedWorldIdForInstance in
+-    // extensions/renderer/script_injection.cc. Why not to reuse adblock space?
+-    frame_host->ExecuteJavaScriptInIsolatedWorld(
++    frame_host->ExecuteJavaScriptForTests(
+         base::UTF8ToUTF16(input.snippet_js),
+-        content::RenderFrameHost::JavaScriptResultCallback(),
+-        content::ISOLATED_WORLD_ID_ADBLOCK);
++        content::RenderFrameHost::JavaScriptResultCallback());
+ 
+     DVLOG(1) << "[eyeo] Snippet - executed JS in frame"
+              << " '" << frame_host->GetFrameName() << "'";
 diff --git a/components/adblock/content/browser/frame_hierarchy_builder.cc b/components/adblock/content/browser/frame_hierarchy_builder.cc
 --- a/components/adblock/content/browser/frame_hierarchy_builder.cc
 +++ b/components/adblock/content/browser/frame_hierarchy_builder.cc
@@ -4150,7 +4146,7 @@ diff --git a/components/adblock/core/common/adblock_constants.cc b/components/ad
 diff --git a/components/adblock/core/common/adblock_constants.h b/components/adblock/core/common/adblock_constants.h
 --- a/components/adblock/core/common/adblock_constants.h
 +++ b/components/adblock/core/common/adblock_constants.h
-@@ -28,7 +28,6 @@ namespace flat {
+@@ -27,7 +27,6 @@ namespace flat {
  enum AbpResource : int8_t;
  }
  
@@ -4285,7 +4281,7 @@ diff --git a/components/adblock/core/common/adblock_utils.cc b/components/adbloc
 diff --git a/components/adblock/core/configuration/filtering_configuration.h b/components/adblock/core/configuration/filtering_configuration.h
 --- a/components/adblock/core/configuration/filtering_configuration.h
 +++ b/components/adblock/core/configuration/filtering_configuration.h
-@@ -66,6 +66,9 @@ class FilteringConfiguration {
+@@ -65,6 +65,9 @@ class FilteringConfiguration {
    virtual void SetEnabled(bool enabled) = 0;
    virtual bool IsEnabled() const = 0;
  
@@ -4345,7 +4341,7 @@ diff --git a/components/adblock/core/configuration/persistent_filtering_configur
 diff --git a/components/adblock/core/converter/flatbuffer_converter.cc b/components/adblock/core/converter/flatbuffer_converter.cc
 --- a/components/adblock/core/converter/flatbuffer_converter.cc
 +++ b/components/adblock/core/converter/flatbuffer_converter.cc
-@@ -125,7 +125,7 @@ void FlatbufferConverter::ConvertFilter(
+@@ -124,7 +124,7 @@ void FlatbufferConverter::ConvertFilter(
                std::string(filter_str.data(), filter_str.size()))) {
          flatbuffer_serializer.SerializeUrlFilter(std::move(url_filter.value()));
        } else {
@@ -4427,7 +4423,7 @@ diff --git a/components/adblock/core/converter/parser/url_filter.cc b/components
 +    }
      piece.remove_suffix(1);
    }
-   if (piece.find('|') == base::StringPiece::npos) {
+   if (piece.find('|') == std::string_view::npos) {
 @@ -108,21 +112,21 @@ std::optional<UrlFilter> UrlFilter::FromString(std::string filter_str) {
  
      if (options->Csp().has_value() && options->Csp().value().empty() &&
@@ -4507,18 +4503,29 @@ diff --git a/components/adblock/core/converter/parser/url_filter_options.cc b/co
    // replace \x2c with actual ,
    static re2::RE2 r1("([^\\\\])\\\\x2c");
    re2::RE2::GlobalReplace(&headers_value, r1, "\\1,");
+diff --git a/components/adblock/core/converter/parser/url_filter_options.h b/components/adblock/core/converter/parser/url_filter_options.h
+--- a/components/adblock/core/converter/parser/url_filter_options.h
++++ b/components/adblock/core/converter/parser/url_filter_options.h
+@@ -18,6 +18,7 @@
+ #ifndef COMPONENTS_ADBLOCK_CORE_CONVERTER_PARSER_URL_FILTER_OPTIONS_H_
+ #define COMPONENTS_ADBLOCK_CORE_CONVERTER_PARSER_URL_FILTER_OPTIONS_H_
+ 
++#include <cstdint>
+ #include <set>
+ #include <string>
+ #include <vector>
 diff --git a/components/adblock/core/converter/serializer/flatbuffer_serializer.cc b/components/adblock/core/converter/serializer/flatbuffer_serializer.cc
 --- a/components/adblock/core/converter/serializer/flatbuffer_serializer.cc
 +++ b/components/adblock/core/converter/serializer/flatbuffer_serializer.cc
-@@ -21,6 +21,7 @@
+@@ -20,6 +20,7 @@
+ #include "base/logging.h"
  #include "base/notreached.h"
- #include "base/strings/string_piece.h"
  #include "base/strings/string_util.h"
 +#include "base/strings/utf_string_conversions.h"
  #include "components/adblock/core/common/adblock_constants.h"
  #include "components/adblock/core/common/regex_filter_pattern.h"
  #include "components/adblock/core/converter/parser/filter_classifier.h"
-@@ -28,6 +29,67 @@
+@@ -27,6 +28,68 @@
  
  namespace adblock {
  
@@ -4575,7 +4582,8 @@ diff --git a/components/adblock/core/converter/serializer/flatbuffer_serializer.
 +  };
 +
 +  template<int N>
-+  bool IsInList(const std::u16string& command, const char16_t*(&list)[N]) {
++  bool IsInList(const std::u16string& command, const char16_t*(&input)[N]) {
++    auto list = base::span(input);
 +    for(int t = 0; t < N; ++t)
 +      if (base::EqualsCaseInsensitiveASCII(command, list[t]))
 +        return true;
@@ -4586,7 +4594,7 @@ diff --git a/components/adblock/core/converter/serializer/flatbuffer_serializer.
  class Buffer : public FlatbufferData {
   public:
    explicit Buffer(flatbuffers::DetachedBuffer&& buffer)
-@@ -118,9 +180,25 @@ void FlatbufferSerializer::SerializeContentFilter(
+@@ -121,9 +184,25 @@ void FlatbufferSerializer::SerializeContentFilter(
  void FlatbufferSerializer::SerializeSnippetFilter(
      const SnippetFilter snippet_filter) {
    if (!allow_privileged_) {
@@ -4613,7 +4621,7 @@ diff --git a/components/adblock/core/converter/serializer/flatbuffer_serializer.
  
    std::vector<flatbuffers::Offset<adblock::flat::SnippetFunctionCall>> offsets;
    offsets.reserve(snippet_filter.snippet_script.size());
-@@ -141,7 +219,7 @@ void FlatbufferSerializer::SerializeSnippetFilter(
+@@ -144,7 +223,7 @@ void FlatbufferSerializer::SerializeSnippetFilter(
  void FlatbufferSerializer::SerializeUrlFilter(const UrlFilter url_filter) {
    const auto& options = url_filter.options;
    if (!allow_privileged_ && options.Headers().has_value()) {
@@ -4652,7 +4660,18 @@ new file mode 100644
 diff --git a/components/adblock/core/sitekey_storage_impl.cc b/components/adblock/core/sitekey_storage_impl.cc
 --- a/components/adblock/core/sitekey_storage_impl.cc
 +++ b/components/adblock/core/sitekey_storage_impl.cc
-@@ -37,6 +37,8 @@ void SitekeyStorageImpl::ProcessResponseHeaders(
+@@ -27,9 +27,7 @@
+ 
+ namespace adblock {
+ 
+-SitekeyStorageImpl::SitekeyStorageImpl() {
+-  crypto::EnsureOpenSSLInit();
+-}
++SitekeyStorageImpl::SitekeyStorageImpl() {}
+ 
+ SitekeyStorageImpl::~SitekeyStorageImpl() = default;
+ 
+@@ -37,6 +35,8 @@ void SitekeyStorageImpl::ProcessResponseHeaders(
      const GURL& request_url,
      const scoped_refptr<net::HttpResponseHeaders>& headers,
      const std::string& user_agent) {
@@ -4661,7 +4680,7 @@ diff --git a/components/adblock/core/sitekey_storage_impl.cc b/components/adbloc
    if (user_agent.empty()) {
      LOG(WARNING) << "[eyeo] No user agent info";
      return;
-@@ -53,6 +55,7 @@ void SitekeyStorageImpl::ProcessResponseHeaders(
+@@ -53,6 +53,7 @@ void SitekeyStorageImpl::ProcessResponseHeaders(
  
  std::optional<std::pair<GURL, SiteKey>>
  SitekeyStorageImpl::FindSiteKeyForAnyUrl(const std::vector<GURL>& urls) const {
@@ -4669,7 +4688,7 @@ diff --git a/components/adblock/core/sitekey_storage_impl.cc b/components/adbloc
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
    for (const auto& url : urls) {
      auto elem = url_to_sitekey_map_.find(url);
-@@ -66,6 +69,8 @@ SitekeyStorageImpl::FindSiteKeyForAnyUrl(const std::vector<GURL>& urls) const {
+@@ -66,6 +67,8 @@ SitekeyStorageImpl::FindSiteKeyForAnyUrl(const std::vector<GURL>& urls) const {
  void SitekeyStorageImpl::ProcessSiteKey(const GURL& request_url,
                                          const SiteKey& site_key,
                                          const std::string& user_agent) {
@@ -4678,7 +4697,7 @@ diff --git a/components/adblock/core/sitekey_storage_impl.cc b/components/adbloc
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
    DCHECK(!site_key.value().empty());
    auto site_key_pair = FindSiteKeyForAnyUrl({request_url});
-@@ -116,6 +121,8 @@ bool SitekeyStorageImpl::IsSitekeySignatureValid(
+@@ -116,6 +119,8 @@ bool SitekeyStorageImpl::IsSitekeySignatureValid(
      const std::string& public_key_b64,
      const std::string& signature_b64,
      const std::string& data) const {
@@ -4908,7 +4927,7 @@ diff --git a/components/adblock/core/subscription/ongoing_subscription_request_i
 diff --git a/components/adblock/core/subscription/preloaded_subscription_provider_impl.cc b/components/adblock/core/subscription/preloaded_subscription_provider_impl.cc
 --- a/components/adblock/core/subscription/preloaded_subscription_provider_impl.cc
 +++ b/components/adblock/core/subscription/preloaded_subscription_provider_impl.cc
-@@ -63,10 +63,10 @@ class PreloadedSubscriptionProviderImpl::SingleSubscriptionProvider {
+@@ -62,10 +62,10 @@ class PreloadedSubscriptionProviderImpl::SingleSubscriptionProvider {
            utils::MakeFlatbufferDataFromResourceBundle(
                info_.flatbuffer_resource_id),
            Subscription::InstallationState::Preloaded, base::Time());
@@ -4979,7 +4998,7 @@ diff --git a/components/adblock/core/subscription/subscription_collection_impl.c
 diff --git a/components/adblock/core/subscription/subscription_config.cc b/components/adblock/core/subscription/subscription_config.cc
 --- a/components/adblock/core/subscription/subscription_config.cc
 +++ b/components/adblock/core/subscription/subscription_config.cc
-@@ -239,17 +239,17 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
+@@ -239,17 +239,23 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
         SubscriptionFirstRunBehavior::SubscribeIfLocaleMatch,
         SubscriptionPrivilegedFilterStatus::Forbidden},
        {AcceptableAdsUrl(),
@@ -4993,16 +5012,21 @@ diff --git a/components/adblock/core/subscription/subscription_config.cc b/compo
        {AntiCVUrl(),
         "ABP filters",
         {},
--       SubscriptionUiVisibility::Visible,
++       SubscriptionUiVisibility::Invisible,
++       SubscriptionFirstRunBehavior::Ignore,
++       SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
++      {GURL("https://raw.githubusercontent.com/uazo/cromite/master/tools/filters/experimental-cromite-filters.txt"),
++       "Cromite experimental filters",
++       {},
+        SubscriptionUiVisibility::Visible,
 -       SubscriptionFirstRunBehavior::Subscribe,
 -       SubscriptionPrivilegedFilterStatus::Allowed},
-+       SubscriptionUiVisibility::Invisible,
 +       SubscriptionFirstRunBehavior::Ignore,
 +       SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
        {GURL(GetHost() + "i_dont_care_about_cookies.txt"),
         "I don't care about cookies",
         {},
-@@ -280,13 +280,13 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
+@@ -280,13 +286,13 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
         {},
         SubscriptionUiVisibility::Invisible,
         SubscriptionFirstRunBehavior::Ignore,
@@ -5018,7 +5042,7 @@ diff --git a/components/adblock/core/subscription/subscription_config.cc b/compo
  
        // You can customize subscriptions available on first run and in settings
        // here. Items are displayed in settings in order declared here. See
-@@ -315,7 +315,7 @@ bool config::AllowPrivilegedFilters(const GURL& url) {
+@@ -315,7 +321,7 @@ bool config::AllowPrivilegedFilters(const GURL& url) {
    for (const auto& cur : GetKnownSubscriptions()) {
      if (cur.url == url) {
        return cur.privileged_status ==
@@ -5027,7 +5051,7 @@ diff --git a/components/adblock/core/subscription/subscription_config.cc b/compo
      }
    }
  
-@@ -325,9 +325,7 @@ bool config::AllowPrivilegedFilters(const GURL& url) {
+@@ -325,9 +331,7 @@ bool config::AllowPrivilegedFilters(const GURL& url) {
  const std::vector<PreloadedSubscriptionInfo>&
  config::GetPreloadedSubscriptionConfiguration() {
    static const std::vector<PreloadedSubscriptionInfo> preloaded_subscriptions =
@@ -5071,7 +5095,7 @@ diff --git a/components/adblock/core/subscription/subscription_config.h b/compon
 diff --git a/components/adblock/core/subscription/subscription_downloader_impl.cc b/components/adblock/core/subscription/subscription_downloader_impl.cc
 --- a/components/adblock/core/subscription/subscription_downloader_impl.cc
 +++ b/components/adblock/core/subscription/subscription_downloader_impl.cc
-@@ -56,6 +56,7 @@ GURL AddUrlParameters(const GURL& subscription_url,
+@@ -55,6 +55,7 @@ GURL AddUrlParameters(const GURL& subscription_url,
                        const SubscriptionPersistentMetadata* persistent_metadata,
                        const utils::AppInfo& client_metadata,
                        const bool is_disabled) {
@@ -5079,7 +5103,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
    const std::string query = base::StrCat(
        {"addonName=", "eyeo-chromium-sdk", "&addonVersion=", "1.0",
         "&application=", base::EscapeQueryParamValue(client_metadata.name, true),
-@@ -116,6 +117,8 @@ void SubscriptionDownloaderImpl::StartDownload(
+@@ -115,6 +116,8 @@ void SubscriptionDownloaderImpl::StartDownload(
  }
  
  void SubscriptionDownloaderImpl::CancelDownload(const GURL& subscription_url) {
@@ -5088,7 +5112,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
    ongoing_downloads_.erase(subscription_url);
  }
-@@ -140,10 +143,6 @@ void SubscriptionDownloaderImpl::DoHeadRequest(
+@@ -139,10 +142,6 @@ void SubscriptionDownloaderImpl::DoHeadRequest(
  
  bool SubscriptionDownloaderImpl::IsUrlAllowed(
      const GURL& subscription_url) const {
@@ -5099,7 +5123,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
    if (!subscription_url.SchemeIs("https") &&
        !subscription_url.SchemeIs("data")) {
      return false;
-@@ -193,11 +192,11 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
+@@ -192,11 +191,11 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
      persistent_metadata_->IncrementDownloadErrorCount(subscription_url);
      if (std::get<RetryPolicy>(download_it->second) ==
          RetryPolicy::RetryUntilSucceeded) {
@@ -5113,7 +5137,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
                      << subscription_url << ", will abort";
        std::move(std::get<DownloadCompletedCallback>(download_it->second))
            .Run(nullptr);
-@@ -214,8 +213,10 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
+@@ -213,8 +212,10 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
        TRACE_ID_LOCAL(GenerateTraceId(subscription_url)), "url",
        subscription_url.spec());
  
@@ -5125,7 +5149,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
        base::BindOnce(&SubscriptionDownloaderImpl::OnConversionFinished,
                       weak_ptr_factory_.GetWeakPtr(), subscription_url));
  }
-@@ -229,14 +230,14 @@ void SubscriptionDownloaderImpl::OnConversionFinished(
+@@ -228,14 +229,14 @@ void SubscriptionDownloaderImpl::OnConversionFinished(
        TRACE_ID_LOCAL(GenerateTraceId(subscription_url)));
    const auto download_it = ongoing_downloads_.find(subscription_url);
    if (download_it == ongoing_downloads_.end()) {
@@ -5142,7 +5166,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
              << " successfully";
      std::move(std::get<DownloadCompletedCallback>(download_it->second))
          .Run(std::move(
-@@ -279,7 +280,7 @@ void SubscriptionDownloaderImpl::AbortWithWarning(
+@@ -278,7 +279,7 @@ void SubscriptionDownloaderImpl::AbortWithWarning(
    if (ongoing_download_it == ongoing_downloads_.end()) {
      return;
    }
@@ -5421,7 +5445,7 @@ diff --git a/components/adblock/core/subscription/subscription_updater_impl.cc b
 diff --git a/components/adblock/core/subscription/subscription_validator_impl.cc b/components/adblock/core/subscription/subscription_validator_impl.cc
 --- a/components/adblock/core/subscription/subscription_validator_impl.cc
 +++ b/components/adblock/core/subscription/subscription_validator_impl.cc
-@@ -64,11 +64,11 @@ bool IsSignatureValidInternal(
+@@ -63,11 +63,11 @@ bool IsSignatureValidInternal(
    const auto* expected_hash = initial_subscription_signatures.FindString(
        path.BaseName().AsUTF8Unsafe());
    if (!expected_hash) {
@@ -5492,7 +5516,7 @@ new file mode 100644
 diff --git a/components/resources/BUILD.gn b/components/resources/BUILD.gn
 --- a/components/resources/BUILD.gn
 +++ b/components/resources/BUILD.gn
-@@ -81,7 +81,6 @@ grit("components_resources") {
+@@ -87,7 +87,6 @@ grit("components_resources") {
  
    deps += [
      "//components/resources/adblocking:copy_snippets_lib",
@@ -5564,17 +5588,17 @@ diff --git a/components/resources/adblocking/BUILD.gn b/components/resources/adb
  action("prepare_snippets_deps") {
    script = "//tools/eyeo/snippets_deps.py"
    inputs = ["//components/resources/adblocking/snippets/dist"]
-@@ -73,10 +45,10 @@ copy("copy_snippets_lib") {
+@@ -72,11 +44,6 @@ copy("copy_snippets_lib") {
+     ":prepare_snippets_deps",
    ]
  
-   if (is_debug) {
+-  if (is_debug) {
 -    sources = [ "//components/resources/adblocking/snippets/dist/isolated-first-xpath3.source.jst" ]
-+    sources = [ "//components/resources/adblocking/snippets/dist/isolated-first.source.jst" ]
-   } else {
-     sources =
+-  } else {
+-    sources =
 -        [ "//components/resources/adblocking/snippets/dist/isolated-first-xpath3.jst" ]
-+        [ "//components/resources/adblocking/snippets/dist/isolated-first.jst" ]
-   }
+-  }
++  sources = [ "//components/resources/adblocking/snippets/dist/isolated-first.source.jst" ]
    outputs = [ "${target_gen_dir}/snippets.jst" ]
  }
 diff --git a/components/resources/adblocking/elemhide_for_selector.jst b/components/resources/adblocking/elemhide_for_selector.jst
@@ -5677,11 +5701,11 @@ diff --git a/components/resources/adblocking/snippets/dist/isolated-first.source
 new file mode 100644
 --- /dev/null
 +++ b/components/resources/adblocking/snippets/dist/isolated-first.source.jst
-@@ -0,0 +1,4215 @@
+@@ -0,0 +1,4793 @@
 +(e, ...t) => {
 +/*!
-+ * snippets v1.4.0
-+ * https://gitlab.com/eyeo/anti-cv/snippets/-/blob/23006aca188eff00b56e3bd9e12591aae7adedf2/dist/isolated-first.jst
++ * snippets v1.5.0
++ * https://gitlab.com/eyeo/anti-cv/snippets/-/blob/2beff11ad5e1a8e7460519e3bb45829f5a19a1ba/dist/isolated-first-all.source.jst
 + *
 + * This file is part of eyeo's Anti-Circumvention Snippets module (@eyeo/snippets),
 + * Copyright (C) 2006-present eyeo GmbH
@@ -5727,7 +5751,6 @@ new file mode 100644
 +      return bind(c, target[name]);
 +    }
 +  };
-+
 +  const caller = target => new $$1(target, callerHandler);
 +
 +  const handler$2 = {
@@ -5735,7 +5758,6 @@ new file mode 100644
 +      return bind(target[name], target);
 +    }
 +  };
-+
 +  const bound = target => new $$1(target, handler$2);
 +
 +  const {
@@ -5920,7 +5942,7 @@ new file mode 100644
 +    };
 +  }
 +
-+  const {Map: Map$5, WeakMap: WeakMap$2, WeakSet: WeakSet$9, setTimeout: setTimeout$3} = env;
++  const {Map: Map$5, WeakMap: WeakMap$2, WeakSet: WeakSet$9, setTimeout: setTimeout$4} = env;
 +
 +  let cleanup = true;
 +  let cleanUpCallback = map => {
@@ -5936,7 +5958,7 @@ new file mode 100644
 +      set(key, value) {
 +        if (cleanup) {
 +          cleanup = !cleanup;
-+          setTimeout$3(cleanUpCallback, 0, this);
++          setTimeout$4(cleanUpCallback, 0, this);
 +        }
 +        return super.set(key, value);
 +      }
@@ -5945,12 +5967,7 @@ new file mode 100644
 +
 +  const {concat, includes, join, reduce, unshift} = caller([]);
 +
-+  const globals = secure(globalThis);
-+
-+  const {
-+    Map: Map$4,
-+    WeakMap: WeakMap$1
-+  } = globals;
++  const {Map: Map$4, WeakMap: WeakMap$1} = secure(globalThis);
 +
 +  const map = new Map$4;
 +  const descriptors = target => {
@@ -5996,18 +6013,18 @@ new file mode 100644
 +        return true;
 +      }
 +    };
-+    return target => new $$1(target, handler);
++    return target => new Proxy(target, handler);
 +  };
 +
 +  const {
 +    isExtensionContext: isExtensionContext$1,
-+    Array: Array$2,
++    Array: Array$4,
 +    Number: Number$1,
 +    String: String$1,
 +    Object: Object$2
 +  } = env;
 +
-+  const {isArray} = Array$2;
++  const {isArray} = Array$4;
 +  const {getOwnPropertyDescriptor, setPrototypeOf: setPrototypeOf$1} = Object$2;
 +
 +  const {toString} = Object$2.prototype;
@@ -6040,7 +6057,7 @@ new file mode 100644
 +      return chained[hint](value);
 +
 +    if (isArray(value))
-+      return setPrototypeOf$1(value, Array$2.prototype);
++      return setPrototypeOf$1(value, Array$4.prototype);
 +
 +    const brand = getBrand(value);
 +    if (brand in chained)
@@ -6088,7 +6105,7 @@ new file mode 100644
 +      }
 +    });
 +
-+  let debugging = true;
++  let debugging = false;
 +
 +  function debug() {
 +    return debugging;
@@ -6101,11 +6118,11 @@ new file mode 100644
 +  let {
 +    console: console$2,
 +    document: document$1,
-+    getComputedStyle: getComputedStyle$5,
++    getComputedStyle: getComputedStyle$6,
 +    isExtensionContext,
 +    variables,
-+    Array: Array$1,
-+    MutationObserver: MutationObserver$9,
++    Array: Array$3,
++    MutationObserver: MutationObserver$a,
 +    Object: Object$1,
 +    XPathEvaluator,
 +    XPathExpression,
@@ -6329,7 +6346,7 @@ new file mode 100644
 +      properties.push([key, $style.getPropertyValue(key)]);
 +    }
 +
-+    new MutationObserver$9(() => {
++    new MutationObserver$a(() => {
 +      for (let [key, value] of properties) {
 +        let propertyValue = $style.getPropertyValue(key);
 +        let propertyPriority = $style.getPropertyPriority(key);
@@ -6379,7 +6396,7 @@ new file mode 100644
 +        return elements;
 +      };
 +    }
-+    return () => Array$1.from($$(selector));
++    return () => Array$3.from($$(selector));
 +  }
 +
 +  function hideIfMatches(match, selector, searchSelector, onHideCallback) {
@@ -6398,7 +6415,7 @@ new file mode 100644
 +      }
 +    };
 +    return assign(
-+      new MutationObserver$9(callback),
++      new MutationObserver$a(callback),
 +      {
 +        race(win) {
 +          won = win;
@@ -6436,12 +6453,12 @@ new file mode 100644
 +    }
 +
 +    return isVisible(
-+      parent, getComputedStyle$5(parent), closest, shadowRootParents
++      parent, getComputedStyle$6(parent), closest, shadowRootParents
 +    );
 +  }
 +
 +  function getComputedCSSText(element) {
-+    let style = getComputedStyle$5(element);
++    let style = getComputedStyle$6(element);
 +    let {cssText} = style;
 +
 +    if (cssText)
@@ -6453,7 +6470,7 @@ new file mode 100644
 +    return $(cssText).trim();
 +  }
 +
-+  let {Math: Math$2, RegExp} = $(window);
++  let {Array: Array$2, Math: Math$3, RegExp} = $(window);
 +
 +  function regexEscape(string) {
 +    return $(string).replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -6475,6 +6492,10 @@ new file mode 100644
 +    }
 +
 +    return new RegExp(regexEscape(pattern));
++  }
++
++  function formatArguments(args) {
++    return $(Array$2.from(args)).map(arg => `'${arg}'`).join(" ");
 +  }
 +
 +  const {console: console$1} = $(window);
@@ -6519,7 +6540,7 @@ new file mode 100644
 +    return bind(debug() ? log : noop, null, name);
 +  }
 +
-+  let {Array, Error: Error$2, Map: Map$3, parseInt: parseInt$2} = $(window);
++  let {Array: Array$1, Error: Error$2, Map: Map$3, parseInt: parseInt$2} = $(window);
 +
 +  let stack = null;
 +  let won = null;
@@ -6531,7 +6552,7 @@ new file mode 100644
 +          winners: parseInt$2(winners, 10) || 1,
 +          participants: new Map$3()
 +        };
-+        won = new Array();
++        won = new Array$1();
 +        break;
 +      case "end":
 +      case "finish":
@@ -6581,14 +6602,14 @@ new file mode 100644
 +  }
 +
 +  function hideIfContains(search, selector = "*", searchSelector = null) {
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-contains");
 +    const onHideCallback = node => {
 +      debugLog("success",
 +               "Matched: ",
 +               node,
-+               " for selector: ",
-+               selector,
-+               searchSelector);
++               "\nFILTER: hide-if-contains",
++               formattedArguments);
 +    };
 +    let re = toRegExp(search);
 +
@@ -6688,7 +6709,7 @@ new file mode 100644
 +    }
 +  }
 +
-+  let {MutationObserver: MutationObserver$8, WeakSet: WeakSet$8, getComputedStyle: getComputedStyle$4} = $(window);
++  let {MutationObserver: MutationObserver$9, WeakSet: WeakSet$8, getComputedStyle: getComputedStyle$5} = $(window);
 +
 +  function hideIfContainsAndMatchesStyle(search,
 +                                                selector = "*",
@@ -6699,6 +6720,7 @@ new file mode 100644
 +                                                windowWidthMin = null,
 +                                                windowWidthMax = null
 +  ) {
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-contains-and-matches-style");
 +    const hiddenMap = new WeakSet$8();
 +    const logMap = debug() && new WeakSet$8();
@@ -6733,8 +6755,8 @@ new file mode 100644
 +                         closest,
 +                         "which contains: ",
 +                         element,
-+                         " for params: ",
-+                         ...arguments);
++                         "\nFILTER: hide-if-contains-and-matches-style",
++                         formattedArguments);
 +              }
 +              else {
 +                if (!logMap || logMap.has(closest))
@@ -6743,8 +6765,8 @@ new file mode 100644
 +                         "In this element the searchStyle matched " +
 +                         "but style didn't:\n",
 +                         closest,
-+                         getComputedStyle$4(closest),
-+                         ...arguments);
++                         getComputedStyle$5(closest),
++                         formattedArguments);
 +                logMap.add(closest);
 +              }
 +            }
@@ -6754,15 +6776,15 @@ new file mode 100644
 +              debugLog("info",
 +                       "In this element the searchStyle didn't match:\n",
 +                       element,
-+                       getComputedStyle$4(element),
-+                       ...arguments);
++                       getComputedStyle$5(element),
++                       formattedArguments);
 +              logMap.add(element);
 +            }
 +          }
 +        }
 +      };
 +
-+      const mo = new MutationObserver$8(callback);
++      const mo = new MutationObserver$9(callback);
 +      const win = raceWinner(
 +        "hide-if-contains-and-matches-style",
 +        () => mo.disconnect()
@@ -6774,12 +6796,12 @@ new file mode 100644
 +  }
 +
 +  let {
-+    clearTimeout,
++    clearTimeout: clearTimeout$1,
 +    fetch,
-+    getComputedStyle: getComputedStyle$3,
-+    setTimeout: setTimeout$2,
++    getComputedStyle: getComputedStyle$4,
++    setTimeout: setTimeout$3,
 +    Map: Map$2,
-+    MutationObserver: MutationObserver$7,
++    MutationObserver: MutationObserver$8,
 +    Uint8Array
 +  } = $(window);
 +
@@ -6789,11 +6811,12 @@ new file mode 100644
 +
 +    let searchRegExp = toRegExp(search);
 +
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-contains-image");
 +
 +    let callback = () => {
 +      for (const {element, rootParents} of $$(searchSelector, true)) {
-+        let style = getComputedStyle$3(element);
++        let style = getComputedStyle$4(element);
 +        let match = $(style["background-image"]).match(/^url\("(.*)"\)$/);
 +        if (match) {
 +          fetchContent(match[1]).then(content => {
@@ -6802,7 +6825,11 @@ new file mode 100644
 +              if (closest) {
 +                win();
 +                hideElement(closest);
-+                debugLog("success", "Matched: ", closest, " for:", ...arguments);
++                debugLog("success",
++                         "Matched: ",
++                         closest,
++                         "\nFILTER: hide-if-contains-image",
++                         formattedArguments);
 +              }
 +            }
 +          });
@@ -6810,7 +6837,7 @@ new file mode 100644
 +      }
 +    };
 +
-+    let mo = new MutationObserver$7(callback);
++    let mo = new MutationObserver$8(callback);
 +    let win = raceWinner(
 +      "hide-if-contains-image",
 +      () => mo.disconnect()
@@ -6829,8 +6856,8 @@ new file mode 100644
 +      result: null,
 +      timer: 0
 +    };
-+    clearTimeout(details.timer);
-+    details.timer = setTimeout$2(details.remove, cleanup);
++    clearTimeout$1(details.timer);
++    details.timer = setTimeout$3(details.remove, cleanup);
 +    if (!details.result) {
 +      details.result = fetch(url).then(res => res[as]()).catch(details.remove);
 +      fetchContentMap.set(uid, details);
@@ -6851,8 +6878,8 @@ new file mode 100644
 +    return uint8Array.reduce((hex, byte) => hex + toHex(byte), "");
 +  }
 +
-+  const {parseFloat: parseFloat$2, Math: Math$1, MutationObserver: MutationObserver$6, WeakSet: WeakSet$7} = $(window);
-+  const {min} = Math$1;
++  const {parseFloat: parseFloat$2, Math: Math$2, MutationObserver: MutationObserver$7, WeakSet: WeakSet$7} = $(window);
++  const {min} = Math$2;
 +
 +  const ld = (a, b) => {
 +    const len1 = a.length + 1;
@@ -6886,6 +6913,7 @@ new file mode 100644
 +    maxSearches = 0
 +  ) {
 +    const visitedNodes = new WeakSet$7();
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-contains-similar-text");
 +    const $search = $(search);
 +    const {length} = $search;
@@ -6896,7 +6924,7 @@ new file mode 100644
 +    if (searchSelector == null)
 +      searchSelector = selector;
 +
-+    debugLog("Looking for similar text: " + $search);
++    debugLog("info", "Looking for similar text: " + $search);
 +
 +    const callback = () => {
 +      for (const {element, rootParents} of $$(searchSelector, true)) {
@@ -6911,7 +6939,11 @@ new file mode 100644
 +          const distance = ld(find, $([...str]).sort()) - ignoreChars;
 +          if (distance <= 0) {
 +            const closest = $closest($(element), selector, rootParents);
-+            debugLog("success", "Found similar text: " + $search, closest);
++            debugLog("success",
++                     "Found similar text: " + $search,
++                     closest,
++                     "\nFILTER: hide-if-contains-similar-text",
++                     formattedArguments);
 +            if (closest) {
 +              win();
 +              hideElement(closest);
@@ -6922,7 +6954,7 @@ new file mode 100644
 +      }
 +    };
 +
-+    let mo = new MutationObserver$6(callback);
++    let mo = new MutationObserver$7(callback);
 +    let win = raceWinner(
 +      "hide-if-contains-similar-text",
 +      () => mo.disconnect()
@@ -6931,18 +6963,20 @@ new file mode 100644
 +    callback();
 +  }
 +
-+  let {getComputedStyle: getComputedStyle$2, Map: Map$1, WeakSet: WeakSet$6, parseFloat: parseFloat$1} = $(window);
++  let {getComputedStyle: getComputedStyle$3, Map: Map$1, WeakSet: WeakSet$6, parseFloat: parseFloat$1, DOMMatrix, Math: Math$1} = $(window);
 +
-+  const {ELEMENT_NODE: ELEMENT_NODE$2, TEXT_NODE} = Node;
++  const {ELEMENT_NODE: ELEMENT_NODE$3, TEXT_NODE} = Node;
 +
 +  function hideIfContainsVisibleText(search, selector,
 +                                            searchSelector = null,
 +                                            ...attributes) {
++    const formattedArguments = formatArguments(arguments);
 +    let entries = $([]);
 +    const optionalParameters = new Map$1([
 +      ["-snippet-box-margin", "2"],
 +      ["-disable-bg-color-check", "false"],
-+      ["-check-is-contained", "false"]
++      ["-check-is-contained", "false"],
++      ["-pseudo-box-margin", "2"]
 +    ]);
 +
 +    for (let attr of attributes) {
@@ -6973,7 +7007,7 @@ new file mode 100644
 +
 +    function isTextVisible(element, style, {bgColorCheck = true} = {}) {
 +      if (!style)
-+        style = getComputedStyle$2(element);
++        style = getComputedStyle$3(element);
 +
 +      style = $(style);
 +
@@ -6990,8 +7024,19 @@ new file mode 100644
 +      return true;
 +    }
 +
-+    function getPseudoContent(element, pseudo, {bgColorCheck = true} = {}) {
-+      let style = getComputedStyle$2(element, pseudo);
++    function getTransformMatrix(element, pseudo = null) {
++      const style = getComputedStyle$3(element, pseudo);
++      let transform = style.transform;
++
++      if (transform === "none")
++        transform = "matrix(1, 0, 0, 1, 0, 0)";
++      return new DOMMatrix(transform);
++    }
++
++    function getPseudoContent(element, pseudo, parentMatrix,
++                              {bgColorCheck = true, translateThresh = 2} = {}) {
++      let style = getComputedStyle$3(element, pseudo);
++
 +      if (!isVisible(element, style) ||
 +       !isTextVisible(element, style, {bgColorCheck}))
 +        return "";
@@ -6999,6 +7044,21 @@ new file mode 100644
 +      let {content} = $(style);
 +      if (content && content !== "none") {
 +        let strings = $([]);
++
++        const domMatrix = getTransformMatrix(element, pseudo);
++        const resultMatrix = parentMatrix.multiply(domMatrix);
++
++        const angle = Math$1.atan2(resultMatrix.b, resultMatrix.a);
++        const angleDegrees = angle * (180 / Math$1.PI);
++        const rotated = Math$1.abs(angleDegrees) > 5;
++
++        if (rotated)
++          return "";
++
++        const translated = Math$1.abs(resultMatrix.e) > translateThresh ||
++                           Math$1.abs(resultMatrix.f) > translateThresh;
++        if (translated)
++          return "";
 +
 +        content = $(content).trim().replace(
 +          /(["'])(?:(?=(\\?))\2.)*?\1/g,
@@ -7044,14 +7104,16 @@ new file mode 100644
 +                               parentOverflowNode,
 +                               originalElement,
 +                               shadowRootParents,
++                               domMatrix,
 +                               {
 +                                 boxMargin = 2,
 +                                 bgColorCheck,
-+                                 checkIsContained
++                                 checkIsContained,
++                                 translateThresh
 +                               } = {}) {
 +      let checkClosest = !style;
 +      if (checkClosest)
-+        style = getComputedStyle$2(element);
++        style = getComputedStyle$3(element);
 +
 +      if (!isVisible(element, style, checkClosest && closest, shadowRootParents))
 +        return "";
@@ -7064,20 +7126,31 @@ new file mode 100644
 +      )
 +        parentOverflowNode = element;
 +
-+      let text = getPseudoContent(element, ":before", {bgColorCheck});
++      if (!domMatrix)
++        domMatrix = getTransformMatrix(element);
++
++      else
++        domMatrix = domMatrix.multiply(getTransformMatrix(element));
++
++      let text = getPseudoContent(element,
++                                  ":before",
++                                  domMatrix,
++                                  {bgColorCheck, translateThresh});
 +      for (let node of $childNodes($(element))) {
 +        switch ($(node).nodeType) {
-+          case ELEMENT_NODE$2:
++          case ELEMENT_NODE$3:
 +            text += getVisibleContent(node,
 +                                      element,
-+                                      getComputedStyle$2(node),
++                                      getComputedStyle$3(node),
 +                                      parentOverflowNode,
 +                                      originalElement,
 +                                      shadowRootParents,
++                                      domMatrix,
 +                                      {
 +                                        boxMargin,
 +                                        bgColorCheck,
-+                                        checkIsContained
++                                        checkIsContained,
++                                        translateThresh
 +                                      }
 +            );
 +            break;
@@ -7097,7 +7170,11 @@ new file mode 100644
 +            break;
 +        }
 +      }
-+      return text + getPseudoContent(element, ":after", {bgColorCheck});
++      text += getPseudoContent(element,
++                               ":after",
++                               domMatrix,
++                               {bgColorCheck, translateThresh});
++      return text;
 +    }
 +
 +    const boxMarginStr = optionalParameters.get("-snippet-box-margin");
@@ -7109,6 +7186,9 @@ new file mode 100644
 +    const checkIsContainedStr = optionalParameters.get("-check-is-contained");
 +    const checkIsContained = (checkIsContainedStr === "true");
 +
++    const translateThreshStr = optionalParameters.get("-pseudo-box-margin");
++    const translateThresh = parseFloat$1(translateThreshStr) || 0;
++
 +    let re = toRegExp(search);
 +    let seen = new WeakSet$6();
 +
@@ -7119,15 +7199,18 @@ new file mode 100644
 +
 +        seen.add(element);
 +        let text = getVisibleContent(
-+          element, closest, null, null, element, rootParents, {
++          element, closest, null, null, element, rootParents, null, {
 +            boxMargin,
 +            bgColorCheck,
-+            checkIsContained
++            checkIsContained,
++            translateThresh
 +          }
 +        );
 +        let result = re.test(text);
 +        if (debug() && text.length) {
-+          result ? log("success", result, re, text) :
++          result ?
++
++          log("success", result, re, text, "\nFILTER: hide-if-contains-visible-text", formattedArguments) :
 +          log("info", result, re, text);
 +        }
 +
@@ -7144,7 +7227,7 @@ new file mode 100644
 +    ));
 +  }
 +
-+  let {MutationObserver: MutationObserver$5, WeakSet: WeakSet$5, getComputedStyle: getComputedStyle$1} = $(window);
++  let {MutationObserver: MutationObserver$6, WeakSet: WeakSet$5, getComputedStyle: getComputedStyle$2} = $(window);
 +
 +  function hideIfHasAndMatchesStyle(search,
 +                                           selector = "*",
@@ -7155,6 +7238,7 @@ new file mode 100644
 +                                           windowWidthMin = null,
 +                                           windowWidthMax = null
 +  ) {
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-has-and-matches-style");
 +    const hiddenMap = new WeakSet$5();
 +    const logMap = debug() && new WeakSet$5();
@@ -7186,8 +7270,8 @@ new file mode 100644
 +                       closest,
 +                       "which contains: ",
 +                       element,
-+                       " for params: ",
-+                       ...arguments);
++                       "\nFILTER: hide-if-has-and-matches-style",
++                       formattedArguments);
 +            }
 +            else {
 +              if (!logMap || logMap.has(closest))
@@ -7196,7 +7280,7 @@ new file mode 100644
 +                       "In this element the searchStyle matched" +
 +                       "but style didn't:\n",
 +                       closest,
-+                       getComputedStyle$1(closest),
++                       getComputedStyle$2(closest),
 +                       ...arguments);
 +              logMap.add(closest);
 +            }
@@ -7207,14 +7291,14 @@ new file mode 100644
 +            debugLog("info",
 +                     "In this element the searchStyle didn't match:\n",
 +                     element,
-+                     getComputedStyle$1(element),
++                     getComputedStyle$2(element),
 +                     ...arguments);
 +            logMap.add(element);
 +          }
 +        }
 +      };
 +
-+      const mo = new MutationObserver$5(callback);
++      const mo = new MutationObserver$6(callback);
 +      const win = raceWinner(
 +        "hide-if-has-and-matches-style",
 +        () => mo.disconnect()
@@ -7225,7 +7309,7 @@ new file mode 100644
 +    waitUntilEvent(debugLog, mainLogic, waitUntil);
 +  }
 +
-+  let {getComputedStyle, MutationObserver: MutationObserver$4, WeakSet: WeakSet$4} = $(window);
++  let {getComputedStyle: getComputedStyle$1, MutationObserver: MutationObserver$5, WeakSet: WeakSet$4} = $(window);
 +
 +  function hideIfLabelledBy(search, selector, searchSelector = null) {
 +    let sameSelector = searchSelector == null;
@@ -7240,7 +7324,7 @@ new file mode 100644
 +                      element :
 +                      $closest($(element), searchSelector, rootParents);
 +        if (!closest ||
-+            !isVisible(element, getComputedStyle(element), closest))
++            !isVisible(element, getComputedStyle$1(element), closest))
 +          continue;
 +
 +        let attr = $(element).getAttribute("aria-labelledby");
@@ -7278,7 +7362,7 @@ new file mode 100644
 +      }
 +    };
 +
-+    let mo = new MutationObserver$4(callback);
++    let mo = new MutationObserver$5(callback);
 +    let win = raceWinner(
 +      "hide-if-labelled-by",
 +      () => mo.disconnect()
@@ -7301,12 +7385,13 @@ new file mode 100644
 +    return noopProfile;
 +  }
 +
-+  let {MutationObserver: MutationObserver$3, WeakSet: WeakSet$3} = $(window);
++  let {MutationObserver: MutationObserver$4, WeakSet: WeakSet$3} = $(window);
 +
-+  const {ELEMENT_NODE: ELEMENT_NODE$1} = Node;
++  const {ELEMENT_NODE: ELEMENT_NODE$2} = Node;
 +
 +  function hideIfMatchesXPath(query, scopeQuery) {
 +    const {mark, end} = profile();
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-matches-xpath");
 +
 +    const startHidingMutationObserver = scopeNode => {
@@ -7319,15 +7404,19 @@ new file mode 100644
 +            return false;
 +          seenMap.add(node);
 +          win();
-+          if ($(node).nodeType === ELEMENT_NODE$1)
++          if ($(node).nodeType === ELEMENT_NODE$2)
 +            hideElement(node);
 +          else
 +            $(node).textContent = "";
-+          debugLog("success", "Matched: ", node, " for selector: ", query);
++          debugLog("success",
++                   "Matched: ",
++                   node,
++                   "\nFILTER: hide-if-matches-xpath",
++                   formattedArguments);
 +        });
 +        end();
 +      };
-+      const mo = new MutationObserver$3(callback);
++      const mo = new MutationObserver$4(callback);
 +      const win = raceWinner(
 +        "hide-if-matches-xpath",
 +        () => mo.disconnect()
@@ -7351,7 +7440,7 @@ new file mode 100644
 +        if (count > 0)
 +          scopeMutationObserver.disconnect();
 +      };
-+      scopeMutationObserver = new MutationObserver$3(findMutationScopeNodes);
++      scopeMutationObserver = new MutationObserver$4(findMutationScopeNodes);
 +      scopeMutationObserver.observe(
 +        document, {characterData: true, childList: true, subtree: true}
 +      );
@@ -7363,13 +7452,14 @@ new file mode 100644
 +    }
 +  }
 +
-+  let {MutationObserver: MutationObserver$2, WeakSet: WeakSet$2} = $(window);
++  let {MutationObserver: MutationObserver$3, WeakSet: WeakSet$2} = $(window);
 +
-+  const {ELEMENT_NODE} = Node;
++  const {ELEMENT_NODE: ELEMENT_NODE$1} = Node;
 +
 +  function hideIfMatchesComputedXPath(query, searchQuery, searchRegex,
 +                                             waitUntil) {
 +    const {mark, end} = profile();
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("hide-if-matches-computed-xpath");
 +
 +    if (!searchQuery || !query) {
@@ -7393,15 +7483,19 @@ new file mode 100644
 +            return false;
 +          seenMap.add(node);
 +          win();
-+          if ($(node).nodeType === ELEMENT_NODE)
++          if ($(node).nodeType === ELEMENT_NODE$1)
 +            hideElement(node);
 +          else
 +            $(node).textContent = "";
-+          debugLog("success", "Matched: ", node, " for selector: ", query);
++          debugLog("success",
++                   "Matched: ",
++                   node,
++                   "\nFILTER: hide-if-matches-computed-xpath",
++                   formattedArguments);
 +        });
 +        end();
 +      };
-+      const mo = new MutationObserver$2(callback);
++      const mo = new MutationObserver$3(callback);
 +      const win = raceWinner(
 +        "hide-if-matches-computed-xpath",
 +        () => mo.disconnect()
@@ -7440,7 +7534,7 @@ new file mode 100644
 +          });
 +        };
 +
-+        searchMO = new MutationObserver$2(findMutationSearchNodes);
++        searchMO = new MutationObserver$3(findMutationSearchNodes);
 +        searchMO.observe(
 +          document, {characterData: true, childList: true, subtree: true}
 +        );
@@ -7453,10 +7547,10 @@ new file mode 100644
 +
 +  let {
 +    parseInt: parseInt$1,
-+    setTimeout: setTimeout$1,
++    setTimeout: setTimeout$2,
 +    Error: Error$1,
 +    MouseEvent: MouseEvent$1,
-+    MutationObserver: MutationObserver$1,
++    MutationObserver: MutationObserver$2,
 +    WeakSet: WeakSet$1
 +  } = $(window);
 +
@@ -7468,6 +7562,7 @@ new file mode 100644
 +                       "pointerup", "pointercancel", "pointerleave"];
 +
 +  function simulateMouseEvent(...selectors) {
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("simulate-mouse-event");
 +    const MAX_ARGS = 7;
 +    if (selectors.length < 1)
@@ -7553,7 +7648,8 @@ new file mode 100644
 +                 node,
 +                 "\nwith a delay of",
 +                 delay,
-+                 "ms"
++                 "ms",
++                 `n\nFILTER: simulate-mouse-event ${formattedArguments}`
 +        );
 +      }
 +      else {
@@ -7566,7 +7662,8 @@ new file mode 100644
 +                 "event was dispatched with a delay of",
 +                 delay,
 +                 "ms on this node:\n",
-+                 node
++                 node,
++                 `n\nFILTER: simulate-mouse-event ${formattedArguments}`
 +        );
 +      }
 +    }
@@ -7577,7 +7674,7 @@ new file mode 100644
 +
 +    let dispatchedNodes = new WeakSet$1();
 +
-+    let observer = new MutationObserver$1(findNodesAndDispatchEvents);
++    let observer = new MutationObserver$2(findNodesAndDispatchEvents);
 +    observer.observe(document, {childList: true, subtree: true});
 +    findNodesAndDispatchEvents();
 +
@@ -7599,7 +7696,7 @@ new file mode 100644
 +                  }, delayInMiliseconds);
 +                }
 +                else {
-+                  setTimeout$1(() => {
++                  setTimeout$2(() => {
 +                    triggerEvent(node, parsedRule.event, parsedRule.delay);
 +                  }, delayInMiliseconds);
 +                }
@@ -7611,9 +7708,10 @@ new file mode 100644
 +    }
 +  }
 +
-+  let {isNaN, MutationObserver, parseInt, parseFloat, setTimeout} = $(window);
++  let {isNaN, MutationObserver: MutationObserver$1, parseInt, parseFloat, setTimeout: setTimeout$1} = $(window);
 +
 +  function skipVideo(playerSelector, xpathCondition, ...attributes) {
++    const formattedArguments = formatArguments(arguments);
 +    const optionalParameters = new Map([
 +      ["-max-attempts", "10"],
 +      ["-retry-ms", "10"],
@@ -7666,6 +7764,7 @@ new file mode 100644
 +    let skippedOnce = false;
 +
 +    const mainLogic = () => {
++      const seenMap = new WeakSet();
 +      const callback = (retryCounter = 0) => {
 +        if (skippedOnce && runOnceFlag) {
 +          if (mo)
@@ -7673,11 +7772,15 @@ new file mode 100644
 +          return;
 +        }
 +        queryAndApply(node => {
-+          debugLog("info", "Matched: ", node, " for selector: ", xpathCondition);
-+          debugLog("info", "Running video skipping logic.");
++          let nodeAlreadySeen = seenMap.has(node);
++          let lastSkippedVideoDuration;
++          if (!nodeAlreadySeen) {
++            debugLog("info", "Matched:", node, " for selector: ", xpathCondition);
++            debugLog("info", "Running video skipping logic.");
++          }
 +          const video = $$(playerSelector)[0];
 +          while (isNaN(video.duration) && retryCounter < maxAttemptsNum) {
-+            setTimeout(() => {
++            setTimeout$1(() => {
 +              const attempt = retryCounter + 1;
 +              debugLog("info",
 +                       "Running video skipping logic. Attempt: ",
@@ -7692,14 +7795,24 @@ new file mode 100644
 +             !(stopOnVideoEndFlag && videoNearEnd)) {
 +            if (muteVideo) {
 +              video.muted = true;
-+              debugLog("success", "Muted video...");
++              if (!nodeAlreadySeen)
++                debugLog("success", "Muted video...");
 +            }
 +            if (startFrom <= video.currentTime * 1000) {
 +
 +              skipToNum <= 0 ?
 +                video.currentTime = video.duration + skipToNum :
 +                video.currentTime += skipToNum;
-+              debugLog("success", "Skipped duration...");
++              if (lastSkippedVideoDuration !== video.duration) {
++                debugLog("success",
++                         "Skipped video, currentTime: ",
++                         video.currentTime,
++                         "s.",
++                         "\nFILTER: skip-video",
++                         formattedArguments);
++                seenMap.add(node);
++                lastSkippedVideoDuration = video.duration;
++              }
 +              video.paused && video.play();
 +              skippedOnce = true;
 +              win();
@@ -7707,7 +7820,7 @@ new file mode 100644
 +          }
 +        });
 +      };
-+      const mo = new MutationObserver(callback);
++      const mo = new MutationObserver$1(callback);
 +      const win = raceWinner(
 +        "skip-video",
 +        () => mo.disconnect()
@@ -7736,6 +7849,95 @@ new file mode 100644
 +    "simulate-mouse-event": simulateMouseEvent,
 +    "skip-video": skipVideo
 +  };
++
++  let {MutationObserver} = $(window);
++
++  const {ELEMENT_NODE} = Node;
++
++  function hideIfMatchesXPath3(query, scopeQuery) {
++    let {mark, end} = profile();
++
++    const namespaceResolver = prefix => {
++      switch (prefix) {
++        case "": return "http://www.w3.org/1999/xhtml";
++        default: return false;
++      }
++    };
++    function queryNodes(nodeQuery) {
++      return fontoxpath.evaluateXPathToNodes(nodeQuery, document, null, null, {
++        language: fontoxpath.evaluateXPath.XQUERY_3_1_LANGUAGE,
++        namespaceResolver
++      });
++    }
++
++    const formattedArguments = formatArguments(arguments);
++    let debugLog = getDebugger("hide-if-matches-xpath3");
++
++    const startHidingMutationObserver = scopeNode => {
++      const seenMap = new WeakSet();
++      const callback = () => {
++        mark();
++
++        const nodes = queryNodes(query);
++        for (const node of $(nodes)) {
++          if (seenMap.has(node))
++            return false;
++          seenMap.add(node);
++          win();
++          if ($(node).nodeType === ELEMENT_NODE)
++            hideElement(node);
++          else
++            $(node).textContent = "";
++          debugLog("success",
++                   "Matched: ",
++                   node,
++                   "\nFILTER: hide-if-matches-xpath3",
++                   formattedArguments);
++        }
++        end();
++      };
++
++      const mo = new MutationObserver(callback);
++      const win = raceWinner(
++        "hide-if-matches-xpath3",
++        () => mo.disconnect()
++      );
++      mo.observe(
++        scopeNode, {characterData: true, childList: true, subtree: true});
++      callback();
++    };
++
++    if (scopeQuery) {
++
++      let count = 0;
++      let scopeMutationObserver;
++      const scopeNodes = queryNodes(scopeQuery);
++      const findMutationScopeNodes = () => {
++        for (const scopeNode of $(scopeNodes)) {
++
++          startHidingMutationObserver(scopeNode);
++          count++;
++        }
++        if (count > 0)
++          scopeMutationObserver.disconnect();
++      };
++
++      scopeMutationObserver = new MutationObserver(findMutationScopeNodes);
++      scopeMutationObserver.observe(
++        document, {characterData: true, childList: true, subtree: true}
++      );
++      findMutationScopeNodes();
++    }
++    else {
++
++      startHidingMutationObserver(document);
++    }
++  }
++
++  const DEFAULT_GRAPH_CUTOFF=500;async function domToGraph(e,t,r=false){return new Promise(((o,i)=>{if(!e||!t)return i();let l=e.config;let n=l.cutoff||e.topology.graphml.nodes||DEFAULT_GRAPH_CUTOFF;l=l.filter((e=>e.include));for(let e of l)e.groupName=Object.keys(e)[2];let s=(e,t,r,o)=>{if(r==="attributes"&&typeof e.attributes[o]!=="undefined")t.attributes[o]=e.attributes[o].value;else if(r==="style"&&e.style[o])t.attributes.style[o]=e.style[o];else if(r==="css")t.cssSelectors=getComputedStyle(e).cssText||"";};let a=e=>{if(r&&!e.clientWidth&&!e.clientHeight)return;n-=1;if(n<0)return;let t={tag:e.tagName,width:e.clientWidth,height:e.clientHeight,attributes:{style:{}},children:[]};for(let r of l){for(let o of r[r.groupName].features){for(let[i,l]of Object.entries(o)){if("names"in l){for(let o of l.names){for(let i of o.split("^"))s(e,t,r.groupName,i);}}else {s(e,t,r.groupName,i);}}}}if(e.children){for(let r of e.children){let e=a(r);if(e)t.children.push(e);}}return t};let f=a(t);o(f);}))}function parseArgs(e){if(!e||!Array.isArray(e)||!e.length)return {};let t=[];let r={debug:false,frameonly:false,failsafe:false,denoise:false,silent:false,model:"",selector:"",subselector:""};for(let o of e){if(o&&o in r)r[o]=true;else t.push(o);}if(t.length<2)return {};r.model=t[0];t.splice(0,1);if(t.length>2||t.some((e=>e&&e.startsWith('"'))))t=t.join(" ").split('"').map((e=>e.trim())).filter((e=>e));r.selector=t[0]||"";r.subselector=t[1]||"";return r}function resolveSelectors(e,t){let r=[document];e=$(e).split("..");let o=[];$(e).forEach(((e,t)=>{if(t){r=$(r).reduce(((e,t)=>t&&$(t).parentElement?e.concat($(t).parentElement):e),$([]));}r=$(r).reduce(((t,r)=>{if(!e){t.push(r);}else {try{t=t.concat(...$(r).querySelectorAll(e));}catch(e){}}return t}),$([]));}));for(let e of r){let r=[e];if(t){try{r=$(e).querySelectorAll(t);}catch(e){}}o.push([e,r]);}return o}let{WeakSet:WeakSet$,MutationObserver:MutationObserver$}=(typeof $!=="undefined"?$:e=>e)(window);class Observer{constructor(){this.digestedElements=new WeakSet$;this.selector="";this.subselector="";}observe(e,t,r){this.selector=e;this.subselector=t;this.callback=r;this.elementObserver=new MutationObserver$(this.digest.bind(this));this.elementObserver.observe(document,{childList:true,subtree:true});this.digest();}stop(){if(this.elementObserver)this.elementObserver.disconnect();}digest(){let e=resolveSelectors(this.selector,this.subselector).filter((([e])=>!this.digestedElements.has(e)));this.callback(e);for(let[t]of e)this.digestedElements.add(t);}}let mode=false;function print$1(e,t=false,...r){if(mode){console.log("%cMLDBG ♥ %c| %s%c |","color:cyan",t?"color:red":"color:inherit",e,"color:inherit",...r);}}function toggle(e){mode=!!e;}let data={nodeCount:0,organicCount:0,adCount:0,aaCount:0,times:[]};function set(e=false,t=false,r){if(mode){if(!data.nodeCount){$(document).head.insertAdjacentHTML("beforeend",`\n        <style>body::before { display: block; position: fixed; pointer-events: none; top: 0; left: 0; z-index: 999999; background-color: rgba(0, 0, 0, 0.7); padding: 5px; content: "ad:\\9\\9 " var(--dbg-ad) "\\A nad:\\9\\9 " var(--dbg-nad) "\\A aa:\\9\\9 " var(--dbg-aa) "\\A time:\\9 " var(--dbg-t); font-size: 10px; white-space: pre-wrap; color: #fff; }</style>\n      `);}}data.nodeCount++;if(t)data.aaCount++;else if(e)data.adCount++;else data.organicCount++;if(r)data.times.push(r);}function print(){if(mode){$(document).body.style.setProperty("--dbg-ad",`"${data.adCount}"`);$(document).body.style.setProperty("--dbg-nad",`"${data.organicCount}"`);$(document).body.style.setProperty("--dbg-aa",`"${data.aaCount}"`);$(document).body.style.setProperty("--dbg-t",`"${data.times.reduce(((e,t,r)=>!r||r%3?e+=t+"ms ":e+="\\A\\9\\9 "+t+"ms "),"")}"`);}}const MESSAGE_PREFIX="ML:";const MESSAGE_PREPARE_SUFFIX="prepare";const MESSAGE_INFERENCE_SUFFIX="inference";const errors={UNKNOWN_REQUEST:1,MISSING_REQUEST_DATA:2,UNKNOWN_MODEL:3,MISSING_INFERENCE_DATA:4,INFERENCE_FAILED:5,MODEL_INSTANTIATION_FAILED:6,MISSING_ENVIRONMENTAL_SUPPORT:7};const IN_FRAME=window.self!==window.top;const SERVICE_WORKER_TIMEOUT=1e4;let{Map:Map$}=(typeof $!=="undefined"?$:e=>e)(window);let modelConfigs=new Map$;let globallyAllowlisted=false;function hideIfClassifies(...e){let{debug:t,frameonly:r,failsafe:o,denoise:i,silent:l,model:n,selector:s,subselector:a}=parseArgs(e||[]);toggle(t);if(typeof chrome==="undefined"||!chrome.runtime||!chrome.runtime.sendMessage)return print$1("environmental support",false);if(!n||!s)return print$1("Invalid filter",true);if(r&&!IN_FRAME)return;if(!IN_FRAME)print$1(`Filter hit for ${n}: ${s} ${a}`);let f=new Observer;let d=raceWinner("hide-if-graph-matches",(()=>f.stop()));let c=()=>{if(modelConfigs.has(n))return modelConfigs.get(n);print$1(`Preparing worker with model ${n}`);let e=new Promise(((e,t)=>{let r=setTimeout((()=>{t(`Worker preparation with ${n} failed: service worker timeout`);}),SERVICE_WORKER_TIMEOUT);p({type:MESSAGE_PREFIX+MESSAGE_PREPARE_SUFFIX,debug:mode,model:n},(o=>{clearTimeout(r);if(o&&"config"in o){print$1(`Received config for ${n}`,false,"config:",o.config);o.config.cutoff=o.cutoff;e(o.config);}else {t(`Worker preparation with ${n} failed`);}}));}));e.catch((e=>{}));modelConfigs.set(n,e);return e};let u=(e,t)=>{if(o&&data.nodeCount>=10&&data.adCount/data.nodeCount>=1){print$1("Ad to non-ad ratio is 100%/0%. Stopping inference.",true);return f.stop()}print$1(`Requesting inference with ${n}`,false,"graph:",e);p({type:MESSAGE_PREFIX+MESSAGE_INFERENCE_SUFFIX,debug:mode,model:n,graph:e},(r=>{if(r&&"prediction"in r&&typeof r.prediction==="boolean"){print$1(`Received ${r.prediction} inference results with ${n}`,false,"graph:",e);if(r.allowlisted&&!globallyAllowlisted)globallyAllowlisted=true;set(r.prediction,r.allowlisted,r.digestTime-r.startTime);if(globallyAllowlisted&&!mode)return f.stop();if(r.prediction&&!mode&&!l){d();hideElement(t);}else if(mode){if(r.allowlisted)$(t).style.border="3px solid #00ffff";else if(r.prediction)$(t).style.border="3px solid #ff0000";else if(!r.prediction)$(t).style.border="3px solid #00ff00";print();}}else {print$1(`Inference with ${n} failed`,true,"graph:",e,"response:",r);if("error"in r&&(r.error===errors.INFERENCE_FAILED||r.error===errors.MISSING_ENVIRONMENTAL_SUPPORT))f.stop();}}));};let p=(e,t)=>{if(!globallyAllowlisted)chrome.runtime.sendMessage(e,t);else if(mode)t({prediction:false,allowlisted:true});};let h=e=>{if((!e||!e.length)&&IN_FRAME)return c();c().then((t=>{if(!t)return Promise.reject(`Config file for ${n} corrupted`);for(let[r,o]of e){for(let e of o){print$1(`Preparing inference with ${n}`,false,"target:",r);domToGraph({config:t},e,i).then((r=>i&&!r?domToGraph({config:t},e,false):r)).then((e=>u(e,r))).catch((e=>print$1(`domToGraph failed with error "${e}"`,true,"target:",r)));}}})).catch((e=>{print$1(e,true);f.stop();}));};f.observe(s,a,h);}
++
++  snippets["hide-if-matches-xpath3"] = hideIfMatchesXPath3;
++  snippets["hide-if-classifies"] = hideIfClassifies;
 +  let context;
 +  for (const [name, ...args] of filters) {
 +    if (snippets.hasOwnProperty(name)) {
@@ -7775,7 +7977,6 @@ new file mode 100644
 +      return bind(c, target[name]);
 +    }
 +  };
-+
 +  const caller = target => new $$1(target, callerHandler);
 +
 +  const proxy = (source, target) => new $$1(source, {
@@ -7787,7 +7988,6 @@ new file mode 100644
 +      return bind(target[name], target);
 +    }
 +  };
-+
 +  const bound = target => new $$1(target, handler$2);
 +
 +  const {
@@ -7852,7 +8052,7 @@ new file mode 100644
 +
 +  const invokes = bound(globalThis);
 +  const classes = isExtensionContext$2 ? globalThis : secure(globalThis);
-+  const {Map: Map$8, RegExp: RegExp$1, Set: Set$2, WeakMap: WeakMap$4, WeakSet: WeakSet$3} = classes;
++  const {Map: Map$a, RegExp: RegExp$3, Set: Set$3, WeakMap: WeakMap$5, WeakSet: WeakSet$4} = classes;
 +
 +  const augment = (source, target, method = null) => {
 +    const known = ownKeys(target);
@@ -7889,18 +8089,18 @@ new file mode 100644
 +  };
 +
 +  const variables$3 = freeze({
-+    frozen: new WeakMap$4(),
-+    hidden: new WeakSet$3(),
++    frozen: new WeakMap$5(),
++    hidden: new WeakSet$4(),
 +    iframePropertiesToAbort: {
-+      read: new Set$2(),
-+      write: new Set$2()
++      read: new Set$3(),
++      write: new Set$3()
 +    },
-+    abortedIframes: new WeakMap$4()
++    abortedIframes: new WeakMap$5()
 +  });
 +
-+  const startsCapitalized = new RegExp$1("^[A-Z]");
++  const startsCapitalized = new RegExp$3("^[A-Z]");
 +
-+  var env = new Proxy(new Map$8([
++  var env = new Proxy(new Map$a([
 +
 +    ["chrome", (
 +      isExtensionContext$2 && (
@@ -7915,14 +8115,14 @@ new file mode 100644
 +    ["document", globalThis.document],
 +    ["performance", copyIfExtension(performance)],
 +    ["JSON", copyIfExtension(JSON)],
-+    ["Map", Map$8],
++    ["Map", Map$a],
 +    ["Math", copyIfExtension(Math)],
 +    ["Number", isExtensionContext$2 ? Number : primitive("Number")],
-+    ["RegExp", RegExp$1],
-+    ["Set", Set$2],
++    ["RegExp", RegExp$3],
++    ["Set", Set$3],
 +    ["String", isExtensionContext$2 ? String : primitive("String")],
-+    ["WeakMap", WeakMap$4],
-+    ["WeakSet", WeakSet$3],
++    ["WeakMap", WeakMap$5],
++    ["WeakSet", WeakSet$4],
 +
 +    ["MouseEvent", MouseEvent]
 +  ]), {
@@ -7972,7 +8172,7 @@ new file mode 100644
 +    };
 +  }
 +
-+  const {Map: Map$7, WeakMap: WeakMap$3, WeakSet: WeakSet$2, setTimeout} = env;
++  const {Map: Map$9, WeakMap: WeakMap$4, WeakSet: WeakSet$3, setTimeout} = env;
 +
 +  let cleanup = true;
 +  let cleanUpCallback = map => {
@@ -7981,10 +8181,10 @@ new file mode 100644
 +  };
 +
 +  var transformer = transformOnce.bind({
-+    WeakMap: WeakMap$3,
-+    WeakSet: WeakSet$2,
++    WeakMap: WeakMap$4,
++    WeakSet: WeakSet$3,
 +
-+    WeakValue: class extends Map$7 {
++    WeakValue: class extends Map$9 {
 +      set(key, value) {
 +        if (cleanup) {
 +          cleanup = !cleanup;
@@ -7997,14 +8197,9 @@ new file mode 100644
 +
 +  const {concat, includes, join, reduce, unshift} = caller([]);
 +
-+  const globals = secure(globalThis);
++  const {Map: Map$8, WeakMap: WeakMap$3} = secure(globalThis);
 +
-+  const {
-+    Map: Map$6,
-+    WeakMap: WeakMap$2
-+  } = globals;
-+
-+  const map = new Map$6;
++  const map = new Map$8;
 +  const descriptors = target => {
 +    const chain = [];
 +    let current = target;
@@ -8048,21 +8243,21 @@ new file mode 100644
 +        return true;
 +      }
 +    };
-+    return target => new $$1(target, handler);
++    return target => new Proxy(target, handler);
 +  };
 +
 +  const {
 +    isExtensionContext: isExtensionContext$1,
-+    Array: Array$2,
++    Array: Array$4,
 +    Number: Number$1,
 +    String: String$1,
-+    Object: Object$9
++    Object: Object$b
 +  } = env;
 +
-+  const {isArray} = Array$2;
-+  const {getOwnPropertyDescriptor: getOwnPropertyDescriptor$1, setPrototypeOf: setPrototypeOf$1} = Object$9;
++  const {isArray} = Array$4;
++  const {getOwnPropertyDescriptor: getOwnPropertyDescriptor$1, setPrototypeOf: setPrototypeOf$1} = Object$b;
 +
-+  const {toString: toString$1} = Object$9.prototype;
++  const {toString: toString$1} = Object$b.prototype;
 +  const {slice} = String$1.prototype;
 +  const getBrand = value => call(slice, call(toString$1, value), 8, -1);
 +
@@ -8092,7 +8287,7 @@ new file mode 100644
 +      return chained[hint](value);
 +
 +    if (isArray(value))
-+      return setPrototypeOf$1(value, Array$2.prototype);
++      return setPrototypeOf$1(value, Array$4.prototype);
 +
 +    const brand = getBrand(value);
 +    if (brand in chained)
@@ -8208,7 +8403,7 @@ new file mode 100644
 +    return bind(debug() ? log : noop, null, name);
 +  }
 +
-+  let {Math: Math$1, RegExp} = $(window);
++  let {Array: Array$3, Math: Math$1, RegExp: RegExp$2} = $(window);
 +
 +  function regexEscape(string) {
 +    return $(string).replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -8225,11 +8420,11 @@ new file mode 100644
 +        if (!isCaseSensitive)
 +          args.push("i");
 +
-+        return new RegExp(...args);
++        return new RegExp$2(...args);
 +      }
 +    }
 +
-+    return new RegExp(regexEscape(pattern));
++    return new RegExp$2(regexEscape(pattern));
 +  }
 +
 +  function randomId() {
@@ -8237,16 +8432,20 @@ new file mode 100644
 +    return $(Math$1.floor(Math$1.random() * 2116316160 + 60466176)).toString(36);
 +  }
 +
++  function formatArguments(args) {
++    return $(Array$3.from(args)).map(arg => `'${arg}'`).join(" ");
++  }
++
 +  let {
 +    parseFloat,
 +    variables: variables$2,
-+    Array: Array$1,
++    Array: Array$2,
 +    Error: Error$7,
-+    Map: Map$5,
-+    Object: Object$8,
++    Map: Map$7,
++    Object: Object$a,
 +    ReferenceError: ReferenceError$2,
-+    Set: Set$1,
-+    WeakMap: WeakMap$1
++    Set: Set$2,
++    WeakMap: WeakMap$2
 +  } = $(window);
 +
 +  let {onerror} = accessor(window);
@@ -8262,11 +8461,11 @@ new file mode 100644
 +    let dotIndex = $property.indexOf(".");
 +    if (dotIndex == -1) {
 +
-+      let currentDescriptor = Object$8.getOwnPropertyDescriptor(object, property);
++      let currentDescriptor = Object$a.getOwnPropertyDescriptor(object, property);
 +      if (currentDescriptor && !currentDescriptor.configurable)
 +        return;
 +
-+      let newDescriptor = Object$8.assign({}, descriptor, {
++      let newDescriptor = Object$a.assign({}, descriptor, {
 +        configurable: setConfigurable
 +      });
 +
@@ -8275,7 +8474,7 @@ new file mode 100644
 +        newDescriptor.get = () => propertyValue;
 +      }
 +
-+      Object$8.defineProperty(object, property, newDescriptor);
++      Object$a.defineProperty(object, property, newDescriptor);
 +      return;
 +    }
 +
@@ -8285,15 +8484,15 @@ new file mode 100644
 +    if (value && (typeof value == "object" || typeof value == "function"))
 +      wrapPropertyAccess(value, property, descriptor);
 +
-+    let currentDescriptor = Object$8.getOwnPropertyDescriptor(object, name);
++    let currentDescriptor = Object$a.getOwnPropertyDescriptor(object, name);
 +    if (currentDescriptor && !currentDescriptor.configurable)
 +      return;
 +
 +    if (!propertyAccessors)
-+      propertyAccessors = new WeakMap$1();
++      propertyAccessors = new WeakMap$2();
 +
 +    if (!propertyAccessors.has(object))
-+      propertyAccessors.set(object, new Map$5());
++      propertyAccessors.set(object, new Map$7());
 +
 +    let properties = propertyAccessors.get(object);
 +    if (properties.has(name)) {
@@ -8301,9 +8500,9 @@ new file mode 100644
 +      return;
 +    }
 +
-+    let toBeWrapped = new Map$5([[property, descriptor]]);
++    let toBeWrapped = new Map$7([[property, descriptor]]);
 +    properties.set(name, toBeWrapped);
-+    Object$8.defineProperty(object, name, {
++    Object$a.defineProperty(object, name, {
 +      get: () => value,
 +      set(newValue) {
 +        value = newValue;
@@ -8328,7 +8527,8 @@ new file mode 100644
 +    });
 +  }
 +
-+  function abortOnRead(loggingPrefix, context, property,
++  function abortOnRead(loggingPrefix, context,
++                              property, formattedProperties = "",
 +                              setConfigurable = true) {
 +    let debugLog = getDebugger(loggingPrefix);
 +
@@ -8340,7 +8540,7 @@ new file mode 100644
 +    let rid = randomId();
 +
 +    function abort() {
-+      debugLog("success", `${property} access aborted`);
++      debugLog("success", `${property} access aborted`, `\nFILTER: ${loggingPrefix} ${formattedProperties}`);
 +      throw new ReferenceError$2(rid);
 +    }
 +
@@ -8353,7 +8553,9 @@ new file mode 100644
 +    overrideOnError(rid);
 +  }
 +
-+  function abortOnWrite(loggingPrefix, context, property,
++  function abortOnWrite(loggingPrefix,
++                               context, property,
++                               formattedProperties = "",
 +                               setConfigurable = true) {
 +    let debugLog = getDebugger(loggingPrefix);
 +
@@ -8365,7 +8567,7 @@ new file mode 100644
 +    let rid = randomId();
 +
 +    function abort() {
-+      debugLog("success", `setting ${property} aborted`);
++      debugLog("success", `setting ${property} aborted`, `\nFILTER: ${loggingPrefix} ${formattedProperties}`);
 +      throw new ReferenceError$2(rid);
 +    }
 +
@@ -8383,22 +8585,28 @@ new file mode 100644
 +    let abortedIframes = variables$2.abortedIframes;
 +    let iframePropertiesToAbort = variables$2.iframePropertiesToAbort;
 +
-+    for (let frame of Array$1.from(window.frames)) {
++    const formattedPropertiesToLog = formatArguments(properties);
++
++    for (let frame of Array$2.from(window.frames)) {
 +      if (abortedIframes.has(frame)) {
 +        for (let property of properties) {
 +          if (abortRead)
-+            abortedIframes.get(frame).read.add(property);
++
++            abortedIframes.get(frame).read.add({property, formattedProperties: formattedPropertiesToLog});
 +          if (abortWrite)
-+            abortedIframes.get(frame).write.add(property);
++
++            abortedIframes.get(frame).write.add({property, formattedProperties: formattedPropertiesToLog});
 +        }
 +      }
 +    }
 +
 +    for (let property of properties) {
 +      if (abortRead)
-+        iframePropertiesToAbort.read.add(property);
++
++        iframePropertiesToAbort.read.add({property, formattedProperties: formattedPropertiesToLog});
 +      if (abortWrite)
-+        iframePropertiesToAbort.write.add(property);
++
++        iframePropertiesToAbort.write.add({property, formattedProperties: formattedPropertiesToLog});
 +    }
 +
 +    queryAndProxyIframe();
@@ -8408,29 +8616,37 @@ new file mode 100644
 +    }
 +
 +    function queryAndProxyIframe() {
-+      for (let frame of Array$1.from(window.frames)) {
++      for (let frame of Array$2.from(window.frames)) {
 +
 +        if (!abortedIframes.has(frame)) {
 +          abortedIframes.set(frame, {
-+            read: new Set$1(iframePropertiesToAbort.read),
-+            write: new Set$1(iframePropertiesToAbort.write)
++            read: new Set$2(iframePropertiesToAbort.read),
++            write: new Set$2(iframePropertiesToAbort.write)
 +          });
 +        }
 +
 +        let readProps = abortedIframes.get(frame).read;
 +        if (readProps.size > 0) {
-+          let props = Array$1.from(readProps);
++          let props = Array$2.from(readProps);
 +          readProps.clear();
-+          for (let property of props)
-+            abortOnRead("abort-on-iframe-property-read", frame, property);
++          for (let {property, formattedProperties} of props) {
++            abortOnRead("abort-on-iframe-property-read",
++                        frame,
++                        property,
++                        formattedProperties);
++          }
 +        }
 +
 +        let writeProps = abortedIframes.get(frame).write;
 +        if (writeProps.size > 0) {
-+          let props = Array$1.from(writeProps);
++          let props = Array$2.from(writeProps);
 +          writeProps.clear();
-+          for (let property of props)
-+            abortOnWrite("abort-on-iframe-property-write", frame, property);
++          for (let {property, formattedProperties} of props) {
++            abortOnWrite("abort-on-iframe-property-write",
++                         frame,
++                         property,
++                         formattedProperties);
++          }
 +        }
 +      }
 +    }
@@ -8472,7 +8688,7 @@ new file mode 100644
 +    }
 +
 +    function getInnerHTMLDescriptor(target, property) {
-+      let desc = Object$8.getOwnPropertyDescriptor(target, property);
++      let desc = Object$a.getOwnPropertyDescriptor(target, property);
 +      let {set: prevSetter} = desc || {};
 +      return {
 +        set(val) {
@@ -8547,10 +8763,11 @@ new file mode 100644
 +    }
 +  }
 +
-+  let {HTMLScriptElement: HTMLScriptElement$1, Object: Object$7, ReferenceError: ReferenceError$1} = $(window);
-+  let Script = Object$7.getPrototypeOf(HTMLScriptElement$1);
++  let {HTMLScriptElement: HTMLScriptElement$1, Object: Object$9, ReferenceError: ReferenceError$1} = $(window);
++  let Script = Object$9.getPrototypeOf(HTMLScriptElement$1);
 +
 +  function abortCurrentInlineScript(api, search = null) {
++    const formattedArguments = formatArguments(arguments);
 +    const debugLog = getDebugger("abort-current-inline-script");
 +    const re = search ? toRegExp(search) : null;
 +
@@ -8571,7 +8788,7 @@ new file mode 100644
 +    }
 +
 +    const {get: prevGetter, set: prevSetter} =
-+      Object$7.getOwnPropertyDescriptor(object, name) || {};
++      Object$9.getOwnPropertyDescriptor(object, name) || {};
 +
 +    let currentValue = object[name];
 +    if (typeof currentValue === "undefined")
@@ -8583,7 +8800,12 @@ new file mode 100644
 +          $(element, "HTMLScriptElement").src == "" &&
 +          element != us &&
 +          (!re || re.test($(element).textContent))) {
-+        debugLog("success", path, " is aborted \n", element);
++        debugLog("success",
++                 path,
++                 " is aborted \n",
++                 element,
++                 "\nFILTER: abort-current-inline-script",
++                 formattedArguments);
 +        throw new ReferenceError$1(rid);
 +      }
 +    };
@@ -8607,7 +8829,7 @@ new file mode 100644
 +      }
 +    };
 +
-+    wrapPropertyAccess(object, name, descriptor);
++    wrapPropertyAccess(object, name, descriptor, formattedArguments);
 +
 +    overrideOnError(rid);
 +  }
@@ -8622,12 +8844,22 @@ new file mode 100644
 +
 +  function abortOnPropertyRead(property, setConfigurable) {
 +    const configurableFlag = !(setConfigurable === "false");
-+    abortOnRead("abort-on-property-read", window, property, configurableFlag);
++    const formattedArguments = formatArguments(arguments);
++    abortOnRead("abort-on-property-read",
++                window,
++                property,
++                formattedArguments,
++                configurableFlag);
 +  }
 +
 +  function abortOnPropertyWrite(property, setConfigurable) {
++    const formattedArguments = formatArguments(arguments);
 +    const configurableFlag = !(setConfigurable === "false");
-+    abortOnWrite("abort-on-property-write", window, property, configurableFlag);
++    abortOnWrite("abort-on-property-write",
++                 window,
++                 property,
++                 formattedArguments,
++                 configurableFlag);
 +  }
 +
 +  let {Error: Error$6, URL: URL$1} = $(window);
@@ -8637,6 +8869,7 @@ new file mode 100644
 +    if (!cookie)
 +      throw new Error$6("[cookie-remover snippet]: No cookie to remove.");
 +
++    const formattedArguments = formatArguments(arguments);
 +    let debugLog = getDebugger("cookie-remover");
 +    let re = toRegExp(cookie);
 +
@@ -8669,7 +8902,7 @@ new file mode 100644
 +            domainParts.slice(domainParts.length - numDomainParts).join(".");
 +          documentCookies(`${$(name).trim()}=;${expires};${path};domain=${domain}`);
 +          documentCookies(`${$(name).trim()}=;${expires};${path};domain=.${domain}`);
-+          debugLog("success", `Set expiration date on ${name}`);
++          debugLog("success", `Set expiration date on ${name}`, "\nFILTER: cookie-remover", formattedArguments);
 +        }
 +      }
 +    };
@@ -8695,20 +8928,20 @@ new file mode 100644
 +
 +  let {
 +    console: console$3,
-+    document: document$1,
++    document: document$2,
 +    getComputedStyle,
 +    isExtensionContext,
 +    variables: variables$1,
-+    Array,
-+    MutationObserver: MutationObserver$2,
-+    Object: Object$6,
++    Array: Array$1,
++    MutationObserver: MutationObserver$3,
++    Object: Object$8,
 +    XPathEvaluator,
 +    XPathExpression,
 +    XPathResult
 +  } = $(window);
 +
-+  const {querySelectorAll} = document$1;
-+  const document$$ = querySelectorAll && bind(querySelectorAll, document$1);
++  const {querySelectorAll} = document$2;
++  const document$$ = querySelectorAll && bind(querySelectorAll, document$2);
 +
 +  function $openOrClosedShadowRoot(element, failSilently = false) {
 +    try {
@@ -8730,8 +8963,8 @@ new file mode 100644
 +
 +    return $$recursion(
 +      selector,
-+      document$$.bind(document$1),
-+      document$1,
++      document$$.bind(document$2),
++      document$2,
 +      returnRoots
 +    );
 +  }
@@ -8855,7 +9088,7 @@ new file mode 100644
 +    return foundElements;
 +  }
 +
-+  const {assign, setPrototypeOf} = Object$6;
++  const {assign, setPrototypeOf} = Object$8;
 +
 +  class $XPathExpression extends XPathExpression {
 +    evaluate(...args) {
@@ -8893,7 +9126,7 @@ new file mode 100644
 +      properties.push([key, $style.getPropertyValue(key)]);
 +    }
 +
-+    new MutationObserver$2(() => {
++    new MutationObserver$3(() => {
 +      for (let [key, value] of properties) {
 +        let propertyValue = $style.getPropertyValue(key);
 +        let propertyPriority = $style.getPropertyPriority(key);
@@ -8923,7 +9156,7 @@ new file mode 100644
 +      return cb => {
 +        if (!cb)
 +          return;
-+        let result = expression.evaluate(document$1, flag, null);
++        let result = expression.evaluate(document$2, flag, null);
 +        let {snapshotLength} = result;
 +        for (let i = 0; i < snapshotLength; i++)
 +          cb(result.snapshotItem(i));
@@ -8943,7 +9176,7 @@ new file mode 100644
 +        return elements;
 +      };
 +    }
-+    return () => Array.from($$(selector));
++    return () => Array$1.from($$(selector));
 +  }
 +
 +  let {ELEMENT_NODE, TEXT_NODE, prototype: NodeProto} = Node;
@@ -8955,12 +9188,12 @@ new file mode 100644
 +    variables,
 +    DOMParser,
 +    Error: Error$5,
-+    MutationObserver: MutationObserver$1,
-+    Object: Object$5,
++    MutationObserver: MutationObserver$2,
++    Object: Object$7,
 +    ReferenceError
 +  } = $(window);
 +
-+  let {getOwnPropertyDescriptor} = Object$5;
++  let {getOwnPropertyDescriptor} = Object$7;
 +
 +  function freezeElement(selector, options = "", ...exceptions) {
 +    let observer;
@@ -8985,7 +9218,7 @@ new file mode 100644
 +      variables.frozen.set(document, true);
 +      proxyNativeProperties();
 +    }
-+    observer = new MutationObserver$1(searchAndAttach);
++    observer = new MutationObserver$2(searchAndAttach);
 +    observer.observe(document, {childList: true, subtree: true});
 +    searchAndAttach();
 +
@@ -9179,7 +9412,7 @@ new file mode 100644
 +        if (!variables.frozen.has(node)) {
 +          variables.frozen.set(node, data);
 +          if (!isChild && subtree) {
-+            new MutationObserver$1(mutationsList => {
++            new MutationObserver$2(mutationsList => {
 +              for (let mutation of $(mutationsList))
 +                markNodes($(mutation, "MutationRecord").addedNodes);
 +            }).observe(node, {childList: true, subtree: true});
@@ -9477,6 +9710,97 @@ new file mode 100644
 +    }
 +  }
 +
++  const {CanvasRenderingContext2D: CanvasRenderingContext2D$1,
++         document: document$1,
++         Map: Map$6,
++         MutationObserver: MutationObserver$1,
++         Object: Object$6,
++         Set: Set$1,
++         WeakSet: WeakSet$2} = $(window);
++
++  let canvasRules;
++  let pendingHideCanvasElements = new Set$1();
++  let hideCanvasSeenMap = new WeakSet$2();
++
++  function hideIfCanvasContains(search, selector = "canvas") {
++    const debugLog = getDebugger("hide-if-canvas-contains");
++    const formattedArgsToLog = formatArguments(arguments);
++
++    if (!search) {
++      debugLog("error", "The parameter 'search' is required");
++      return;
++    }
++
++    if (!canvasRules) {
++      const CanvasProto = CanvasRenderingContext2D$1.prototype;
++      debugLog("info", "CanvasRenderingContext2D proxied");
++
++      function overrideFunctionInCanvas(functionName){
++        const originalFunction = CanvasProto[functionName];
++
++        Object$6.defineProperty(window.CanvasRenderingContext2D.prototype, functionName, {
++          value: proxy(originalFunction, function(text, ...args) {
++            for (const [searchRegex, rule] of canvasRules) {
++              if (searchRegex.test(text)) {
++                const canvasElement = this.canvas;
++                let elementToHide = $(canvasElement).closest(rule.selector);
++
++                if (elementToHide && !hideCanvasSeenMap.has(elementToHide)) {
++                  hideElement(elementToHide);
++                  hideCanvasSeenMap.add(elementToHide);
++                  debugLog("success", "Matched: ", elementToHide, `\nFILTER: hide-if-canvas-contains ${rule.formattedArguments}`);
++                }
++                else {
++
++                  scheduleElementToHide(canvasElement, rule, functionName, text);
++                }
++              }
++            }
++
++            return apply$2(originalFunction, this, [text, ...args]);
++          })
++        });
++      }
++
++      overrideFunctionInCanvas("fillText");
++      overrideFunctionInCanvas("strokeText");
++      canvasRules = new Map$6();
++
++      const mo = new MutationObserver$1(mutationsList => {
++        for (let mutation of $(mutationsList)) {
++          if (mutation.type === "childList") {
++
++            checkPendingElements();
++          }
++        }
++      });
++
++      mo.observe(document$1, {childList: true, subtree: true});
++    }
++
++    const searchRegex = toRegExp(search);
++
++    canvasRules.set(searchRegex, {selector, formattedArguments: formattedArgsToLog});
++  }
++
++  function scheduleElementToHide(canvasElement, rule, functionName, text) {
++    pendingHideCanvasElements.add({canvasElement, rule, functionName, text});
++  }
++
++  function checkPendingElements() {
++    pendingHideCanvasElements.forEach(
++      ({canvasElement, rule, functionName, text}) => {
++        let elementToHide = $(canvasElement).closest(rule.selector);
++        if (elementToHide && !hideCanvasSeenMap.has(elementToHide)) {
++          hideElement(elementToHide);
++          hideCanvasSeenMap.add(elementToHide);
++          pendingHideCanvasElements.delete(
++            {canvasElement, rule, functionName, text});
++          getDebugger("hide-if-canvas-contains")("success", "Matched: ", elementToHide, `\nFILTER: hide-if-canvas-contains ${rule.formattedArguments}`);
++        }
++      });
++  }
++
 +  $(window);
 +
 +  function raceWinner(name, lose) {
@@ -9484,24 +9808,26 @@ new file mode 100644
 +    return noop;
 +  }
 +
-+  const {Map: Map$4, MutationObserver, Object: Object$4, Set, WeakSet: WeakSet$1} = $(window);
++  const {Map: Map$5, MutationObserver, Object: Object$5, Set, WeakSet: WeakSet$1} = $(window);
 +
 +  let ElementProto = Element.prototype;
 +  let {attachShadow} = ElementProto;
 +
 +  let hiddenShadowRoots = new WeakSet$1();
-+  let searches = new Map$4();
++  let searches = new Map$5();
 +  let observer = null;
 +
 +  function hideIfShadowContains(search, selector = "*") {
 +
++    const formattedArgs = formatArguments(arguments);
++
 +    let key = `${search}\\${selector}`;
 +    if (!searches.has(key)) {
 +      searches.set(key, [toRegExp(search), selector, raceWinner()
-+      ]);
++      ], formattedArgs);
 +    }
 +
-+    const debugLog = getDebugger("hide-if-shadow-contain");
++    const debugLog = getDebugger("hide-if-shadow-contains");
 +
 +    if (!observer) {
 +      observer = new MutationObserver(records => {
@@ -9535,15 +9861,14 @@ new file mode 100644
 +                debugLog("success",
 +                         "Hiding: ",
 +                         closest,
-+                         " for params: ",
-+                         ...arguments);
++                         `\nFILTER: hide-if-shadow-contains ${formattedArgs}`);
 +              }
 +            }
 +          }
 +        }
 +      });
 +
-+      Object$4.defineProperty(ElementProto, "attachShadow", {
++      Object$5.defineProperty(ElementProto, "attachShadow", {
 +
 +        value: proxy(attachShadow, function() {
 +
@@ -9562,7 +9887,7 @@ new file mode 100644
 +    }
 +  }
 +
-+  const {Error: Error$4, JSON: JSON$2, Map: Map$3, Response: Response$1, Object: Object$3} = $(window);
++  const {Error: Error$4, JSON: JSON$2, Map: Map$4, Response: Response$2, Object: Object$4} = $(window);
 +
 +  let paths$1 = null;
 +
@@ -9578,7 +9903,8 @@ new file mode 100644
 +      let debugLog = getDebugger("json-override");
 +
 +      function overrideObject(obj, str) {
-+        for (let {prune, needle, filter: flt, value: val} of paths$1.values()) {
++
++        for (let {formattedArgs, prune, needle, filter: flt, value: val} of paths$1.values()) {
 +          if (flt && !flt.test(str))
 +            continue;
 +
@@ -9588,7 +9914,7 @@ new file mode 100644
 +          for (let path of prune) {
 +            let details = findOwner(obj, path);
 +            if (typeof details != "undefined") {
-+              debugLog("success", `Found ${path} replaced it with ${val}`);
++              debugLog("success", `Found ${path} replaced it with ${val}`, `\nFILTER: json-override ${formattedArgs}`);
 +              details[0][details[1]] = overrideValue(val);
 +            }
 +          }
@@ -9597,9 +9923,9 @@ new file mode 100644
 +      }
 +
 +      let {parse} = JSON$2;
-+      paths$1 = new Map$3();
++      paths$1 = new Map$4();
 +
-+      Object$3.defineProperty(window.JSON, "parse", {
++      Object$4.defineProperty(window.JSON, "parse", {
 +        value: proxy(parse, function(str) {
 +          let result = apply$2(parse, this, arguments);
 +          return overrideObject(result, str);
@@ -9607,8 +9933,8 @@ new file mode 100644
 +      });
 +      debugLog("info", "Wrapped JSON.parse for override");
 +
-+      let {json} = Response$1.prototype;
-+      Object$3.defineProperty(window.Response.prototype, "json", {
++      let {json} = Response$2.prototype;
++      Object$4.defineProperty(window.Response.prototype, "json", {
 +        value: proxy(json, function(str) {
 +          let resultPromise = apply$2(json, this, arguments);
 +          return resultPromise.then(obj => overrideObject(obj, str));
@@ -9617,7 +9943,10 @@ new file mode 100644
 +      debugLog("info", "Wrapped Response.json for override");
 +    }
 +
++    const formattedArgsToLog = formatArguments(arguments);
++
 +    paths$1.set(rawOverridePaths, {
++      formattedArgs: formattedArgsToLog,
 +      prune: $(rawOverridePaths).split(/ +/),
 +      needle: rawNeedlePaths.length ? $(rawNeedlePaths).split(/ +/) : [],
 +      filter: filter ? toRegExp(filter) : null,
@@ -9625,7 +9954,7 @@ new file mode 100644
 +    });
 +  }
 +
-+  let {Error: Error$3, JSON: JSON$1, Map: Map$2, Object: Object$2, Response} = $(window);
++  let {Array, Error: Error$3, JSON: JSON$1, Map: Map$3, Object: Object$3, Response: Response$1} = $(window);
 +
 +  let paths = null;
 +
@@ -9637,25 +9966,75 @@ new file mode 100644
 +      let debugLog = getDebugger("json-prune");
 +
 +      function pruneObject(obj) {
-+        for (let {prune, needle} of paths.values()) {
++        for (let {prune, needle, formattedArgs} of paths.values()) {
 +          if ($(needle).some(path => !findOwner(obj, path)))
 +            return obj;
 +
 +          for (let path of prune) {
-+            let details = findOwner(obj, path);
-+            if (typeof details != "undefined") {
-+              debugLog("success", `Found ${path} and deleted`);
-+              delete details[0][details[1]];
-+            }
++            if (path.includes("{}") || path.includes("[]"))
++              prunePathWithPlaceholders(obj, path, formattedArgs);
++            else
++              prunePathSimple(obj, path, formattedArgs);
 +          }
 +        }
 +        return obj;
 +      }
 +
-+      let {parse} = JSON$1;
-+      paths = new Map$2();
++      function prunePathWithPlaceholders(obj, path, formattedArgs) {
++        let pathParts = $(path).split(".");
++        let currentObj = obj;
 +
-+      Object$2.defineProperty(window.JSON, "parse", {
++        for (let i = 0; i < pathParts.length; i++) {
++          let part = pathParts[i];
++
++          if (part === "[]") {
++            if (Array.isArray(currentObj)) {
++              debugLog("info", `Iterating over array at: ${part}`);
++              $(currentObj).forEach(item =>
++                prunePathWithPlaceholders(item,
++                                          pathParts.slice(i + 1).join("."),
++                                          formattedArgs));
++            }
++            return;
++          }
++          else if (part === "{}") {
++            if (typeof currentObj === "object" && currentObj !== null) {
++              debugLog("info", `Iterating over object at: ${part}`);
++              Object$3.keys(currentObj).forEach(key =>
++                prunePathWithPlaceholders(currentObj[key],
++                                          pathParts.slice(i + 1).join("."),
++                                          formattedArgs));
++            }
++            return;
++          }
++          else if (currentObj && typeof currentObj === "object" &&
++            hasOwnProperty(currentObj, part)) {
++            if (i === pathParts.length - 1) {
++              debugLog("success", `Found ${path} and deleted, \nFILTER: json-prune ${formattedArgs}`);
++              delete currentObj[part];
++            }
++            else {
++              currentObj = currentObj[part];
++            }
++          }
++          else {
++            return;
++          }
++        }
++      }
++
++      function prunePathSimple(obj, path, formattedArgs) {
++        let details = findOwner(obj, path);
++        if (typeof details != "undefined") {
++          debugLog("success", `Found ${path} and deleted`, `\nFILTER: json-prune ${formattedArgs}`);
++          delete details[0][details[1]];
++        }
++      }
++
++      let {parse} = JSON$1;
++      paths = new Map$3();
++
++      Object$3.defineProperty(window.JSON, "parse", {
 +        value: proxy(parse, function() {
 +          let result = apply$2(parse, this, arguments);
 +          return pruneObject(result);
@@ -9663,8 +10042,8 @@ new file mode 100644
 +      });
 +      debugLog("info", "Wrapped JSON.parse for prune");
 +
-+      let {json} = Response.prototype;
-+      Object$2.defineProperty(window.Response.prototype, "json", {
++      let {json} = Response$1.prototype;
++      Object$3.defineProperty(window.Response.prototype, "json", {
 +        value: proxy(json, function() {
 +          let resultPromise = apply$2(json, this, arguments);
 +          return resultPromise.then(obj => pruneObject(obj));
@@ -9673,7 +10052,10 @@ new file mode 100644
 +      debugLog("info", "Wrapped Response.json for prune");
 +    }
 +
++    const formattedArgs = formatArguments(arguments);
++
 +    paths.set(rawPrunePaths, {
++      formattedArgs,
 +      prune: $(rawPrunePaths).split(/ +/),
 +      needle: rawNeedlePaths.length ? $(rawNeedlePaths).split(/ +/) : []
 +    });
@@ -9691,26 +10073,25 @@ new file mode 100644
 +                       "No value to override with.");
 +    }
 +
++    const formattedArguments = formatArguments(arguments);
 +    let debugLog = getDebugger("override-property-read");
 +
 +    let cValue = overrideValue(value);
 +
 +    let newGetter = () => {
-+      debugLog("success", `${property} override done.`);
++      debugLog("success", `${property} override done.`, "\nFILTER: override-property-read", formattedArguments);
 +      return cValue;
 +    };
 +
 +    debugLog("info", `Overriding ${property}.`);
 +
-+    const configurableFlag = !(setConfigurable === "false");
-+
 +    wrapPropertyAccess(window,
 +                       property,
 +                       {get: newGetter, set() {}},
-+                       configurableFlag);
++                       formattedArguments);
 +  }
 +
-+  let {Error: Error$1, Map: Map$1, Object: Object$1, console: console$1} = $(window);
++  let {Error: Error$1, Map: Map$2, Object: Object$2, console: console$1} = $(window);
 +
 +  let {toString} = Function.prototype;
 +  let EventTargetProto = EventTarget.prototype;
@@ -9723,11 +10104,11 @@ new file mode 100644
 +      throw new Error$1("[prevent-listener snippet]: No event type.");
 +
 +    if (!events) {
-+      events = new Map$1();
++      events = new Map$2();
 +
 +      let debugLog = getDebugger("[prevent]");
 +
-+      Object$1.defineProperty(EventTargetProto, "addEventListener", {
++      Object$2.defineProperty(EventTargetProto, "addEventListener", {
 +        value: proxy(addEventListener, function(type, listener) {
 +          for (let {evt, handlers, selectors} of events.values()) {
 +
@@ -9782,7 +10163,7 @@ new file mode 100644
 +              }
 +
 +              if (debug()) {
-+                console$1.groupCollapsed("DEBUG [prevent] was successful");
++                console$1.groupCollapsed("DEBUG [prevent] was successful", `\nFILTER: prevent-listener ${formattedArgs}`);
 +                debugLog("success", `type: ${type} matching ${evt}`);
 +                debugLog("success", "handler:", listener);
 +                if (handler)
@@ -9802,44 +10183,273 @@ new file mode 100644
 +      debugLog("info", "Wrapped addEventListener");
 +    }
 +
-+    if (!events.has(event))
-+      events.set(event, {evt: toRegExp(event), handlers: [], selectors: []});
++    const formattedArgsToLog = formatArguments(arguments);
 +
-+    let {handlers, selectors} = events.get(event);
++    if (!events.has(event)) {
++      events.set(event,
++                 {evt: toRegExp(event),
++                  handlers: [],
++                  selectors: [],
++                  formattedArgs: formattedArgsToLog});
++    }
++
++    let {handlers, selectors, formattedArgs} = events.get(event);
 +
 +    handlers.push(eventHandler ? toRegExp(eventHandler) : null);
 +    selectors.push(selector);
 +  }
 +
-+  let {URL, fetch} = $(window);
++  let {fetch} = $(window);
++
++  let hasFetchBeenProxied = false;
++
++  const preFetchCallbacks = [];
++
++  const postFetchCallbacks = [];
++
++  const proxyFetch = () => {
++
++    if (!hasFetchBeenProxied) {
++      window.fetch = proxy(fetch, (...args) => {
++        let [source] = args;
++        if (preFetchCallbacks.length > 0 && typeof source === "string") {
++          let url;
++          try {
++            url = new URL(source);
++          }
++          catch (e) {
++            if (e instanceof TypeError)
++              url = new URL(source, $(document).location);
++            else
++              throw e;
++          }
++          preFetchCallbacks.forEach(fn => fn(url));
++          args[0] = url.href;
++        }
++
++        const promise = apply$2(fetch, self, args).then(origResponse => {
++          let transformedResponse = origResponse;
++          postFetchCallbacks.forEach(fn => {
++            transformedResponse = fn(transformedResponse);
++          });
++          return transformedResponse;
++        });
++        return promise;
++      });
++      hasFetchBeenProxied = true;
++    }
++  };
++
++  const addPreFetchCallback = callback => {
++    preFetchCallbacks.push(callback);
++    proxyFetch();
++  };
++
++  const addPostFetchCallback = callback => {
++    postFetchCallbacks.push(callback);
++    proxyFetch();
++  };
++
++  let {Map: Map$1, Object: Object$1, RegExp: RegExp$1, Response} = $(window);
++  let fetchRules;
++
++  function replaceFetchResponse(search, replacement = "", needle = null) {
++    const formattedArgsToLog = formatArguments(arguments);
++    const debugLog = getDebugger("replace-fetch-response");
++    if (!search) {
++      debugLog("error", "The parameter 'search' is required");
++      return;
++    }
++
++    if (!fetchRules) {
++      const mainLogic = origResponse => {
++        const clonedResponse = $(origResponse).clone();
++        return clonedResponse.text().then(origText => {
++          let replacedText = $(origText);
++
++          for (const [thisSearch, {replacement: thisReplacement, needle: thisNeedle, formattedArgs}] of fetchRules) {
++            if (thisNeedle) {
++              const needleRegex = toRegExp(thisNeedle);
++
++              if (needleRegex.test(replacedText)) {
++                if (debug()) {
++                  console.groupCollapsed(`DEBUG [replace-fetch-response] success: '${thisNeedle}' found in fetch response`);
++                  debugLog("success", `${replacedText}`);
++                  console.groupEnd();
++                }
++              }
++              else {
++                if (debug()) {
++                  console.groupCollapsed(`DEBUG [replace-fetch-response] warn: '${thisNeedle}' not found in fetch response`);
++                  debugLog("warn", `${replacedText}`);
++                  console.groupEnd();
++                }
++                continue;
++              }
++            }
++            replacedText = replacedText.replace(thisSearch, thisReplacement);
++            if (debug() && replacedText !== origText) {
++              console.groupCollapsed(`DEBUG [replace-fetch-response] success: '${thisSearch}' replaced with '${thisReplacement}' in fetch response`,
++                `\nFILTER: replace-xhr-response ${formattedArgs}`
++              );
++              debugLog("success", `${replacedText}`);
++              console.groupEnd();
++            }
++          }
++
++          if (replacedText === origText)
++            return origResponse;
++
++          const replacedResponse = new Response(replacedText, {
++            status: origResponse.status,
++            statusText: origResponse.statusText,
++            headers: origResponse.headers
++          });
++          Object$1.defineProperties(replacedResponse, {
++            ok: {value: origResponse.ok},
++            redirected: {value: origResponse.redirected},
++            type: {value: origResponse.type},
++            url: {value: origResponse.url}
++          });
++          return replacedResponse;
++        });
++      };
++
++      fetchRules = new Map$1();
++      debugLog("info", "Network API proxied");
++      addPostFetchCallback(mainLogic);
++    }
++
++    const regex = toRegExp(search);
++
++    const globalisedRegEx = new RegExp$1(regex, "g");
++    fetchRules.set(globalisedRegEx,
++                   {replacement, needle, formattedArgs: formattedArgsToLog});
++  }
++
++  let {RegExp, XMLHttpRequest, WeakMap: WeakMap$1} = $(window);
++  let xhrInFlightRequests;
++  let xhrRules;
++
++  function replaceXhrResponse(search, replacement = "", needle = null) {
++    const formattedArgsToLog = formatArguments(arguments);
++    const debugLog = getDebugger("replace-xhr-response");
++
++    if (!search) {
++      debugLog("error", "The parameter 'pattern' is required");
++      return;
++    }
++
++    if (!xhrInFlightRequests) {
++      xhrInFlightRequests = new WeakMap$1();
++      xhrRules = new Map();
++      debugLog("info", "XMLHttpRequest proxied");
++
++      window.XMLHttpRequest = class extends XMLHttpRequest {
++        open(method, url, ...args) {
++          const originalXhr = this;
++          const xhrData = {method, url};
++          xhrInFlightRequests.set(originalXhr, xhrData);
++          return super.open(method, url, ...args);
++        }
++        get response() {
++          const innerResponse = super.response;
++          const xhrData = xhrInFlightRequests.get(this);
++          if (typeof xhrData === "undefined")
++            return innerResponse;
++
++          const responseLength = typeof innerResponse === "string" ?
++            innerResponse.length : void 0;
++          if (xhrData.lastResponseLength !== responseLength) {
++            xhrData.response = void 0;
++            xhrData.lastResponseLength = responseLength;
++          }
++
++          if (typeof xhrData.response !== "undefined")
++            return xhrData.response;
++
++          if (typeof innerResponse !== "string")
++            return (xhrData.response = innerResponse);
++
++          let replacedText = innerResponse;
++
++          for (const [thisSearch, {replacement: thisReplacement, needle: thisNeedle, formattedArgs}] of xhrRules) {
++            if (thisNeedle) {
++              const needleRegex = toRegExp(thisNeedle);
++
++              if (needleRegex.test(replacedText)) {
++                if (debug()) {
++                  console.groupCollapsed(`DEBUG [replace-xhr-response] success: '${thisNeedle}' found in XHR response`);
++                  debugLog("success", replacedText);
++                  console.groupEnd();
++                }
++              }
++              else {
++                if (debug()) {
++                  console.groupCollapsed(`DEBUG [replace-xhr-response] warn: '${thisNeedle}' not found in XHR response`);
++                  debugLog("warn", replacedText);
++                  console.groupEnd();
++                }
++                continue;
++              }
++            }
++            replacedText =
++              $(replacedText).replace(thisSearch, thisReplacement).toString();
++            if (debug() && innerResponse !== replacedText) {
++              console.groupCollapsed(`DEBUG [replace-xhr-response] success: '${thisSearch}' replaced with '${thisReplacement}' in XHR response`,
++                                      `\nFILTER: replace-xhr-response ${formattedArgs}`);
++              debugLog("success", replacedText);
++              console.groupEnd();
++            }
++          }
++
++          return (xhrData.response = replacedText);
++        }
++        get responseText() {
++          const response = this.response;
++          if (typeof response !== "string")
++            return super.responseText;
++
++          return response;
++        }
++      };
++    }
++
++    const regex = toRegExp(search);
++
++    const globalisedRegEx = new RegExp(regex, "g");
++    xhrRules.set(globalisedRegEx,
++                 {replacement, needle, formattedArgs: formattedArgsToLog});
++  }
 +
 +  let {delete: deleteParam, has: hasParam} = caller(URLSearchParams.prototype);
 +
 +  let parameters;
 +
 +  function stripFetchQueryParameter(name, urlPattern = null) {
++    const formattedArgs = formatArguments(arguments);
 +    const debugLog = getDebugger("strip-fetch-query-parameter");
++
++    const stripFunction = url => {
++      for (let [key, value] of parameters.entries()) {
++        const {reg, args} = value;
++        if (!reg || reg.test(url)) {
++          if (hasParam(url.searchParams, key)) {
++            debugLog("success", `${key} has been stripped from url ${url}`, `\nFILTER: strip-fetch-query-parameter ${args}`);
++            deleteParam(url.searchParams, key);
++          }
++        }
++      }
++    };
 +
 +    if (!parameters) {
 +      parameters = new Map();
-+      window.fetch = proxy(fetch, (...args) => {
-+        let [source] = args;
-+        if (typeof source === "string") {
-+          let url = new URL(source);
-+          for (let [key, reg] of parameters) {
-+            if (!reg || reg.test(source)) {
-+              if (hasParam(url.searchParams, key)) {
-+                debugLog("success", `${key} has been stripped from url ${source}`);
-+                deleteParam(url.searchParams, key);
-+                args[0] = url.href;
-+              }
-+            }
-+          }
-+        }
-+        return apply$2(fetch, self, args);
-+      });
++      addPreFetchCallback(stripFunction);
 +    }
-+    parameters.set(name, urlPattern && toRegExp(urlPattern));
++
++    parameters.set(name,
++                   {reg: urlPattern && toRegExp(urlPattern),
++                    args: formattedArgs});
 +  }
 +
 +  function trace(...args) {
@@ -9856,11 +10466,14 @@ new file mode 100644
 +    "cookie-remover": cookieRemover,
 +    "debug": setDebug,
 +    "freeze-element": freezeElement,
++    "hide-if-canvas-contains": hideIfCanvasContains,
 +    "hide-if-shadow-contains": hideIfShadowContains,
 +    "json-override": jsonOverride,
 +    "json-prune": jsonPrune,
 +    "override-property-read": overridePropertyRead,
 +    "prevent-listener": preventListener,
++    "replace-fetch-response": replaceFetchResponse,
++    "replace-xhr-response": replaceXhrResponse,
 +    "strip-fetch-query-parameter": stripFetchQueryParameter,
 +    "trace": trace
 +  };
@@ -9873,30 +10486,19 @@ new file mode 100644
 +  }
 +  context = void 0;
 +};
-+const graph = new Map([["abort-current-inline-script",null],["abort-on-iframe-property-read",null],["abort-on-iframe-property-write",null],["abort-on-property-read",null],["abort-on-property-write",null],["cookie-remover",null],["debug",null],["freeze-element",null],["hide-if-shadow-contains",null],["json-override",null],["json-prune",null],["override-property-read",null],["prevent-listener",null],["strip-fetch-query-parameter",null],["trace",null]]);
++const graph = new Map([["abort-current-inline-script",null],["abort-on-iframe-property-read",null],["abort-on-iframe-property-write",null],["abort-on-property-read",null],["abort-on-property-write",null],["cookie-remover",null],["debug",null],["freeze-element",null],["hide-if-canvas-contains",null],["hide-if-shadow-contains",null],["json-override",null],["json-prune",null],["override-property-read",null],["prevent-listener",null],["replace-fetch-response",null],["replace-xhr-response",null],["strip-fetch-query-parameter",null],["trace",null]]);
 +callback.get = snippet => graph.get(snippet);
 +callback.has = snippet => graph.has(snippet);
 +
++  debugger;
 +  if (t.every(([name]) => !callback.has(name))) return;
-+  const append = () => {
-+    URL.revokeObjectURL(
-+      Object.assign(
-+        document.documentElement.appendChild(document.createElement("script")),
-+        {async: false, src: URL.createObjectURL(new Blob([
-+          "(" + callback + ")(..." + JSON.stringify([e, ...t]) + ")"
-+        ]))}
-+      ).src
-+    );
-+  };
-+  try { append(); }
-+  catch (_) {
-+    document.addEventListener("readystatechange", append, {once:true});
-+  }
++
++  callback(e,...t);
 +}
 diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/browser/websockets/websocket_connector_impl.cc
 --- a/content/browser/websockets/websocket_connector_impl.cc
 +++ b/content/browser/websockets/websocket_connector_impl.cc
-@@ -89,14 +89,14 @@ void WebSocketConnectorImpl::Connect(
+@@ -90,14 +90,14 @@ void WebSocketConnectorImpl::Connect(
    const uint32_t options =
        GetContentClient()->browser()->GetWebSocketOptions(frame);
  
@@ -9906,9 +10508,9 @@ diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/br
 -        frame,
 +        process, frame,
          base::BindOnce(ConnectCalledByContentBrowserClient, requested_protocols,
-                        site_for_cookies, has_storage_access, isolation_info_,
-                        process_id_, frame_id_, origin_, options,
-                        std::move(throttling_profile_id)),
+                        site_for_cookies, storage_access_api_status,
+                        isolation_info_, process_id_, frame_id_, origin_,
+                        options, std::move(throttling_profile_id)),
 -        url, site_for_cookies, user_agent, std::move(handshake_client));
 +        url, origin_, site_for_cookies, user_agent, std::move(handshake_client));
      return;
@@ -9917,7 +10519,7 @@ diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/br
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -1048,7 +1048,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -1066,7 +1066,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
    DCHECK(browser_context);
  }
  
@@ -9926,7 +10528,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
    return false;
  }
  
-@@ -1057,9 +1057,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
+@@ -1075,9 +1075,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
  }
  
  void ContentBrowserClient::CreateWebSocket(
@@ -9941,7 +10543,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
-@@ -1951,7 +1951,7 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -1994,7 +1994,7 @@ class CONTENT_EXPORT ContentBrowserClient {
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner);
  
    // Returns true when the embedder wants to intercept a websocket connection.
@@ -9950,7 +10552,7 @@ diff --git a/content/public/browser/content_browser_client.h b/content/public/br
  
    // Returns the WebSocket creation options.
    virtual uint32_t GetWebSocketOptions(RenderFrameHost* frame);
-@@ -1973,9 +1973,11 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2016,9 +2016,11 @@ class CONTENT_EXPORT ContentBrowserClient {
    // Always called on the UI thread and only when the Network Service is
    // enabled.
    virtual void CreateWebSocket(
@@ -9962,24 +10564,6 @@ diff --git a/content/public/browser/content_browser_client.h b/content/public/br
        const net::SiteForCookies& site_for_cookies,
        const std::optional<std::string>& user_agent,
        mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
-diff --git a/content/public/common/isolated_world_ids.h b/content/public/common/isolated_world_ids.h
---- a/content/public/common/isolated_world_ids.h
-+++ b/content/public/common/isolated_world_ids.h
-@@ -17,12 +17,10 @@ enum IsolatedWorldIDs : int32_t {
-   // The main world. Chrome cannot use ID 0 for an isolated world because 0
-   // represents the main world.
-   ISOLATED_WORLD_ID_GLOBAL = 0,
--
--  // Isolated world for eyeo ad blocking (element hiding)
--  ISOLATED_WORLD_ID_ADBLOCK,
--
-   // Custom isolated world ids used by other embedders should start from here.
-   ISOLATED_WORLD_ID_CONTENT_END,
-+  // Isolated world for eyeo ad blocking (element hiding)
-+  ISOLATED_WORLD_ID_ADBLOCK,
-   // If any embedder has more than 10 custom isolated worlds that will be run
-   // via RenderFrameImpl::OnJavaScriptExecuteRequestInIsolatedWorld update this.
-   ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 10,
 diff --git a/cromite_flags/chrome/browser/about_flags_cc/Stricter-popup-blocker.inc b/cromite_flags/chrome/browser/about_flags_cc/Stricter-popup-blocker.inc
 new file mode 100644
 --- /dev/null
@@ -10002,7 +10586,7 @@ new file mode 100644
 diff --git a/third_party/blink/renderer/core/css/style_engine.cc b/third_party/blink/renderer/core/css/style_engine.cc
 --- a/third_party/blink/renderer/core/css/style_engine.cc
 +++ b/third_party/blink/renderer/core/css/style_engine.cc
-@@ -634,6 +634,14 @@ void StyleEngine::UpdateActiveStyleSheetsInShadow(
+@@ -630,6 +630,14 @@ void StyleEngine::UpdateActiveStyleSheetsInShadow(
    }
  }
  
@@ -10020,7 +10604,7 @@ diff --git a/third_party/blink/renderer/core/css/style_engine.cc b/third_party/b
 diff --git a/third_party/blink/renderer/core/css/style_engine.h b/third_party/blink/renderer/core/css/style_engine.h
 --- a/third_party/blink/renderer/core/css/style_engine.h
 +++ b/third_party/blink/renderer/core/css/style_engine.h
-@@ -251,6 +251,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
+@@ -253,6 +253,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
        const ComputedStyle* embedder_style) const;
    void ViewportStyleSettingChanged();
  
@@ -10031,7 +10615,7 @@ diff --git a/third_party/blink/renderer/core/css/style_engine.h b/third_party/bl
 diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_party/blink/renderer/core/exported/web_document.cc
 --- a/third_party/blink/renderer/core/exported/web_document.cc
 +++ b/third_party/blink/renderer/core/exported/web_document.cc
-@@ -288,6 +288,16 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
+@@ -291,6 +291,16 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
    Document* document = Unwrap<Document>();
    DCHECK(document);
  
@@ -10048,7 +10632,7 @@ diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_pa
    auto* parsed_sheet = MakeGarbageCollected<StyleSheetContents>(
        MakeGarbageCollected<CSSParserContext>(*document));
    parsed_sheet->ParseString(source_code);
-@@ -297,7 +307,7 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
+@@ -300,7 +310,7 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
      if (IsValidAbpRule(parsed_sheet->RuleAt(n)))
        ++n;
      else {
@@ -10057,7 +10641,7 @@ diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_pa
        parsed_sheet->WrapperDeleteRule(n);
        LOG(WARNING) << "[eyeo] Broken rule";
      }
-@@ -309,9 +319,6 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
+@@ -312,9 +322,6 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
          {SchedulingPolicy::DisableBackForwardCache()});
    }
  
