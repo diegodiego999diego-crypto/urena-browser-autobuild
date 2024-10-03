@@ -72,7 +72,7 @@ def patch_apk(root_dir, new_certdigest, input_apk):
         os.remove(outfilename)
 
 def zipalign_apk(input_apk, output_apk):
-    subprocess.run(["zipalign", "-f", "-p", "-z", "4",  input_apk, output_apk])
+    subprocess.run(["zipalign", "-f", "-p", "4",  input_apk, output_apk])
 
 def sign_apk(cert, ks_pass, ks_alias, output_apk):
     subprocess.run(["apksigner", "sign", "--ks", cert, "--ks-pass", "pass:{}".format(ks_pass), "--ks-key-alias", ks_alias, output_apk])
