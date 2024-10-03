@@ -7,7 +7,7 @@ Based on Chromium 118.0.5993.48
 Pre-requisites: eyeo Browser Ad filtering Solution: Base Module
 ---
  chrome/app/chrome_main_delegate.cc            |   7 +-
- chrome/browser/BUILD.gn                       |  29 ++
+ chrome/browser/BUILD.gn                       |  26 ++
  chrome/browser/adblock/README.md              |   3 +
  .../adblock/adblock_content_browser_client.cc | 320 ++++++++++++++++++
  .../adblock/adblock_content_browser_client.h  | 100 ++++++
@@ -39,10 +39,10 @@ Pre-requisites: eyeo Browser Ad filtering Solution: Base Module
  .../resources/adblock_internals/BUILD.gn      |  29 ++
  .../adblock_internals/adblock_internals.html  |  38 +++
  .../adblock_internals/adblock_internals.ts    |  43 +++
- .../safe_browsing_blocking_page_test.cc       |   7 +
+ .../safe_browsing_blocking_page_test.cc       |   6 +
  ...subresource_filter_browser_test_harness.cc |   8 +-
  chrome/browser/ui/BUILD.gn                    |  10 +
- chrome/browser/ui/prefs/pref_watcher.cc       |  13 +
+ chrome/browser/ui/prefs/pref_watcher.cc       |   8 +
  chrome/browser/ui/tab_helpers.cc              |  18 +
  .../ui/webui/adblock_internals/BUILD.gn       |  23 ++
  .../adblock_internals/adblock_internals.mojom |  20 ++
@@ -52,9 +52,9 @@ Pre-requisites: eyeo Browser Ad filtering Solution: Base Module
  .../adblock_internals/adblock_internals_ui.h  |  48 +++
  .../webui/chrome_web_ui_controller_factory.cc |   8 +
  chrome/common/BUILD.gn                        |   3 +
- chrome/common/webui_url_constants.cc          |   5 +
+ chrome/common/webui_url_constants.cc          |   4 +
  chrome/common/webui_url_constants.h           |   5 +
- 48 files changed, 2298 insertions(+), 2 deletions(-)
+ 48 files changed, 2288 insertions(+), 2 deletions(-)
  create mode 100644 chrome/browser/adblock/README.md
  create mode 100644 chrome/browser/adblock/adblock_content_browser_client.cc
  create mode 100644 chrome/browser/adblock/adblock_content_browser_client.h
@@ -100,9 +100,9 @@ diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegat
 +// Use of this source code is governed by the GPLv3 that can be found in the
 +// components/adblock/LICENSE file.
  
- #include "chrome/app/chrome_main_delegate.h"
- 
-@@ -37,6 +41,7 @@
+ #ifdef UNSAFE_BUFFERS_BUILD
+ // TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
+@@ -42,6 +46,7 @@
  #include "base/trace_event/trace_event_impl.h"
  #include "build/build_config.h"
  #include "build/chromeos_buildflags.h"
@@ -110,15 +110,15 @@ diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegat
  #include "chrome/browser/buildflags.h"
  #include "chrome/browser/chrome_content_browser_client.h"
  #include "chrome/browser/chrome_resource_bundle_helper.h"
-@@ -1921,7 +1926,7 @@ content::ContentClient* ChromeMainDelegate::CreateContentClient() {
+@@ -1932,7 +1937,7 @@ content::ContentClient* ChromeMainDelegate::CreateContentClient() {
  content::ContentBrowserClient*
  ChromeMainDelegate::CreateContentBrowserClient() {
    chrome_content_browser_client_ =
 -      std::make_unique<ChromeContentBrowserClient>();
 +      std::make_unique<AdblockContentBrowserClient>();
-   return chrome_content_browser_client_.get();
- }
- 
+ #if !BUILDFLAG(IS_ANDROID)
+   // Android does this in `ChromeMainDelegateAndroid::PreSandboxStartup`.
+   CHECK(sampling_profiler_);
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
@@ -132,7 +132,7 @@ diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
  
  import("//base/allocator/allocator.gni")
  import("//build/buildflag_header.gni")
-@@ -151,6 +154,26 @@ static_library("browser") {
+@@ -152,6 +155,26 @@ static_library("browser") {
      "accessibility/prefers_default_scrollbar_styles_prefs.h",
      "affiliations/affiliation_service_factory.cc",
      "affiliations/affiliation_service_factory.h",
@@ -158,41 +158,17 @@ diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
 +    "adblock/subscription_service_factory.h",
      "after_startup_task_utils.cc",
      "after_startup_task_utils.h",
-     "ai/ai_manager_impl.cc",
-@@ -2138,6 +2161,7 @@ static_library("browser") {
-     "//chrome/browser/ui/color:mixers",
-     "//chrome/browser/ui/tabs",
-     "//chrome/browser/ui/webui:configs",
-+    "//chrome/browser/ui/webui/adblock_internals:mojo_bindings",
-     "//chrome/browser/ui/webui/app_service_internals:mojo_bindings",
-     "//chrome/browser/ui/webui/data_sharing_internals:mojo_bindings",
-     "//chrome/browser/ui/webui/internals/user_education:mojo_bindings",
-@@ -2162,6 +2186,8 @@ static_library("browser") {
+     "app_mode/app_mode_utils.cc",
+@@ -1993,6 +2016,9 @@ static_library("browser") {
      "//chrome/installer/util:with_no_strings",
      "//chrome/services/on_device_translation:on_device_translation_service",
      "//chrome/services/speech/buildflags",
++    "//chrome/browser/ui/webui/adblock_internals:mojo_bindings",
 +    "//components/adblock/content:browser",
 +    "//components/adblock/core/converter",
      "//components/assist_ranker",
      "//components/autofill/content/browser",
      "//components/autofill/content/common:features",
-@@ -3523,6 +3549,8 @@ static_library("browser") {
-       "webid/digital_identity_provider_android.cc",
-       "webid/digital_identity_provider_android.h",
-     ]
-+
-+
-     public_deps += [
-       "//chrome/android/features/dev_ui:buildflags",
-       "//components/image_fetcher/core",
-@@ -3733,6 +3761,7 @@ static_library("browser") {
-     # `IdentityManagerFactory` in facilitated payments.
-     allow_circular_includes_from += [ "//chrome/browser/facilitated_payments" ]
- 
-+
-     if (safe_browsing_mode == 2) {
-       sources += [
-         "component_updater/real_time_url_checks_allowlist_component_installer.cc",
 diff --git a/chrome/browser/adblock/README.md b/chrome/browser/adblock/README.md
 new file mode 100644
 --- /dev/null
@@ -2039,15 +2015,15 @@ diff --git a/chrome/browser/chrome_browser_interface_binders.cc b/chrome/browser
  
  #include "chrome/browser/chrome_browser_interface_binders.h"
  
-@@ -38,6 +42,7 @@
+@@ -37,6 +41,7 @@
  #include "chrome/browser/ui/search_engines/search_engine_tab_helper.h"
- #include "chrome/browser/ui/views/side_panel/companion/companion_utils.h"
  #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/ui/views/side_panel/companion/companion_utils.h"
 +#include "chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.h"
  #include "chrome/browser/ui/webui/browsing_topics/browsing_topics_internals_ui.h"
  #include "chrome/browser/ui/webui/data_sharing_internals/data_sharing_internals_ui.h"
  #include "chrome/browser/ui/webui/engagement/site_engagement_ui.h"
-@@ -1121,6 +1126,10 @@ void PopulateChromeWebUIFrameBinders(
+@@ -1128,6 +1133,10 @@ void PopulateChromeWebUIFrameBinders(
        media::mojom::MediaEngagementScoreDetailsProvider, MediaEngagementUI>(
        map);
  
@@ -2072,9 +2048,9 @@ diff --git a/chrome/browser/preferences/BUILD.gn b/chrome/browser/preferences/BU
  
  import("//build/config/android/rules.gni")
  import("//third_party/jni_zero/jni_zero.gni")
-@@ -40,6 +44,7 @@ java_cpp_strings("java_pref_names_srcjar") {
-   sources = [
+@@ -41,6 +45,7 @@ java_cpp_strings("java_pref_names_srcjar") {
      "//chrome/browser/enterprise/reporting/prefs.cc",
+     "//chrome/browser/ui/safety_hub/safety_hub_prefs.h",
      "//chrome/common/pref_names.h",
 +    "//components/adblock/core/common/adblock_prefs.cc",
      "//components/autofill/core/common/autofill_prefs.h",
@@ -2092,9 +2068,9 @@ diff --git a/chrome/browser/prefs/chrome_pref_service_factory.cc b/chrome/browse
 +// Use of this source code is governed by the GPLv3 that can be found in the
 +// components/adblock/LICENSE file.
  
- #include "chrome/browser/prefs/chrome_pref_service_factory.h"
- 
-@@ -41,6 +45,7 @@
+ #ifdef UNSAFE_BUFFERS_BUILD
+ // TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
+@@ -48,6 +52,7 @@
  #include "chrome/grit/branded_strings.h"
  #include "chrome/grit/browser_resources.h"
  #include "chrome/grit/generated_resources.h"
@@ -2102,7 +2078,7 @@ diff --git a/chrome/browser/prefs/chrome_pref_service_factory.cc b/chrome/browse
  #include "components/component_updater/pref_names.h"
  #include "components/policy/core/browser/configuration_policy_pref_store.h"
  #include "components/pref_registry/pref_registry_syncable.h"
-@@ -189,6 +194,12 @@ const prefs::TrackedPreferenceMetadata kTrackedPrefs[] = {
+@@ -191,6 +196,12 @@ const prefs::TrackedPreferenceMetadata kTrackedPrefs[] = {
      {34, enterprise_signin::prefs::kPolicyRecoveryToken,
       EnforcementLevel::ENFORCE_ON_LOAD, PrefTrackingStrategy::ATOMIC,
       ValueType::IMPERSONAL},
@@ -2129,10 +2105,10 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  
  #include "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.h"
  
-@@ -13,6 +17,15 @@
- #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
+@@ -14,6 +18,15 @@
  #include "chrome/browser/accessibility/page_colors_factory.h"
  #include "chrome/browser/affiliations/affiliation_service_factory.h"
+ #include "chrome/browser/ai/ai_manager_keyed_service_factory.h"
 +#include "chrome/browser/adblock/adblock_controller_factory.h"
 +#include "chrome/browser/adblock/adblock_telemetry_service_factory.h"
 +#include "chrome/browser/adblock/content_security_policy_injector_factory.h"
@@ -2145,7 +2121,7 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
  #include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
  #include "chrome/browser/autocomplete/in_memory_url_index_factory.h"
-@@ -273,6 +286,8 @@
+@@ -280,6 +293,8 @@
  #include "chrome/browser/signin/signin_manager_android_factory.h"
  #include "components/commerce/core/commerce_feature_list.h"
  #include "components/commerce/core/proto/merchant_signal_db_content.pb.h"
@@ -2154,7 +2130,7 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  #else
  #include "chrome/browser/accessibility/live_caption/live_caption_controller_factory.h"
  #include "chrome/browser/accessibility/live_translate_controller_factory.h"
-@@ -840,8 +855,19 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -856,8 +871,19 @@ void ChromeBrowserMainExtraPartsProfiles::
    // Makes manual testing possible.
    FakeSmartCardDeviceServiceFactory::GetInstance();
  #endif
@@ -2187,7 +2163,7 @@ diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.
  
  import("//build/config/chromeos/ui_mode.gni")
  import("//chrome/browser/buildflags.gni")
-@@ -249,6 +252,7 @@ if (!is_android) {
+@@ -255,6 +258,7 @@ if (!is_android) {
  group("dev_ui_resources") {
    public_deps = [
      "accessibility:resources",
@@ -2195,7 +2171,7 @@ diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.
      "bluetooth_internals:resources",
      "browsing_topics:resources",
      "components:resources",
-@@ -311,6 +315,7 @@ repack("dev_ui_paks") {
+@@ -317,6 +321,7 @@ repack("dev_ui_paks") {
  
    sources = [
      "$root_gen_dir/chrome/accessibility_resources.pak",
@@ -2342,15 +2318,7 @@ diff --git a/chrome/browser/safe_browsing/safe_browsing_blocking_page_test.cc b/
  
  #include "components/safe_browsing/content/browser/safe_browsing_blocking_page.h"
  
-@@ -70,6 +74,7 @@
- #include "chrome/common/url_constants.h"
- #include "chrome/test/base/in_process_browser_test.h"
- #include "chrome/test/base/ui_test_utils.h"
-+#include "components/adblock/core/features.h"
- #include "components/google/core/common/google_util.h"
- #include "components/grit/components_resources.h"
- #include "components/omnibox/browser/omnibox_prefs.h"
-@@ -683,6 +688,8 @@ class SafeBrowsingBlockingPageBrowserTest
+@@ -685,6 +689,8 @@ class SafeBrowsingBlockingPageBrowserTest
          {tag_and_attribute, add_warning_shown_timestamp_csbrrs,
           create_warning_shown_csbrrs, abusive_notification_revocation},
          {});
@@ -2405,7 +2373,7 @@ diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
  
  import("//build/config/buildflags_paint_preview.gni")
  import("//build/config/chromeos/ui_mode.gni")
-@@ -261,6 +265,10 @@ static_library("ui") {
+@@ -268,6 +272,10 @@ static_library("ui") {
      "webui/about/about_ui.h",
      "webui/accessibility/accessibility_ui.cc",
      "webui/accessibility/accessibility_ui.h",
@@ -2416,37 +2384,26 @@ diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
      "webui/autofill_and_password_manager_internals/autofill_internals_ui.cc",
      "webui/autofill_and_password_manager_internals/autofill_internals_ui.h",
      "webui/autofill_and_password_manager_internals/internals_ui_handler.cc",
-@@ -479,6 +487,7 @@ static_library("ui") {
-     "//chrome/browser/ui/webui",
-     "//chrome/browser/ui/webui/data_sharing_internals:mojo_bindings",
-     "//chrome/browser/ui/webui/location_internals:mojo_bindings",
+@@ -468,6 +476,7 @@ static_library("ui") {
+     "//chrome/browser/search_engines",
+     "//chrome/browser/share",
+     "//chrome/browser/signin:identity_manager_provider",
 +    "//chrome/browser/ui/webui/adblock_internals:mojo_bindings",
-     "//chrome/browser/ui/webui/omnibox:mojo_bindings",
-     "//chrome/browser/ui/webui/privacy_sandbox:mojo_bindings",
-     "//chrome/browser/ui/webui/segmentation_internals:mojo_bindings",
-@@ -495,6 +504,7 @@ static_library("ui") {
+     "//chrome/browser/storage_access_api",
+     "//chrome/browser/sync",
+     "//chrome/browser/ui/cookie_controls",
+@@ -487,6 +496,7 @@ static_library("ui") {
      "//components/access_code_cast/common:metrics",
      "//components/account_id",
      "//components/affiliations/core/browser:affiliations",
 +    "//components/adblock/content:browser",
      "//components/autofill/content/browser",
      "//components/autofill/content/browser:risk_proto",
-     "//components/autofill/core/browser",
+     "//components/autofill/core/common:credit_card_number_validation",
 diff --git a/chrome/browser/ui/prefs/pref_watcher.cc b/chrome/browser/ui/prefs/pref_watcher.cc
 --- a/chrome/browser/ui/prefs/pref_watcher.cc
 +++ b/chrome/browser/ui/prefs/pref_watcher.cc
-@@ -2,6 +2,10 @@
- // Use of this source code is governed by a BSD-style license that can be
- // found in the LICENSE file.
- 
-+// This source code is a part of eyeo Chromium SDK.
-+// Use of this source code is governed by the GPLv3 that can be found in the
-+// components/adblock/LICENSE file.
-+
- #include "chrome/browser/ui/prefs/pref_watcher.h"
- 
- #include "base/functional/bind.h"
-@@ -13,6 +17,7 @@
+@@ -18,6 +18,7 @@
  #include "chrome/browser/renderer_preferences_util.h"
  #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
  #include "chrome/common/pref_names.h"
@@ -2454,10 +2411,10 @@ diff --git a/chrome/browser/ui/prefs/pref_watcher.cc b/chrome/browser/ui/prefs/p
  #include "components/language/core/browser/pref_names.h"
  #include "components/live_caption/pref_names.h"
  #include "components/privacy_sandbox/tracking_protection_settings.h"
-@@ -69,6 +74,14 @@ const char* const kWebPrefsToObserve[] = {
- #else
+@@ -75,6 +76,13 @@ const char* const kWebPrefsToObserve[] = {
      prefs::kAccessibilityFocusHighlightEnabled,
  #endif
+     prefs::kPageColorsBlockList,
 +
 +    adblock::common::prefs::kAdblockAllowedDomainsLegacy,
 +    adblock::common::prefs::kAdblockCustomFiltersLegacy,
@@ -2465,7 +2422,6 @@ diff --git a/chrome/browser/ui/prefs/pref_watcher.cc b/chrome/browser/ui/prefs/p
 +    adblock::common::prefs::kAdblockSubscriptionsLegacy,
 +    adblock::common::prefs::kEnableAcceptableAdsLegacy,
 +    adblock::common::prefs::kEnableAdblockLegacy,
-+
  };
  
  const int kWebPrefsToObserveLength = std::size(kWebPrefsToObserve);
@@ -2483,7 +2439,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  
  #include "chrome/browser/ui/tab_helpers.h"
  
-@@ -13,6 +17,9 @@
+@@ -14,6 +18,9 @@
  #include "base/trace_event/trace_event.h"
  #include "build/build_config.h"
  #include "build/chromeos_buildflags.h"
@@ -2501,7 +2457,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  #include "components/autofill/content/browser/content_autofill_client.h"
  #include "components/autofill/content/browser/content_autofill_driver_factory.h"
  #include "components/autofill/core/browser/browser_autofill_manager.h"
-@@ -373,6 +381,16 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -368,6 +376,16 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
                                                     optimization_guide_decider);
      }
    }
@@ -2866,15 +2822,15 @@ diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrom
  
  #include "chrome/browser/ui/webui/chrome_web_ui_controller_factory.h"
  
-@@ -31,6 +35,7 @@
- #include "chrome/browser/profiles/profile.h"
+@@ -32,6 +36,7 @@
  #include "chrome/browser/safe_browsing/chrome_safe_browsing_local_state_delegate.h"
+ #include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service_factory.h"
  #include "chrome/browser/ui/webui/about/about_ui.h"
 +#include "chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.h"
  #include "chrome/browser/ui/webui/components/components_ui.h"
  #include "chrome/browser/ui/webui/constrained_web_dialog_ui.h"
  #include "chrome/browser/ui/webui/crashes_ui.h"
-@@ -489,6 +494,9 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
+@@ -458,6 +463,9 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
      return &NewWebUI<UsbInternalsUI>;
    if (url.host_piece() == chrome::kChromeUIUserActionsHost)
      return &NewWebUI<UserActionsUI>;
@@ -2911,14 +2867,6 @@ diff --git a/chrome/common/webui_url_constants.cc b/chrome/common/webui_url_cons
  
  #include "chrome/common/webui_url_constants.h"
  
-@@ -31,6 +35,7 @@ const char kChromeUIAboutURL[] = "chrome://about/";
- const char kChromeUIActivateSafetyCheckSettingsURL[] =
-     "chrome://settings/safetyCheck?activateSafetyCheck";
- const char kChromeUIAccessibilityHost[] = "accessibility";
-+const char kChromeUIAdblockInternalsHost[] = "adblock-internals";
- const char kChromeUIAllSitesPath[] = "/content/all";
- const char kChromeUIAppIconHost[] = "app-icon";
- const char kChromeUIAppIconURL[] = "chrome://app-icon/";
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
@@ -2933,12 +2881,12 @@ diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_const
  
  // Contains constants for WebUI UI/Host/SubPage constants. Anything else go in
  // chrome/common/url_constants.h.
-@@ -32,6 +36,7 @@ extern const char kChromeUIAboutHost[];
- extern const char kChromeUIAboutURL[];
- extern const char kChromeUIActivateSafetyCheckSettingsURL[];
- extern const char kChromeUIAccessibilityHost[];
-+extern const char kChromeUIAdblockInternalsHost[];
- extern const char kChromeUIAllSitesPath[];
- extern const char kChromeUIAppIconHost[];
- extern const char kChromeUIAppIconURL[];
+@@ -42,6 +46,7 @@ inline constexpr char kChromeUIActivateSafetyCheckSettingsURL[] =
+ inline constexpr char kChromeUIAllSitesPath[] = "/content/all";
+ inline constexpr char kChromeUIAppIconHost[] = "app-icon";
+ inline constexpr char kChromeUIAppIconURL[] = "chrome://app-icon/";
++inline constexpr char kChromeUIAdblockInternalsHost[] = "adblock-internals";
+ inline constexpr char kChromeUIAppLauncherPageHost[] = "apps";
+ inline constexpr char kChromeUIAppsURL[] = "chrome://apps/";
+ inline constexpr char kChromeUIAppsWithDeprecationDialogURL[] =
 --

@@ -1,33 +1,30 @@
-From 17110e9855f66cbc7a396640ce5c9ebb0c7cfd14 Mon Sep 17 00:00:00 2001
+From be8740175172974fcdbfe6ca98eef4c856389bd1 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 26 Sep 2021 11:17:53 +0200
-Subject: [PATCH 44/53] Disable AGSA by default
+Subject: [PATCH 44/55] Disable AGSA by default
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  chrome/android/BUILD.gn                       |  3 -
  .../org/chromium/chrome/browser/AppHooks.java |  9 ---
- .../chrome/browser/IntentHandler.java         |  7 --
- .../chrome/browser/app/ChromeActivity.java    | 78 -------------------
- .../ChromeContextMenuPopulator.java           |  8 --
- .../ContextualSearchManager.java              | 48 ------------
- .../ContextualSearchObserver.java             | 15 ----
- .../BaseCustomTabRootUiCoordinator.java       | 18 -----
+ .../chrome/browser/IntentHandler.java         |  7 ---
+ .../chrome/browser/app/ChromeActivity.java    | 61 -------------------
+ .../ChromeContextMenuPopulator.java           |  8 ---
  ...stomTabActivityClientConnectionKeeper.java | 13 ----
  .../init/ProcessInitializationHandler.java    |  3 -
  .../SafeBrowsingReferringAppBridge.java       |  2 -
- .../chrome/browser/share/LensUtils.java       | 17 +---
- .../chrome/browser/ui/RootUiCoordinator.java  | 15 ----
+ .../chrome/browser/share/LensUtils.java       | 17 +-----
+ .../chrome/browser/ui/RootUiCoordinator.java  | 22 -------
  .../flags/android/chrome_feature_list.cc      |  4 +-
  .../browser/flags/ChromeFeatureList.java      |  2 +-
  chrome/browser/ui/android/omnibox/BUILD.gn    |  2 -
- 16 files changed, 5 insertions(+), 239 deletions(-)
+ 13 files changed, 5 insertions(+), 148 deletions(-)
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 1b0dc1a9ae0e9..cbecd1b41488b 100644
+index 50d48551a8b64..ead7f59b30646 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -401,7 +401,6 @@ if (current_toolchain == default_toolchain) {
+@@ -426,7 +426,6 @@ if (current_toolchain == default_toolchain) {
        "//chrome/browser/flags:java",
        "//chrome/browser/fullscreen/android:java",
        "//chrome/browser/gesturenav/android:java",
@@ -35,7 +32,7 @@ index 1b0dc1a9ae0e9..cbecd1b41488b 100644
        "//chrome/browser/history:java",
        "//chrome/browser/history_clusters:java",
        "//chrome/browser/hub:factory_java",
-@@ -1060,7 +1059,6 @@ if (current_toolchain == default_toolchain) {
+@@ -1078,7 +1077,6 @@ if (current_toolchain == default_toolchain) {
        "//chrome/browser/flags:flags_junit_tests",
        "//chrome/browser/flags:java",
        "//chrome/browser/fullscreen/android:java",
@@ -43,7 +40,7 @@ index 1b0dc1a9ae0e9..cbecd1b41488b 100644
        "//chrome/browser/history:java",
        "//chrome/browser/history_clusters:java",
        "//chrome/browser/hub:factory_java",
-@@ -1718,7 +1716,6 @@ if (current_toolchain == default_toolchain) {
+@@ -1741,7 +1739,6 @@ if (current_toolchain == default_toolchain) {
        "//chrome/browser/first_run/android:java",
        "//chrome/browser/flags:java",
        "//chrome/browser/fullscreen/android:java",
@@ -52,18 +49,18 @@ index 1b0dc1a9ae0e9..cbecd1b41488b 100644
        "//chrome/browser/hub:factory_java",
        "//chrome/browser/hub:java",
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
-index 34a3189e6a014..bee68cfb576ca 100644
+index 35267b8519866..b5361a4f1f8cb 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/AppHooks.java
-@@ -8,7 +8,6 @@ import androidx.annotation.Nullable;
+@@ -11,7 +11,6 @@ import androidx.annotation.Nullable;
  import org.chromium.base.ContextUtils;
  import org.chromium.base.ResettersForTesting;
  import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 -import org.chromium.chrome.browser.gsa.GSAHelper;
- import org.chromium.chrome.browser.historyreport.AppIndexingReporter;
  import org.chromium.chrome.browser.init.ProcessInitializationHandler;
  import org.chromium.chrome.browser.instantapps.InstantAppsHandler;
-@@ -92,14 +91,6 @@ public abstract class AppHooks {
+ import org.chromium.chrome.browser.metrics.VariationsSession;
+@@ -87,14 +86,6 @@ public abstract class AppHooks {
          return new GoogleActivityController();
      }
  
@@ -79,7 +76,7 @@ index 34a3189e6a014..bee68cfb576ca 100644
          return new InstantAppsHandler();
      }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
-index b91f6b4e0328f..789a7a751d13f 100644
+index 848a6bef8b87e..d4502829a81b5 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 @@ -39,7 +39,6 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -125,21 +122,20 @@ index b91f6b4e0328f..789a7a751d13f 100644
              return ExternalAppId.CHROME;
          } else if (packageName.startsWith(WEBAPK_PACKAGE_PREFIX)) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-index e241f79baf946..56bb482fba039 100644
+index 0ac78ba39ff61..aa7a17e89b256 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-@@ -113,10 +113,6 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+@@ -113,9 +113,6 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
  import org.chromium.chrome.browser.fullscreen.BrowserControlsManagerSupplier;
  import org.chromium.chrome.browser.fullscreen.FullscreenBackPressHandler;
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 -import org.chromium.chrome.browser.gsa.ContextReporter;
 -import org.chromium.chrome.browser.gsa.GSAAccountChangeListener;
--import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
 -import org.chromium.chrome.browser.gsa.GSAState;
  import org.chromium.chrome.browser.history.HistoryManagerUtils;
  import org.chromium.chrome.browser.init.AsyncInitializationActivity;
  import org.chromium.chrome.browser.init.ProcessInitializationHandler;
-@@ -322,7 +318,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -326,7 +323,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
      private TabContentManager mTabContentManager;
  
      private final UmaActivityObserver mUmaActivityObserver;
@@ -147,7 +143,7 @@ index e241f79baf946..56bb482fba039 100644
  
      private boolean mPartnerBrowserRefreshNeeded;
  
-@@ -390,8 +385,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -393,8 +389,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
  
      private LaunchCauseMetrics mLaunchCauseMetrics;
  
@@ -156,7 +152,7 @@ index e241f79baf946..56bb482fba039 100644
      // TODO(crbug.com/40631552): Pull MenuOrKeyboardActionController out of ChromeActivity.
      private List<MenuOrKeyboardActionController.MenuOrKeyboardActionHandler> mMenuActionHandlers =
              new ArrayList<>();
-@@ -1171,53 +1164,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -1155,35 +1149,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
          return StatusBarColorController.UNDEFINED_STATUS_BAR_COLOR;
      }
  
@@ -167,31 +163,13 @@ index e241f79baf946..56bb482fba039 100644
 -        final SyncService syncService = getSyncServiceForOriginalProfile();
 -
 -        if (syncService != null && syncService.isSyncingUnencryptedUrls()) {
--            ContextReporter.SelectionReporter controller =
--                    getContextualSearchManagerSupplier().hasValue()
--                            ? new ContextReporter.SelectionReporter() {
--                                @Override
--                                public void enable(Callback<GSAContextDisplaySelection> callback) {
--                                    getContextualSearchManagerSupplier()
--                                            .get()
--                                            .enableContextReporting(callback);
--                                }
--
--                                @Override
--                                public void disable() {
--                                    getContextualSearchManagerSupplier()
--                                            .get()
--                                            .disableContextReporting();
--                                }
--                            }
--                            : null;
 -            mContextReporter =
 -                    AppHooks.get()
 -                            .createGsaHelper()
 -                            .getContextReporter(
 -                                    getActivityTabProvider(),
 -                                    mTabModelSelectorSupplier,
--                                    controller);
+-                                    mRootUiCoordinator.getContextReporter());
 -
 -            if (mSyncStateChangedListener != null) {
 -                syncService.removeSyncStateChangedListener(mSyncStateChangedListener);
@@ -209,8 +187,8 @@ index e241f79baf946..56bb482fba039 100644
 -
      @Override
      public void onResumeWithNative() {
-         // Close the current UMA record and start a new UMA one.
-@@ -1364,9 +1310,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+         startUmaSession();
+@@ -1364,9 +1329,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
  
      @Override
      public void onStopWithNative() {
@@ -220,15 +198,17 @@ index e241f79baf946..56bb482fba039 100644
          if (mSyncStateChangedListener != null) {
              SyncService syncService = getSyncServiceForOriginalProfile();
              if (syncService != null) {
-@@ -1374,7 +1317,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+@@ -1374,9 +1336,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
              }
              mSyncStateChangedListener = null;
          }
--        if (mContextReporter != null) mContextReporter.disable();
-         super.onStopWithNative();
-     }
- 
-@@ -1480,26 +1422,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+-        if (mContextReporter != null) {
+-            mContextReporter.disable();
+-        }
+         if (mFullscreenVideoPictureInPictureController != null) {
+             mFullscreenVideoPictureInPictureController.onStop();
+             mFullscreenVideoPictureInPictureController = null;
+@@ -1491,26 +1450,6 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
                                      getProfileProviderSupplier().get().getOriginalProfile());
                          });
  
@@ -256,7 +236,7 @@ index e241f79baf946..56bb482fba039 100644
                  .addDeferredTask(
                          () -> {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-index caa460dbe1079..c0c1e080cf7cd 100644
+index e7df4aaf5344e..ad4a1d33e282f 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
 @@ -36,7 +36,6 @@ import org.chromium.chrome.browser.contextmenu.ContextMenuCoordinator.ListItemTy
@@ -267,7 +247,7 @@ index caa460dbe1079..c0c1e080cf7cd 100644
  import org.chromium.chrome.browser.lens.LensController;
  import org.chromium.chrome.browser.lens.LensEntryPoint;
  import org.chromium.chrome.browser.lens.LensIntentParams;
-@@ -871,13 +870,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+@@ -878,13 +877,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                      LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE);
              return false;
          }
@@ -281,160 +261,6 @@ index caa460dbe1079..c0c1e080cf7cd 100644
  
          if (LensUtils.isDeviceOsBelowMinimum()) {
              LensMetrics.recordLensSupportStatus(
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchManager.java b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchManager.java
-index 6e67dfdf0a42d..38f14e52e05b4 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchManager.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchManager.java
-@@ -46,7 +46,6 @@ import org.chromium.chrome.browser.flags.ActivityType;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
- import org.chromium.chrome.browser.fullscreen.FullscreenManager;
- import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
--import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
- import org.chromium.chrome.browser.infobar.InfoBarContainer;
- import org.chromium.chrome.browser.layouts.SceneOverlay;
- import org.chromium.chrome.browser.profiles.Profile;
-@@ -235,9 +234,6 @@ public class ContextualSearchManager
-     // TODO(donnd): replace with a more systematic approach using the InternalStateController.
-     private int mSelectAroundCaretCounter;
- 
--    /** An observer that reports selected context to GSA for search quality. */
--    private ContextualSearchObserver mContextReportingObserver;
--
-     /** A means of accessing the currently active tab. */
-     private Supplier<Tab> mTabSupplier;
- 
-@@ -1096,11 +1092,6 @@ public class ContextualSearchManager
-                 new ContextualSearchSelection(
-                         mContext.getEncoding(), surroundingText, startOffset, endOffset);
-         notifyInternalObservers(sel);
--
--        GSAContextDisplaySelection selection =
--                new GSAContextDisplaySelection(
--                        mContext.getEncoding(), surroundingText, startOffset, endOffset);
--        notifyShowContextualSearch(selection);
-     }
- 
-     /**
-@@ -1116,18 +1107,6 @@ public class ContextualSearchManager
-         }
-     }
- 
--    /**
--     * Notifies all Contextual Search observers that a search has occurred.
--     * @param selectionContext The selection and context that triggered the search.
--     */
--    private void notifyShowContextualSearch(GSAContextDisplaySelection selectionContext) {
--        if (!mPolicy.canSendSurroundings()) selectionContext = null;
--
--        for (ContextualSearchObserver observer : mObservers) {
--            observer.onShowContextualSearch(selectionContext);
--        }
--    }
--
-     /** Notifies all Contextual Search observers that a search ended and is no longer in effect. */
-     private void notifyHideContextualSearch() {
-         for (ContextualSearchObserver observer : mObservers) {
-@@ -1937,33 +1916,6 @@ public class ContextualSearchManager
-         };
-     }
- 
--    /**
--     * @param reporter A context reporter for the feature to report the current selection when
--     *                 triggered.
--     */
--    public void enableContextReporting(Callback<GSAContextDisplaySelection> reporter) {
--        mContextReportingObserver =
--                new ContextualSearchObserver() {
--                    @Override
--                    public void onShowContextualSearch(
--                            GSAContextDisplaySelection contextSelection) {
--                        if (contextSelection != null) reporter.onResult(contextSelection);
--                    }
--
--                    @Override
--                    public void onHideContextualSearch() {
--                        reporter.onResult(null);
--                    }
--                };
--        addObserver(mContextReportingObserver);
--    }
--
--    /** Disable context reporting for Contextual Search. */
--    public void disableContextReporting() {
--        removeObserver(mContextReportingObserver);
--        mContextReportingObserver = null;
--    }
--
-     /**
-      * @param profile The {@link Profile} associated with this Contextual Search session.
-      * @return Whether the Contextual Search feature was disabled by the user explicitly.
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchObserver.java b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchObserver.java
-index 5a53bec2a1c67..25c055954815d 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchObserver.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/ContextualSearchObserver.java
-@@ -6,26 +6,11 @@ package org.chromium.chrome.browser.contextualsearch;
- 
- import androidx.annotation.Nullable;
- 
--import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
--
- /**
-  * An interface to be notified when contextual searches are performed or are no longer active.
-  * Used to report context to the system for features like conversational search.
-  */
- public interface ContextualSearchObserver {
--    /**
--     * Notifies that a contextual search was performed, and provides the selection context if
--     * the feature is fully enabled (and {@code null} otherwise).
--     * This method may be called multiple times if the selection changes while Contextual Search is
--     * showing.
--     * NOTE: this context data can be quite privacy-sensitive because it contains text from the
--     * page being viewed by the user, which may include sensitive or personal information.
--     * Clients must follow standard privacy policy before logging or transmitting this information.
--     * @param selectionContext The selection and context used for the Contextual Search, or
--     *        {@code null} if the feature has not yet been fully enabled.
--     */
--    void onShowContextualSearch(@Nullable GSAContextDisplaySelection selectionContext);
--
-     /**
-      * Notifies that a contextual search is no longer in effect, and the results are no longer
-      * available in the UX.
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabRootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabRootUiCoordinator.java
-index 6001189da8c90..13df59a39161f 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabRootUiCoordinator.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabRootUiCoordinator.java
-@@ -58,7 +58,6 @@ import org.chromium.chrome.browser.flags.ActivityType;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
- import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
- import org.chromium.chrome.browser.fullscreen.FullscreenManager;
--import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
- import org.chromium.chrome.browser.history.HistoryManager;
- import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthCoordinatorFactory;
- import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthManager;
-@@ -444,23 +443,6 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
-                         this::isPageInsightsHubEnabled,
-                         this::isGoogleBottomBarEnabled,
-                         this::getPageInsightsConfig);
--
--        if (mContextualSearchManagerSupplier.get() != null) {
--            mContextualSearchObserver =
--                    new ContextualSearchObserver() {
--                        @Override
--                        public void onShowContextualSearch(
--                                @Nullable GSAContextDisplaySelection selectionContext) {
--                            mPageInsightsCoordinator.onBottomUiStateChanged(true);
--                        }
--
--                        @Override
--                        public void onHideContextualSearch() {
--                            mPageInsightsCoordinator.onBottomUiStateChanged(false);
--                        }
--                    };
--            mContextualSearchManagerSupplier.get().addObserver(mContextualSearchObserver);
--        }
-     }
- 
-     boolean isPageInsightsHubEnabled() {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
 index 72f0702465c22..19e1e4ffc455d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
@@ -466,7 +292,7 @@ index 72f0702465c22..19e1e4ffc455d 100644
      }
  }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
-index 79fd0ad872769..dcb41e8dfb5af 100644
+index 56e3b7c66b051..2f68d7541c201 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ProcessInitializationHandler.java
 @@ -664,9 +664,6 @@ public class ProcessInitializationHandler {
@@ -535,26 +361,25 @@ index d8c1d27800e50..8ac011c04c1b2 100644
  
      public static boolean isGoogleLensFeatureEnabled(boolean isIncognito) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-index 624405d654bb8..c7e341634e3d1 100644
+index 1ef4c09bbd3f3..d70f3e4dbed08 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-@@ -69,7 +69,6 @@ import org.chromium.chrome.browser.flags.ActivityType;
+@@ -73,7 +73,6 @@ import org.chromium.chrome.browser.flags.ActivityType;
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
  import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
--import org.chromium.chrome.browser.gsa.GSAContextDisplaySelection;
+-import org.chromium.chrome.browser.gsa.ContextReporter;
  import org.chromium.chrome.browser.identity_disc.IdentityDiscController;
  import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsController;
  import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
-@@ -909,23 +908,9 @@ public class RootUiCoordinator
-                                     selectionContext.endOffset);
-                         }
-                     };
+@@ -935,23 +934,6 @@ public class RootUiCoordinator
+                             mWindowAndroid,
+                             mActivityLifecycleDispatcher);
+             mReadAloudControllerSupplier.set(controller);
 -            mReadAloudContextualSearchObserver =
 -                    new ContextualSearchObserver() {
 -                        @Override
--                        public void onShowContextualSearch(
--                                @Nullable GSAContextDisplaySelection selectionContext) {
+-                        public void onShowContextualSearch() {
 -                            controller.maybeHidePlayer();
 -                        }
 -
@@ -563,18 +388,30 @@ index 624405d654bb8..c7e341634e3d1 100644
 -                            controller.maybeShowPlayer();
 -                        }
 -                    };
-             ContextualSearchManager contextualSearchManager =
-                     mContextualSearchManagerSupplier.get();
-             if (contextualSearchManager != null) {
+-            ContextualSearchManager contextualSearchManager =
+-                    mContextualSearchManagerSupplier.get();
+-            if (contextualSearchManager != null) {
 -                contextualSearchManager.addObserver(mReadAloudContextualSearchObserver);
-                 contextualSearchManager.addObserver(mContextualSearchSelectionObserver);
-             }
+-            }
          }
+     }
+ 
+@@ -1016,10 +998,6 @@ public class RootUiCoordinator
+         }
+     }
+ 
+-    public ContextReporter.SelectionReporter getContextReporter() {
+-        return null;
+-    }
+-
+     /**
+      * @return The resource id that contains how large the browser controls are.
+      */
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index 65d86dbac830f..bec5d8eb3de68 100644
+index 6de2462940f8a..8db1a7516282e 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -703,8 +703,8 @@ BASE_FEATURE(kDrawWebEdgeToEdge,
+@@ -730,8 +730,8 @@ BASE_FEATURE(kEducationalTipModule,
               base::FEATURE_DISABLED_BY_DEFAULT);
  
  BASE_FEATURE(kExperimentsForAgsa,
@@ -586,23 +423,23 @@ index 65d86dbac830f..bec5d8eb3de68 100644
  BASE_FEATURE(kFullscreenInsetsApiMigration,
               "FullscreenInsetsApiMigration",
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index 3f2a1b0159d47..af2cca40f98b3 100644
+index 4c36168ca5361..123e6caac6c90 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -620,7 +620,7 @@ public abstract class ChromeFeatureList {
-     public static final CachedFlag sDrawNativeEdgeToEdge =
-             newCachedFlag(DRAW_NATIVE_EDGE_TO_EDGE, false);
-     public static final CachedFlag sDrawWebEdgeToEdge = newCachedFlag(DRAW_WEB_EDGE_TO_EDGE, false);
+@@ -637,7 +637,7 @@ public abstract class ChromeFeatureList {
+             newCachedFlag(EDGE_TO_EDGE_BOTTOM_CHIN, false);
+     public static final CachedFlag sEducationalTipModule =
+             newCachedFlag(EDUCATIONAL_TIP_MODULE, false);
 -    public static final CachedFlag sExperimentsForAgsa = newCachedFlag(EXPERIMENTS_FOR_AGSA, true);
 +    public static final CachedFlag sExperimentsForAgsa = newCachedFlag(EXPERIMENTS_FOR_AGSA, false);
      public static final CachedFlag sFeedLoadingPlaceholder =
              newCachedFlag(FEED_LOADING_PLACEHOLDER, false);
      public static final CachedFlag sForceListTabSwitcher =
 diff --git a/chrome/browser/ui/android/omnibox/BUILD.gn b/chrome/browser/ui/android/omnibox/BUILD.gn
-index 0028caada75fa..b6b16dd64e282 100644
+index f656028b2b87c..164c942113ce7 100644
 --- a/chrome/browser/ui/android/omnibox/BUILD.gn
 +++ b/chrome/browser/ui/android/omnibox/BUILD.gn
-@@ -161,7 +161,6 @@ android_library("java") {
+@@ -163,7 +163,6 @@ android_library("java") {
      "//chrome/browser/device:java",
      "//chrome/browser/feature_engagement:java",
      "//chrome/browser/flags:java",
@@ -610,7 +447,7 @@ index 0028caada75fa..b6b16dd64e282 100644
      "//chrome/browser/history_clusters:java",
      "//chrome/browser/language/android:java",
      "//chrome/browser/lens:java",
-@@ -475,7 +474,6 @@ robolectric_library("junit") {
+@@ -482,7 +481,6 @@ robolectric_library("junit") {
      "//chrome/browser/device:java",
      "//chrome/browser/feature_engagement:java",
      "//chrome/browser/flags:java",

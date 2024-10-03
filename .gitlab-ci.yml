@@ -7,19 +7,20 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 build-docker:
-  image: docker:19-git
+  image: docker:25.0.5-git
   stage: prepare
   tags:
     - generic_privileged
   variables:
     DOCKER_DRIVER: overlay2
   services:
-    - docker:19-dind
+    - docker:25.0.5-dind
   script:
     - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.e.foundation:5000 -u gitlab-ci-token --password-stdin
     - docker pull $CONTAINER_IMAGE:latest || true
     - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:latest ${CI_PROJECT_DIR}
     - docker push $CONTAINER_IMAGE:latest
+  retry: 2
 
 .build-cromite:
   image: $CONTAINER_IMAGE
@@ -30,6 +31,7 @@ build-docker:
     paths:
       - apks/*
       - bin/*
+    expire_in: 1 week
 
 build-cromite-arm:
   stage: build

@@ -1,17 +1,20 @@
 FROM ubuntu:20.04
 
 ENV CHROMIUM_DIR "/srv/chromium"
-ENV CHROMIUM_VER "127.0.6533.106"
+ENV CHROMIUM_VER "129.0.6668.71"
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    add-apt-repository ppa:git-core/ppa
 
 RUN dpkg --add-architecture i386
 
-RUN apt-get update &&\
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
-    apt-get -f -y install sudo lsb-release cl-base64 bash wget apt-utils ccache jq python3 \
+    apt-get -f -y install sudo lsb-release cl-base64 bash wget apt-utils ccache jq python3.10 \
     python-is-python3 sed tzdata build-essential lib32gcc-9-dev g++-multilib dos2unix wiggle git curl
-
-RUN apt-get update &&\
-    apt-get -y install p7zip-full
 
 RUN mkdir ${CHROMIUM_DIR}
 
