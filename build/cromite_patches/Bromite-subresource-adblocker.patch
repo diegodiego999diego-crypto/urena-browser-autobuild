@@ -26,7 +26,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/app/generated_resources.grd            |  10 +
  chrome/browser/after_startup_task_utils.cc    |   4 +
  chrome/browser/browser_process.h              |   6 +
- chrome/browser/browser_process_impl.cc        |  21 ++
+ chrome/browser/browser_process_impl.cc        |  28 ++
  chrome/browser/browser_process_impl.h         |   2 +
  chrome/browser/chrome_browser_main.cc         |   3 +
  chrome/browser/flags/BUILD.gn                 |   3 +
@@ -51,7 +51,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/subresource_filter_features.cc    | 116 +-------
  .../core/browser/verified_ruleset_dealer.cc   |   4 +
  .../core/common/indexed_ruleset.cc            |   5 +-
- 39 files changed, 1254 insertions(+), 129 deletions(-)
+ 39 files changed, 1261 insertions(+), 129 deletions(-)
  create mode 100644 chrome/android/java/res/layout/adblock_editor.xml
  create mode 100644 chrome/android/java/res/xml/adblock_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
@@ -214,7 +214,7 @@ diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res
  
 +    <string name="adblock_on">Autoupdate enabled</string>
 +    <string name="adblock_off">Autoupdate disabled</string>
-+    <string name="adblock_help_url">https://www.bromite.org/custom-filters</string>
++    <string name="adblock_help_url">https://github.com/uazo/cromite/blob/master/docs/BROMITE_LEGACY_ADBLOCK.md</string>
 +
      <string name="proxy_title">Proxy configuration</string>
      <string name="proxy_url">chrome://proxy</string>
@@ -511,7 +511,7 @@ diff --git a/chrome/browser/browser_process.h b/chrome/browser/browser_process.h
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -1197,6 +1197,27 @@ BrowserProcessImpl::component_updater() {
+@@ -1197,6 +1197,34 @@ BrowserProcessImpl::component_updater() {
    return component_updater_.get();
  }
  
@@ -525,6 +525,13 @@ diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_pro
 +
 +  std::unique_ptr<component_updater::UpdateScheduler> scheduler =
 +      std::make_unique<component_updater::TimerUpdateScheduler>();
++
++  auto adblock_updater_url =
++    local_state()->GetString(prefs::kAdBlockFiltersURL);
++  if (base::StartsWith(adblock_updater_url,
++        "https://www.bromite.org", base::CompareCase::INSENSITIVE_ASCII)) {
++    local_state()->SetString(prefs::kAdBlockFiltersURL, "about:blank");
++  }
 +
 +  adblock_updater_ = std::make_unique<adblock_updater::AdBlockUpdaterService>(
 +          g_browser_process->system_network_context_manager()->GetSharedURLLoaderFactory(),
@@ -678,7 +685,7 @@ diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/brows
  
 +  registry->RegisterBooleanPref(prefs::kAdBlockEnabled, false);
 +  registry->RegisterStringPref(prefs::kAdBlockFiltersURL,
-+    "https://www.bromite.org/filters/filters.dat");
++    "about:blank");
 +
    // Static auth params
    registry->RegisterStringPref(prefs::kAuthSchemes,

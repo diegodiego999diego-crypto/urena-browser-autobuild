@@ -4,6 +4,7 @@ Subject: Add custom tab intents privacy option
 
 Add custom tab intents privacy option and force
 open external links in incognito flag.
+Use the CCT ephemeral mode.
 
 Flags are mutually exclusive.
 
@@ -14,14 +15,14 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../java/res/xml/privacy_preferences.xml      | 10 ++++++++
  .../browser/LaunchIntentDispatcher.java       | 21 ++++++++++++++++
  .../customtabs/CustomTabsConnection.java      |  1 +
- .../IncognitoCustomTabIntentDataProvider.java |  6 +++++
+ .../IncognitoCustomTabIntentDataProvider.java | 14 +++++++++++
  .../privacy/settings/PrivacySettings.java     | 24 +++++++++++++++++++
  .../chrome/browser/tab/TabAssociatedApp.java  |  6 ++++-
  .../strings/android_chrome_strings.grd        | 14 +++++++++++
  .../OriginVerifier.java                       |  5 ++++
  .../core/common/language_experiments.cc       |  1 +
  .../add-custom-tab-intents-privacy-option.inc |  1 +
- 10 files changed, 88 insertions(+), 1 deletion(-)
+ 10 files changed, 96 insertions(+), 1 deletion(-)
  create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/add-custom-tab-intents-privacy-option.inc
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
@@ -130,6 +131,28 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/Inco
          return ChromeFeatureList.sCctIncognitoAvailableToThirdParty.isEnabled();
      }
  
+@@ -216,6 +222,10 @@ public class IncognitoCustomTabIntentDataProvider extends BrowserServicesIntentD
+     }
+ 
+     public static boolean isValidIncognitoIntent(Intent intent) {
++        if (ContextUtils.getAppSharedPreferences()
++                .getBoolean(PrivacySettings.PREF_OPEN_EXTERNAL_LINKS_INCOGNITO, false)) {
++            return true;
++        }
+         if (!isIncognitoRequested(intent)) return false;
+         var session = CustomTabsSessionToken.getSessionTokenFromIntent(intent);
+         if (isIntentFromThirdPartyAllowed()
+@@ -326,6 +336,10 @@ public class IncognitoCustomTabIntentDataProvider extends BrowserServicesIntentD
+ 
+     @Override
+     public @CustomTabProfileType int getCustomTabMode() {
++        if (ContextUtils.getAppSharedPreferences()
++                .getBoolean(PrivacySettings.PREF_OPEN_EXTERNAL_LINKS_INCOGNITO, false)) {
++            return CustomTabProfileType.EPHEMERAL;
++        }
+         return CustomTabProfileType.INCOGNITO;
+     }
+ 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
@@ -220,7 +243,7 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
 +        Open external links in incognito
 +      </message>
 +      <message name="IDS_OPEN_EXTERNAL_LINKS_INCOGNITO_SUMMARY" desc="Summary text for 'Open external links in incognito' settings-privacy option.">
-+        Force the opening of all external links in incognito mode. Caution: there is only one incognito profile.
++        Force the opening of all external links in incognito mode and uses the CCT ephemeral mode. Caution: there is only one incognito profile.
 +      </message>
        <!-- Usage Stats strings -->
        <message name="IDS_USAGE_STATS_CONSENT_TITLE" desc="Title for activity authorizing Digital Wellbeing to access Chrome usage data">
