@@ -197,8 +197,12 @@ solutions = [{
     "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
     "name": "src",
+    "deps_file": 'DEPS',
     "custom_deps": {},
-    "custom_vars": {}
+    "custom_vars": {
+        "checkout_android_prebuilts_build_tools": True,
+        "checkout_telemetry_dependencies": False,
+    }
 }]
 
 target_os = ["android"]
