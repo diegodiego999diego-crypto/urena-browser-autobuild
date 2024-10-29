@@ -25,12 +25,12 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../tile/MostVisitedTilesMediator.java        |   9 +-
  .../engagement/important_sites_util.cc        |   2 +-
  .../flags/android/chrome_feature_list.cc      |   1 +
- .../browser/flags/ChromeFeatureList.java      |   5 +-
+ .../browser/flags/ChromeFeatureList.java      |   3 +-
  .../history/core/browser/top_sites_impl.h     |   2 +-
  .../Restore-Simplified-NTP-launch.inc         |  12 ++
- .../Restore-Simplified-NTP-launch.inc         |   6 +
+ .../Restore-Simplified-NTP-launch.inc         |   5 +
  .../Restore-Simplified-NTP-launch.inc         |   1 +
- 24 files changed, 396 insertions(+), 30 deletions(-)
+ 24 files changed, 394 insertions(+), 29 deletions(-)
  create mode 100644 chrome/android/java/res/layout/ntp_shortcuts.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/feedback/SimplifiedNtpFeedbackSource.java
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesGridLayout.java
@@ -41,7 +41,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -543,6 +543,7 @@ chrome_java_resources = [
+@@ -544,6 +544,7 @@ chrome_java_resources = [
    "java/res/layout/new_tab_page_layout.xml",
    "java/res/layout/new_tab_page_tile_grid_placeholder.xml",
    "java/res/layout/open_full_chrome_history_header.xml",
@@ -60,7 +60,7 @@ diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbar.java",
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbarManager.java",
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbarObserver.java",
-@@ -1042,6 +1043,7 @@ chrome_java_sources = [
+@@ -1045,6 +1046,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/suggestions/mostvisited/MostVisitedSitesMetadataUtils.java",
    "java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java",
    "java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesLayout.java",
@@ -194,7 +194,7 @@ diff --git a/chrome/android/java/res/values/attrs.xml b/chrome/android/java/res/
 diff --git a/chrome/android/java/res/values/dimens.xml b/chrome/android/java/res/values/dimens.xml
 --- a/chrome/android/java/res/values/dimens.xml
 +++ b/chrome/android/java/res/values/dimens.xml
-@@ -127,6 +127,8 @@ found in the LICENSE file.
+@@ -124,6 +124,8 @@ found in the LICENSE file.
      <dimen name="find_in_page_popup_margin_end">62dp</dimen>
  
      <!-- NTP dimensions -->
@@ -692,7 +692,7 @@ diff --git a/chrome/browser/engagement/important_sites_util.cc b/chrome/browser/
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -254,6 +254,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -257,6 +257,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
      &kGtsCloseTabAnimation,
      &kIncognitoReauthenticationForAndroid,
      &kIncognitoScreenshot,
@@ -703,7 +703,7 @@ diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browse
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -360,6 +360,7 @@ public abstract class ChromeFeatureList {
+@@ -366,6 +366,7 @@ public abstract class ChromeFeatureList {
      public static final String MAYLAUNCHURL_USES_SEPARATE_STORAGE_PARTITION =
              "MayLaunchUrlUsesSeparateStoragePartition";
      public static final String MESSAGES_FOR_ANDROID_ADS_BLOCKED = "MessagesForAndroidAdsBlocked";
@@ -711,24 +711,15 @@ diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/f
      public static final String SEARCH_READY_OMNIBOX = "SearchReadyOmnibox";
      public static final String MOST_VISITED_TILES_RESELECT = "MostVisitedTilesReselect";
      public static final String MUlTI_INSTANCE_APPLICATION_STATUS_CLEANUP =
-@@ -640,7 +641,7 @@ public abstract class ChromeFeatureList {
+@@ -658,7 +659,7 @@ public abstract class ChromeFeatureList {
      public static final CachedFlag sLogoPolish = newCachedFlag(LOGO_POLISH, true);
      public static final CachedFlag sLogoPolishAnimationKillSwitch =
              newCachedFlag(LOGO_POLISH_ANIMATION_KILL_SWITCH, true);
 -    public static final CachedFlag sMagicStackAndroid = newCachedFlag(MAGIC_STACK_ANDROID, true);
 +    public static final CachedFlag sMagicStackAndroid = newCachedFlag(MAGIC_STACK_ANDROID, false);
+     public static final CachedFlag sMayLaunchurlUsesSeparateStoragePartition = newCachedFlag(MAYLAUNCHURL_USES_SEPARATE_STORAGE_PARTITION, false);
      public static final CachedFlag sMostVisitedTilesReselect =
              newCachedFlag(MOST_VISITED_TILES_RESELECT, false);
-     public static final CachedFlag sMultiInstanceApplicationStatusCleanup =
-@@ -675,7 +676,7 @@ public abstract class ChromeFeatureList {
-             newCachedFlag(SMALLER_TAB_STRIP_TITLE_LIMIT, true);
-     public static final CachedFlag sStartSurfaceReturnTime =
-             newCachedFlag(START_SURFACE_RETURN_TIME, true);
--    public static final CachedFlag sSurfacePolish = newCachedFlag(SURFACE_POLISH, true);
-+    public static final CachedFlag sSurfacePolish = newCachedFlag(SURFACE_POLISH, false);
-     public static final CachedFlag sTabDragDropAsWindowAndroid =
-             newCachedFlag(TAB_DRAG_DROP_ANDROID, false);
-     public static final CachedFlag sTabGroupCreationDialogAndroid =
 diff --git a/components/history/core/browser/top_sites_impl.h b/components/history/core/browser/top_sites_impl.h
 --- a/components/history/core/browser/top_sites_impl.h
 +++ b/components/history/core/browser/top_sites_impl.h
@@ -762,12 +753,11 @@ diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/R
 new file mode 100644
 --- /dev/null
 +++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Restore-Simplified-NTP-launch.inc
-@@ -0,0 +1,6 @@
+@@ -0,0 +1,5 @@
 +CROMITE_FEATURE(kSimplifiedNTP,
 +                "SimplifiedNTP",
 +                base::FEATURE_ENABLED_BY_DEFAULT);
 +
-+SET_CROMITE_FEATURE_DISABLED(kSurfacePolish);
 +SET_CROMITE_FEATURE_DISABLED(kMagicStackAndroid);
 diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Restore-Simplified-NTP-launch.inc
 new file mode 100644

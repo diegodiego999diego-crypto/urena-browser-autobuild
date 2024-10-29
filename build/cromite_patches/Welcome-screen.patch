@@ -13,23 +13,24 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/android/java/res/values/styles.xml     |  24 ++
  .../firstrun/ChildAccountStatusSupplier.java  |  13 -
  .../DefaultSearchEngineFirstRunFragment.java  |   3 -
- .../browser/firstrun/FirstRunActivity.java    |  31 +-
+ .../browser/firstrun/FirstRunActivity.java    |  32 +-
  .../firstrun/FirstRunActivityBase.java        |   6 +-
  .../firstrun/FirstRunFlowSequencer.java       |  70 +---
  .../browser/firstrun/FirstRunUtils.java       |   1 +
  .../firstrun/ToSAndUMAFirstRunFragment.java   | 335 +++++++++++++++++
  .../firstrun/TosAndUmaFragmentView.java       | 336 ++++++++++++++++++
  .../browser/locale/LocaleManagerDelegate.java |   5 +-
- .../strings/android_chrome_strings.grd        |  24 +-
- 15 files changed, 911 insertions(+), 110 deletions(-)
+ .../Welcome-screen.grdp                       |  27 ++
+ 15 files changed, 915 insertions(+), 110 deletions(-)
  create mode 100644 chrome/android/java/res/layout/fre_tosanduma.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/firstrun/TosAndUmaFragmentView.java
+ create mode 100644 chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Welcome-screen.grdp
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -507,6 +507,7 @@ chrome_java_resources = [
+@@ -508,6 +508,7 @@ chrome_java_resources = [
    "java/res/layout/find_in_page.xml",
    "java/res/layout/find_toolbar.xml",
    "java/res/layout/fre_tos_privacy_disclaimer.xml",
@@ -177,7 +178,7 @@ new file mode 100644
 +            android:layout_width="wrap_content"
 +            android:layout_height="wrap_content"
 +            android:layout_gravity="center"
-+            android:text="@string/fre_accept_continue"
++            android:text="@string/fre_continue"
 +            android:animateLayoutChanges="true"
 +            style="@style/FreAcceptTosButton" />
 +
@@ -217,7 +218,7 @@ new file mode 100644
 diff --git a/chrome/android/java/res/values/dimens.xml b/chrome/android/java/res/values/dimens.xml
 --- a/chrome/android/java/res/values/dimens.xml
 +++ b/chrome/android/java/res/values/dimens.xml
-@@ -107,6 +107,16 @@ found in the LICENSE file.
+@@ -104,6 +104,16 @@ found in the LICENSE file.
      <dimen name="fre_loading_spinner_size">48dp</dimen>
      <dimen name="fre_policy_privacy_disclaimer_icon_size">18dp</dimen>
      <dimen name="fre_policy_privacy_disclaimer_icon_padding">8dp</dimen>
@@ -261,7 +262,7 @@ diff --git a/chrome/android/java/res/values/styles.xml b/chrome/android/java/res
 +    <style name="FreWelcomePageTitle" parent="FreTitle">
 +        <item name="android:textAppearance">@style/TextAppearance.FreFirstFrameTitle</item>
 +    </style>
-+    <style name="FreAcceptTosButton" parent="FilledButton.Flat">
++    <style name="FreAcceptTosButton" parent="FilledButton">
 +        <item name="android:textAppearance">@style/TextAppearance.FreFirstFrameButton</item>
 +    </style>
 +
@@ -320,16 +321,16 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/Defaul
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
-@@ -31,8 +31,7 @@ import org.chromium.chrome.browser.fonts.FontPreloader;
+@@ -30,8 +30,7 @@ import org.chromium.chrome.browser.fonts.FontPreloader;
  import org.chromium.chrome.browser.metrics.UmaUtils;
  import org.chromium.chrome.browser.profiles.Profile;
  import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 -import org.chromium.chrome.browser.signin.SigninCheckerProvider;
 -import org.chromium.chrome.browser.signin.SigninFirstRunFragment;
 +import org.chromium.chrome.browser.firstrun.ToSAndUMAFirstRunFragment;
+ import org.chromium.chrome.browser.ui.signin.DialogWhenLargeContentLayout;
  import org.chromium.chrome.browser.ui.signin.SigninUtils;
  import org.chromium.chrome.browser.ui.signin.history_sync.HistorySyncHelper;
- import org.chromium.chrome.browser.ui.system.StatusBarColorController;
 @@ -126,7 +125,7 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
      /** Creates first page and sets up adapter. Should result UI being shown on the screen. */
      private void createFirstPage() {
@@ -347,12 +348,12 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
  
          mFirstRunFlowSequencer.updateFirstRunProperties(mFreProperties);
  
-@@ -163,26 +161,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -163,27 +161,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
              mFreProgressStates.add(MobileFreProgress.DEFAULT_SEARCH_ENGINE_SHOWN);
          }
  
--        // An optional sync consent page, the visibility of this page will be decided on the fly
--        // according to the situation.
+-        // An optional history sync opt-in page, the visibility of this page will be decided on the
+-        // fly according to the situation.
 -        if (ChromeFeatureList.isEnabled(
 -                ChromeFeatureList.REPLACE_SYNC_PROMOS_WITH_SIGN_IN_PROMOS)) {
 -            BooleanSupplier showHistorySync =
@@ -364,17 +365,18 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
 -                historySyncHelper.recordHistorySyncNotShown(SigninAccessPoint.START_PAGE);
 -            }
 -            mPages.add(new FirstRunPage<>(HistorySyncFirstRunFragment.class, showHistorySync));
+-            mFreProgressStates.add(MobileFreProgress.HISTORY_SYNC_OPT_IN_SHOWN);
 -        } else {
 -            BooleanSupplier showSyncConsent =
 -                    () -> mFreProperties.getBoolean(SHOW_SYNC_CONSENT_PAGE);
 -            mPages.add(new FirstRunPage<>(SyncConsentFirstRunFragment.class, showSyncConsent));
+-            mFreProgressStates.add(MobileFreProgress.SYNC_CONSENT_SHOWN);
 -        }
--        mFreProgressStates.add(MobileFreProgress.SYNC_CONSENT_SHOWN);
 -
          if (mPagerAdapter != null) {
              mPagerAdapter.notifyDataSetChanged();
          }
-@@ -559,11 +537,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -558,11 +535,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
      public void acceptTermsOfService(boolean allowMetricsAndCrashUploading) {
          assert mNativeInitializationPromise.isFulfilled();
  
@@ -759,13 +761,13 @@ new file mode 100644
 +    private void updateTosText() {
 +        List<SpanInfo> spans = new LinkedList<SpanInfo>();
 +
-+        spans.add(buildPrivacyPolicyLink("1", R.string.adblock_wiki_url));
++        spans.add(buildPrivacyPolicyLink("1", R.string.privacy_link1));
 +
-+        spans.add(buildPrivacyPolicyLink("2", R.string.adblock_updater_privacy_policy_url));
++        spans.add(buildPrivacyPolicyLink("2", R.string.privacy_link2));
 +
-+        spans.add(buildPrivacyPolicyLink("3", R.string.auto_updates_wiki_url));
++        spans.add(buildPrivacyPolicyLink("3", R.string.privacy_link3));
 +
-+        spans.add(buildPrivacyPolicyLink("4", R.string.bromite_updater_privacy_policy_url));
++        spans.add(buildPrivacyPolicyLink("4", R.string.privacy_link4));
 +
 +        String tosString = getString(R.string.bromite_fre_footer_privacy_policy);
 +
@@ -1239,7 +1241,7 @@ new file mode 100644
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-@@ -324,8 +324,9 @@ public class LocaleManagerDelegate {
+@@ -311,8 +311,9 @@ public class LocaleManagerDelegate {
  
      /** @see LocaleManager#getSearchEnginesForPromoDialog  */
      public List<TemplateUrl> getSearchEnginesForPromoDialog(@SearchEnginePromoType int promoType) {
@@ -1251,38 +1253,36 @@ diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/L
      }
  
      /** @see LocaleManager#onUserSearchEngineChoice */
-diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
---- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
-+++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -3634,7 +3634,29 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
-         <ph name="APP_NAME">%1$s<ex>Google Maps</ex></ph> will open in Chrome. By continuing, you agree to the <ph name="BEGIN_LINK1">&lt;LINK1&gt;</ph>Google Terms of Service<ph name="END_LINK1">&lt;/LINK1&gt;</ph>, and the <ph name="BEGIN_LINK2">&lt;LINK2&gt;</ph>Google Chrome and ChromeOS Additional Terms of Service<ph name="END_LINK2">&lt;/LINK2&gt;</ph>. The <ph name="BEGIN_LINK3">&lt;LINK3&gt;</ph>Privacy Policy<ph name="END_LINK3">&lt;/LINK3&gt;</ph> also applies.
-       </message>
-       <message name="IDS_FRE_ACCEPT_CONTINUE" desc="Text for first page accept and continue button [CHAR_LIMIT=20]">
--        Accept &amp; continue
+diff --git a/chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Welcome-screen.grdp b/chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Welcome-screen.grdp
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Welcome-screen.grdp
+@@ -0,0 +1,27 @@
++<?xml version="1.0" encoding="utf-8"?>
++<grit-part>
++    <message name="IDS_FRE_CONTINUE" desc="Text for first page accept and continue button [CHAR_LIMIT=20]">
 +        Continue
-+      </message>
-+      <message name="IDS_ADBLOCK_UPDATER_PRIVACY_POLICY_URL" desc="URL for privacy policy for the ad block updater" translateable="false">
-+        https://docs.github.com/en/github/site-policy/github-privacy-statement#github-pages
-+      </message>
-+      <message name="IDS_BROMITE_UPDATER_PRIVACY_POLICY_URL" desc="URL for privacy policy for the Bromite auto updater" translateable="false">
-+        https://docs.github.com/en/github/site-policy/github-privacy-statement#github-pages
-+      </message>
-+      <message name="IDS_BROMITE_FRE_FOOTER_PRIVACY_POLICY" desc="Message explaining the privacy policy of the file hosting service provider for adblock updates and Bromite app automatic updates">
-+        <ph name="BEGIN_PRIVACY_LINK1">&lt;PRIVACY_LINK1&gt;</ph>Automatic ad block filters updates<ph name="END_PRIVACY_LINK1">&lt;/PRIVACY_LINK1&gt;</ph> are subject to the <ph name="BEGIN_PRIVACY_LINK2">&lt;PRIVACY_LINK2&gt;</ph>GitHub Privacy statement<ph name="END_PRIVACY_LINK2">&lt;/PRIVACY_LINK2&gt;</ph>; they cannot be disabled.
-+        The following checkbox controls instead <ph name="BEGIN_PRIVACY_LINK3">&lt;PRIVACY_LINK3&gt;</ph>automatic app updates<ph name="END_PRIVACY_LINK3">&lt;/PRIVACY_LINK3&gt;</ph> which are also subject to the <ph name="BEGIN_PRIVACY_LINK4">&lt;PRIVACY_LINK4&gt;</ph>GitHub Privacy statement<ph name="END_PRIVACY_LINK4">&lt;/PRIVACY_LINK4&gt;</ph>.
-+      </message>
-+      <message name="IDS_AUTO_UPDATER_CHECK" desc="Message for the checkbox for automatic Bromite updates">
++    </message>
++    <message name="IDS_AUTO_UPDATER_CHECK" desc="Message for the checkbox for automatic Bromite updates">
 +        Automatic checks for Bromite app updates
-+      </message>
-+      <message name="IDS_UPDATER_PRIVACY_POLICY_URL" desc="URL for GitHub privacy statement" translateable="false">
++    </message>
++
++    <message name="IDS_BROMITE_FRE_FOOTER_PRIVACY_POLICY" desc="Message explaining the privacy policy of the file hosting service provider for adblock updates and Bromite app automatic updates">
++        <ph name="BEGIN_PRIVACY_LINK1">&lt;PRIVACY_LINK1&gt;</ph>Automatic ad block filters updates<ph name="END_PRIVACY_LINK1">&lt;/PRIVACY_LINK1&gt;</ph> are subject to the <ph name="BEGIN_PRIVACY_LINK2">&lt;PRIVACY_LINK2&gt;</ph>Cromite Privacy statement<ph name="END_PRIVACY_LINK2">&lt;/PRIVACY_LINK2&gt;</ph>.
++The following checkbox controls instead <ph name="BEGIN_PRIVACY_LINK3">&lt;PRIVACY_LINK3&gt;</ph>automatic app updates<ph name="END_PRIVACY_LINK3">&lt;/PRIVACY_LINK3&gt;</ph> which are subject to the <ph name="BEGIN_PRIVACY_LINK4">&lt;PRIVACY_LINK4&gt;</ph>GitHub Privacy statement<ph name="END_PRIVACY_LINK4">&lt;/PRIVACY_LINK4&gt;</ph>.
++    </message>
++
++    <message name="IDS_PRIVACY_LINK1" desc="URL for Bromite wiki page about ad blocking" translateable="false">
++        https://github.com/uazo/cromite/blob/master/docs/ADBLOCKING.md
++    </message>
++    <message name="IDS_PRIVACY_LINK2" desc="URL for privacy policy for the ad block updater" translateable="false">
++        https://github.com/uazo/cromite/blob/master/docs/PRIVACY_POLICY.md
++    </message>
++    <message name="IDS_PRIVACY_LINK3" desc="URL for Bromite wiki page about automatic updates" translateable="false">
++        https://github.com/uazo/cromite/blob/master/docs/AUTOMATIC_UPDATES.md
++    </message>
++    <message name="IDS_PRIVACY_LINK4" desc="URL for privacy policy for the Bromite auto updater" translateable="false">
 +        https://docs.github.com/en/github/site-policy/github-privacy-statement#github-pages
-+      </message>
-+      <message name="IDS_ADBLOCK_WIKI_URL" desc="URL for Bromite wiki page about ad blocking" translateable="false">
-+        https://github.com/uazo/cromite/wiki/AdBlocking
-+      </message>
-+      <message name="IDS_AUTO_UPDATES_WIKI_URL" desc="URL for Bromite wiki page about automatic updates" translateable="false">
-+        https://github.com/uazo/cromite/wiki/AutomaticUpdates
-       </message>
-       <message name="IDS_FRE_WELCOME" desc="Text for greeting the user on Chrome First Run">
-         Welcome to Chrome
++    </message>
++</grit-part>
 --

@@ -1,7 +1,7 @@
-From a10663fcd1798a66d79d9af3917038992555649b Mon Sep 17 00:00:00 2001
+From fd01bd6608fdace1d6da4f0a6473280610b179b1 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Fri, 30 Mar 2018 10:09:03 +0200
-Subject: [PATCH 55/59] Multiple fingerprinting mitigations
+Subject: [PATCH 55/61] Multiple fingerprinting mitigations
 
 1. getClientRects, getBoundingClientRect, measureText: add fingerprinting mitigation
 
@@ -61,10 +61,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 third_party/ungoogled/ungoogled_switches.h
 
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 3ab6d3149b27a..103fd0be65788 100644
+index 3f3ce6f934c51..e1c43aa1684fc 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -2437,6 +2437,7 @@ static_library("browser") {
+@@ -2447,6 +2447,7 @@ static_library("browser") {
      "//services/device/public/cpp:device_features",
      "//services/device/public/cpp/geolocation",
      "//services/device/public/cpp/usb",
@@ -73,10 +73,10 @@ index 3ab6d3149b27a..103fd0be65788 100644
      "//services/device/public/mojom:usb",
      "//services/image_annotation:service",
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index a8a06034015e7..146eec4ec7ef0 100644
+index 27704ae80c71c..0ead1366e6379 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -248,6 +248,8 @@
+@@ -247,6 +247,8 @@
  #include "ui/ui_features.h"
  #include "url/url_features.h"
  
@@ -86,22 +86,22 @@ index a8a06034015e7..146eec4ec7ef0 100644
  #include "base/allocator/buildflags.h"
  #endif
 diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
-index a0f17bb4ff8ee..ce1c99686ee6b 100644
+index 4e163a30b7f98..b2a8c49616521 100644
 --- a/content/browser/BUILD.gn
 +++ b/content/browser/BUILD.gn
 @@ -275,6 +275,7 @@ source_set("browser") {
-     "//third_party/libyuv",
      "//third_party/re2",
+     "//third_party/snappy",
      "//third_party/sqlite",
 +    "//third_party/ungoogled:switches",
      "//third_party/webrtc_overrides:webrtc_component",
      "//third_party/zlib",
      "//tools/v8_context_snapshot:buildflags",
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
-index bcc1bd9937584..b1004b1f1f7be 100644
+index c9485cedc8111..3ea185846561a 100644
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc
-@@ -212,6 +212,7 @@
+@@ -213,6 +213,7 @@
  #include "url/gurl.h"
  #include "url/origin.h"
  
@@ -109,7 +109,7 @@ index bcc1bd9937584..b1004b1f1f7be 100644
  #if BUILDFLAG(IS_ANDROID)
  #include "base/android/child_process_binding_types.h"
  #include "content/browser/font_unique_name_lookup/font_unique_name_lookup_service.h"
-@@ -3271,6 +3272,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
+@@ -3334,6 +3335,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
      switches::kDisableBreakpad,
      switches::kDisableDatabases,
      switches::kDisableFileSystem,
@@ -132,7 +132,7 @@ index e40717e1ed42d..a109cd094f740 100644
      "//ui/base",
      "//ui/events/blink",
 diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.cc
-index 0fc634ddc0a43..8a5d6be4c2d0f 100644
+index 6feae3ec39673..811b2ab73b049 100644
 --- a/content/child/runtime_features.cc
 +++ b/content/child/runtime_features.cc
 @@ -47,6 +47,8 @@
@@ -194,7 +194,7 @@ index d7d110b9f8f30..136b67c51f120 100644
    static void EnableFluentOverlayScrollbars(bool);
    static void EnableVibration(bool);
 diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
-index 432d07c47f0f0..0b0381e3aaa44 100644
+index f315d66e004a6..0b35410008c09 100644
 --- a/third_party/blink/renderer/core/dom/document.cc
 +++ b/third_party/blink/renderer/core/dom/document.cc
 @@ -44,6 +44,7 @@
@@ -205,7 +205,7 @@ index 432d07c47f0f0..0b0381e3aaa44 100644
  #include "base/notreached.h"
  #include "base/ranges/algorithm.h"
  #include "base/task/single_thread_task_runner.h"
-@@ -908,6 +909,17 @@ Document::Document(const DocumentInit& initializer,
+@@ -861,6 +862,17 @@ Document::Document(const DocumentInit& initializer,
    TRACE_EVENT_WITH_FLOW0("blink", "Document::Document", TRACE_ID_LOCAL(this),
                           TRACE_EVENT_FLAG_FLOW_OUT);
    DCHECK(agent_);
@@ -223,7 +223,7 @@ index 432d07c47f0f0..0b0381e3aaa44 100644
    if (base::FeatureList::IsEnabled(features::kDelayAsyncScriptExecution) &&
        features::kDelayAsyncScriptExecutionDelayByDefaultParam.Get()) {
      script_runner_delayer_->Activate();
-@@ -2497,6 +2509,14 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
+@@ -2451,6 +2463,14 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
  #endif
  }
  
@@ -239,10 +239,10 @@ index 432d07c47f0f0..0b0381e3aaa44 100644
    DCHECK(IsActive());
    DCHECK(IsMainThread());
 diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
-index 142590dd06d4d..319e2fddd0ee3 100644
+index 642049e815f8b..20ddbb51c4b26 100644
 --- a/third_party/blink/renderer/core/dom/document.h
 +++ b/third_party/blink/renderer/core/dom/document.h
-@@ -549,6 +549,10 @@ class CORE_EXPORT Document : public ContainerNode,
+@@ -548,6 +548,10 @@ class CORE_EXPORT Document : public ContainerNode,
      has_xml_declaration_ = has_xml_declaration ? 1 : 0;
    }
  
@@ -253,7 +253,7 @@ index 142590dd06d4d..319e2fddd0ee3 100644
    AtomicString visibilityState() const;
    bool IsPageVisible() const;
    bool hidden() const;
-@@ -2570,6 +2574,9 @@ class CORE_EXPORT Document : public ContainerNode,
+@@ -2556,6 +2560,9 @@ class CORE_EXPORT Document : public ContainerNode,
  
    base::ElapsedTimer start_time_;
  
@@ -264,10 +264,10 @@ index 142590dd06d4d..319e2fddd0ee3 100644
    Member<ScriptRunnerDelayer> script_runner_delayer_;
  
 diff --git a/third_party/blink/renderer/core/dom/element.cc b/third_party/blink/renderer/core/dom/element.cc
-index 3caf7c4f35aec..8f97ef25d2844 100644
+index b577939336009..77848983d6975 100644
 --- a/third_party/blink/renderer/core/dom/element.cc
 +++ b/third_party/blink/renderer/core/dom/element.cc
-@@ -2487,6 +2487,7 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
+@@ -2482,6 +2482,7 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
        quads.push_back(element_layout_object->LocalToAbsoluteQuad(
            gfx::QuadF(element_layout_object->ObjectBoundingBox())));
      }
@@ -275,7 +275,7 @@ index 3caf7c4f35aec..8f97ef25d2844 100644
      return;
    }
  
-@@ -2495,6 +2496,10 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
+@@ -2490,6 +2491,10 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
        element_layout_object->IsBR()) {
      element_layout_object->AbsoluteQuads(quads);
    }
@@ -286,7 +286,7 @@ index 3caf7c4f35aec..8f97ef25d2844 100644
  }
  
  DOMRectList* Element::getClientRects() {
-@@ -2540,6 +2545,9 @@ gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdate() const {
+@@ -2535,6 +2540,9 @@ gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdate() const {
    DCHECK(element_layout_object);
    GetDocument().AdjustRectForScrollAndAbsoluteZoom(result,
                                                     *element_layout_object);
@@ -349,12 +349,12 @@ index 9b8e14d12ba98..e3804ed2ff45a 100644
    }
  
 diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
-index 88bea62c4cb94..32decd446fd81 100644
+index 4225f6bb8e7b7..6c5300428990a 100644
 --- a/third_party/blink/renderer/core/html/canvas/text_metrics.cc
 +++ b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
-@@ -79,6 +79,24 @@ TextMetrics::TextMetrics(const Font& font,
-   Update(font, direction, baseline, align, text);
+@@ -93,6 +93,24 @@ const ShapeResult* ShapeWord(const TextRun& word_run, const Font& font) {
  }
+ }  // namespace
  
 +void TextMetrics::Shuffle(const double factor) {
 +  // x-direction
@@ -404,7 +404,7 @@ index 03ca2aa7527a4..9281a8cae0d4f 100644
        UseCounter::Count(GetDocument(), WebFeature::kGetBBoxForText);
      }
 diff --git a/third_party/blink/renderer/core/svg/svg_text_content_element.cc b/third_party/blink/renderer/core/svg/svg_text_content_element.cc
-index 26b7828b0597d..a970efc7e9f80 100644
+index 1050027f6ba59..405a27d978fc5 100644
 --- a/third_party/blink/renderer/core/svg/svg_text_content_element.cc
 +++ b/third_party/blink/renderer/core/svg/svg_text_content_element.cc
 @@ -111,11 +111,16 @@ float SVGTextContentElement::getComputedTextLength() {
@@ -484,7 +484,7 @@ index 26b7828b0597d..a970efc7e9f80 100644
    return -1;
  }
 diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
-index c39b333c1652a..9bf46bae24b26 100644
+index 08cc3b5719df2..94f4bcb58f738 100644
 --- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
 +++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
 @@ -191,6 +191,11 @@
@@ -499,7 +499,7 @@ index c39b333c1652a..9bf46bae24b26 100644
  #include "ui/gfx/geometry/vector2d.h"
  #include "ui/gfx/geometry/vector2d_f.h"
  #include "v8/include/v8-local-handle.h"
-@@ -2858,6 +2863,10 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
+@@ -2912,6 +2917,10 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
            snapshot->PaintImageForCurrentFrame().GetSkImageInfo().bounds();
        DCHECK(!bounds.intersect(SkIRect::MakeXYWH(sx, sy, sw, sh)));
      }
@@ -510,7 +510,7 @@ index c39b333c1652a..9bf46bae24b26 100644
    }
  
    return image_data;
-@@ -3538,8 +3547,22 @@ TextMetrics* BaseRenderingContext2D::measureText(const String& text) {
+@@ -3592,8 +3601,22 @@ TextMetrics* BaseRenderingContext2D::measureText(const String& text) {
    const CanvasRenderingContext2DState& state = GetState();
    TextDirection direction = ToTextDirection(state.GetDirection(), canvas);
  
@@ -535,10 +535,10 @@ index c39b333c1652a..9bf46bae24b26 100644
  
  void BaseRenderingContext2D::SnapshotStateForFilter() {
 diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
-index 712aa3be12f3a..112319b182e9c 100644
+index 5b8e391fd8998..791311e7ee23a 100644
 --- a/third_party/blink/renderer/platform/BUILD.gn
 +++ b/third_party/blink/renderer/platform/BUILD.gn
-@@ -1701,7 +1701,9 @@ component("platform") {
+@@ -1707,7 +1707,9 @@ component("platform") {
      "//third_party/blink/renderer:non_test_config",
    ]
  
@@ -549,7 +549,7 @@ index 712aa3be12f3a..112319b182e9c 100644
  
    allow_circular_includes_from = [
      "//third_party/blink/renderer/platform/blob",
-@@ -1780,6 +1782,7 @@ component("platform") {
+@@ -1787,6 +1789,7 @@ component("platform") {
      "//third_party/blink/public/strings",
      "//third_party/blink/renderer/platform/wtf",
      "//third_party/ced",
@@ -785,10 +785,10 @@ index 0a575fd624b4b..9d39aca95278e 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
-index 8ba3965316147..a0c4aeb39cdb9 100644
+index 2fcafc6db167f..53bbb88dfca14 100644
 --- a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
 +++ b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
-@@ -38,6 +38,8 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
+@@ -39,6 +39,8 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
  
    StaticBitmapImage(ImageOrientation orientation) : orientation_(orientation) {}
  
@@ -798,10 +798,10 @@ index 8ba3965316147..a0c4aeb39cdb9 100644
  
    // Methods overridden by all sub-classes
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-index 70c6567bc5415..3e67a626e69e5 100644
+index 1a48bc99f5350..9c45c90b7e57e 100644
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -2948,6 +2948,15 @@
+@@ -2929,6 +2929,15 @@
        status: {"Mac": "test", "default": "stable"},
        base_feature: "none",
      },

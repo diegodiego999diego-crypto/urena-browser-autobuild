@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-branch="129.0.6668.70-1"
+branch="130.0.6723.69-1"
 if [ -d ungoogled-chromium ]; then
     cd ungoogled-chromium
     git fetch origin $branch

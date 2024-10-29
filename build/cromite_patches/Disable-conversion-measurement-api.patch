@@ -44,7 +44,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/android_webview/browser/aw_content_browser_client.cc b/android_webview/browser/aw_content_browser_client.cc
 --- a/android_webview/browser/aw_content_browser_client.cc
 +++ b/android_webview/browser/aw_content_browser_client.cc
-@@ -1291,6 +1291,7 @@ network::mojom::AttributionSupport
+@@ -1296,6 +1296,7 @@ network::mojom::AttributionSupport
  AwContentBrowserClient::GetAttributionSupport(
      AttributionReportingOsApiState state,
      bool client_os_disabled) {
@@ -52,7 +52,7 @@ diff --git a/android_webview/browser/aw_content_browser_client.cc b/android_webv
    // WebView only supports OS-level attribution and not web-attribution.
    switch (state) {
      case AttributionReportingOsApiState::kDisabled:
-@@ -1309,6 +1310,8 @@ bool AwContentBrowserClient::IsAttributionReportingOperationAllowed(
+@@ -1314,6 +1315,8 @@ bool AwContentBrowserClient::IsAttributionReportingOperationAllowed(
      const url::Origin* destination_origin,
      const url::Origin* reporting_origin,
      bool* can_bypass) {
@@ -73,7 +73,7 @@ diff --git a/android_webview/java/src/org/chromium/android_webview/AwSettings.ja
  
      @SpeculativeLoadingAllowedFlags
      private int mSpeculativeLoadingAllowedFlags =
-@@ -1781,7 +1781,7 @@ public class AwSettings {
+@@ -1778,7 +1778,7 @@ public class AwSettings {
      public void setAttributionBehavior(@AttributionBehavior int behavior) {
          synchronized (mAwSettingsLock) {
              if (mAttributionBehavior != behavior) {
@@ -120,7 +120,7 @@ diff --git a/components/attribution_reporting/features.cc b/components/attributi
 +++ b/components/attribution_reporting/features.cc
 @@ -29,4 +29,5 @@ BASE_FEATURE(kAttributionScopes,
               "AttributionScopes",
-              base::FEATURE_DISABLED_BY_DEFAULT);
+              base::FEATURE_ENABLED_BY_DEFAULT);
  
 +SET_CROMITE_FEATURE_DISABLED(kConversionMeasurement);
  }  // namespace attribution_reporting::features
@@ -190,7 +190,7 @@ diff --git a/content/browser/aggregation_service/aggregation_service_features.cc
 diff --git a/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc b/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
 --- a/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
 +++ b/content/browser/attribution_reporting/attribution_data_host_manager_impl.cc
-@@ -1127,6 +1127,7 @@ void AttributionDataHostManagerImpl::ParseHeader(
+@@ -1155,6 +1155,7 @@ void AttributionDataHostManagerImpl::ParseHeader(
      HeaderPendingDecode pending_decode,
      Registrar registrar) {
    CHECK(it != registrations_.end());
@@ -232,7 +232,7 @@ diff --git a/content/browser/attribution_reporting/attribution_os_level_manager.
 diff --git a/content/browser/attribution_reporting/attribution_report_network_sender.cc b/content/browser/attribution_reporting/attribution_report_network_sender.cc
 --- a/content/browser/attribution_reporting/attribution_report_network_sender.cc
 +++ b/content/browser/attribution_reporting/attribution_report_network_sender.cc
-@@ -130,6 +130,9 @@ void AttributionReportNetworkSender::SendReport(GURL url,
+@@ -144,6 +144,9 @@ void AttributionReportNetworkSender::SendReport(GURL url,
                                                  url::Origin origin,
                                                  const std::string& body,
                                                  UrlLoaderCallback callback) {
@@ -242,7 +242,7 @@ diff --git a/content/browser/attribution_reporting/attribution_report_network_se
    auto resource_request = std::make_unique<network::ResourceRequest>();
    resource_request->url = std::move(url);
    resource_request->method = net::HttpRequestHeaders::kPostMethod;
-@@ -204,6 +207,12 @@ void AttributionReportNetworkSender::OnReportSent(
+@@ -218,6 +221,12 @@ void AttributionReportNetworkSender::OnReportSent(
      ReportSentCallback sent_callback,
      UrlLoaderList::iterator it,
      scoped_refptr<net::HttpResponseHeaders> headers) {
@@ -258,8 +258,8 @@ diff --git a/content/browser/attribution_reporting/attribution_report_network_se
 diff --git a/content/browser/attribution_reporting/attribution_storage_sql.cc b/content/browser/attribution_reporting/attribution_storage_sql.cc
 --- a/content/browser/attribution_reporting/attribution_storage_sql.cc
 +++ b/content/browser/attribution_reporting/attribution_storage_sql.cc
-@@ -484,6 +484,8 @@ base::FilePath DatabasePath(const base::FilePath& user_data_directory) {
-   return user_data_directory.Append(kDatabasePath);
+@@ -507,6 +507,8 @@ void AssignSourceForDeactivationOrDeletion(
+   }
  }
  
 +bool g_run_in_memory = true;
@@ -267,7 +267,7 @@ diff --git a/content/browser/attribution_reporting/attribution_storage_sql.cc b/
  }  // namespace
  
  // static
-@@ -506,9 +508,9 @@ bool AttributionStorageSql::Transaction::Commit() {
+@@ -529,9 +531,9 @@ bool AttributionStorageSql::Transaction::Commit() {
  AttributionStorageSql::AttributionStorageSql(
      const base::FilePath& user_data_directory,
      AttributionResolverDelegate* delegate)
@@ -283,7 +283,7 @@ diff --git a/content/browser/attribution_reporting/attribution_storage_sql.cc b/
 diff --git a/content/browser/storage_partition_impl.cc b/content/browser/storage_partition_impl.cc
 --- a/content/browser/storage_partition_impl.cc
 +++ b/content/browser/storage_partition_impl.cc
-@@ -1426,15 +1426,6 @@ void StoragePartitionImpl::Initialize(
+@@ -1449,15 +1449,6 @@ void StoragePartitionImpl::Initialize(
  
    bucket_manager_ = std::make_unique<BucketManager>(this);
  
@@ -776,7 +776,7 @@ diff --git a/content/public/android/java/src/org/chromium/content/browser/Attrib
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -562,6 +562,7 @@ void ContentBrowserClient::OnAuctionComplete(
+@@ -565,6 +565,7 @@ void ContentBrowserClient::OnAuctionComplete(
  network::mojom::AttributionSupport ContentBrowserClient::GetAttributionSupport(
      AttributionReportingOsApiState state,
      bool client_os_disabled) {
@@ -784,7 +784,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
    switch (state) {
      case AttributionReportingOsApiState::kDisabled:
        return network::mojom::AttributionSupport::kWeb;
-@@ -579,13 +580,13 @@ bool ContentBrowserClient::IsAttributionReportingOperationAllowed(
+@@ -582,13 +583,13 @@ bool ContentBrowserClient::IsAttributionReportingOperationAllowed(
      const url::Origin* destination_origin,
      const url::Origin* reporting_origin,
      bool* can_bypass) {
@@ -800,7 +800,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
  }
  
  bool ContentBrowserClient::IsAttributionReportingAllowedForContext(
-@@ -593,7 +594,7 @@ bool ContentBrowserClient::IsAttributionReportingAllowedForContext(
+@@ -596,7 +597,7 @@ bool ContentBrowserClient::IsAttributionReportingAllowedForContext(
      content::RenderFrameHost* rfh,
      const url::Origin& context_origin,
      const url::Origin& reporting_origin) {
@@ -875,7 +875,7 @@ diff --git a/services/network/public/cpp/attribution_utils.cc b/services/network
 diff --git a/third_party/blink/renderer/core/page/page.cc b/third_party/blink/renderer/core/page/page.cc
 --- a/third_party/blink/renderer/core/page/page.cc
 +++ b/third_party/blink/renderer/core/page/page.cc
-@@ -1539,7 +1539,7 @@ void Page::UpdateBrowsingContextGroup(
+@@ -1581,7 +1581,7 @@ void Page::UpdateBrowsingContextGroup(
  
  void Page::SetAttributionSupport(
      network::mojom::AttributionSupport attribution_support) {
@@ -896,7 +896,7 @@ diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 
        origin_trial_feature_name: "AdInterestGroupAPI",
        implied_by: ["Fledge", "Parakeet"],
        public: true,
-@@ -388,15 +388,15 @@
+@@ -413,15 +413,15 @@
      },
      {
        name: "AttributionReporting",
@@ -914,7 +914,7 @@ diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 
      },
      {
        // This only exists so we can use RuntimeEnabled in the IDL file
-@@ -4277,15 +4277,15 @@
+@@ -4257,15 +4257,15 @@
      },
      {
        name: "TopicsAPI",
