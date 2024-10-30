@@ -191,6 +191,7 @@ solutions = [{
     "custom_vars": {
         "checkout_android_prebuilts_build_tools": True,
         "checkout_telemetry_dependencies": False,
+        "checkout_pgo_profiles": True,
     }
 }]
 
