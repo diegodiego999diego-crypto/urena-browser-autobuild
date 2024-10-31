@@ -13,6 +13,8 @@ fi
 
 grep -vFf domain_blacklist.list ungoogled-chromium/domain_substitution.list > domain_substitution.list
 cp -r ungoogled-chromium/domain_regex.list domain_regex.list
+cd ungoogled-chromium/utils
+cp _common.py domain_substitution.py _extraction.py prune_binaries.py ../../
 
 echo "Copy done"
 
