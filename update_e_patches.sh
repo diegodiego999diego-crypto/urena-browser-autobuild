@@ -2,8 +2,6 @@
 
 root_dir=$(dirname "$(readlink -f "$0")")
 
-chromium_url="https://github.com/chromium/chromium.git"
-chromium_version="130.0.6723.67"
 patch_list_file="${root_dir}/build/cromite_patches_list.txt"
 output_patch_file="${root_dir}/build/e_patches_list.txt"
 output_patch_dir="${root_dir}/build/e_patches"
