@@ -1,5 +1,9 @@
 #!/bin/bash
 
+root_dir=$(dirname "$(readlink -f "$0")")
+
+cd $root_dir/build
+
 branch="v130.0.6723.67-4ea5bf603a6c721f35dce9edcab04ff4f03ecbaa"
 if [ -d cromite ]; then
     cd cromite
