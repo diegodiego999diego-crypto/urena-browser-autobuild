@@ -1,0 +1,118 @@
+From c49d1d43cb4179053e362893cc6f9f9485e10f4b Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Thu, 11 Jul 2024 11:11:15 +0530
+Subject: Browser: Hide settings when parental control is active
+
+---
+ .../chrome/browser/app/ChromeActivity.java    |  2 +-
+ .../AppMenuPropertiesDelegateImpl.java        |  5 ++++
+ .../browser/app/flags/ChromeCachedFlags.java  | 29 +++++++++++++++++++
+ .../chrome/browser/settings/MainSettings.java |  4 +++
+ 4 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index d6f839c4ebd18..5a760d9676853 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -2497,7 +2497,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
+         @BrowserProfileType
+         int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
+ 
+-        if (id == R.id.preferences_id) {
++        if (id == R.id.preferences_id && !ChromeCachedFlags.isAdminActive()) {
+             SettingsLauncher settingsLauncher = SettingsLauncherFactory.createSettingsLauncher();
+             settingsLauncher.launchSettingsActivity(this);
+             RecordUserAction.record("MobileMenuSettings");
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+index bd7e512683475..771b228a9247e 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+@@ -37,6 +37,7 @@ import org.chromium.base.supplier.OneshotSupplier;
+ import org.chromium.base.supplier.Supplier;
+ import org.chromium.build.BuildConfig;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
+ import org.chromium.chrome.browser.ActivityTabProvider;
+ import org.chromium.chrome.browser.AlwaysIncognitoLinkInterceptor;
+ import org.chromium.chrome.browser.profiles.ProfileManager;
+@@ -649,6 +650,10 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate
+                 item.setEnabled(isIncognitoEnabled() && !isIncognitoReauthShowing);
+             }
+ 
++            if (item.getItemId() == R.id.preferences_id && item.isVisible()) {
++                item.setEnabled(!ChromeCachedFlags.isAdminActive());
++            }
++
+             if (item.getItemId() == R.id.divider_line_id) {
+                 item.setEnabled(false);
+             }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
+index 2b6f01e286169..fe19e021f34c0 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
+@@ -51,6 +51,7 @@ import org.chromium.chrome.browser.webapps.WebappLauncherActivity;
+ import org.chromium.components.omnibox.OmniboxFeatures;
+ import org.chromium.components.signin.SigninFeatureMap;
+ 
++import java.lang.reflect.Method;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -233,4 +234,32 @@ public class ChromeCachedFlags {
+ 
+         return cachedFlag.isEnabled();
+     }
++
++    /**
++     * Retrieves the system property value for the given key.
++     *
++     * @param key The name of the system property.
++     * @return The value of the system property or "0" if not found or an error occurs.
++     */
++    public static String getSystemProperty(String key) {
++        String value = "0";
++        try {
++            Class<?> systemProperties = Class.forName("android.os.SystemProperties");
++            Method get = systemProperties.getMethod("get", String.class);
++            value = (String) get.invoke(null, key);
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++        return value;
++    }
++
++    /**
++     * Checks if the system property value for the hardcoded key "persist.sys.mdm_active" is "1".
++     *
++     * @return true if the property value is "1", false otherwise.
++     */
++    public static boolean isAdminActive() {
++        String propertyValue = getSystemProperty("persist.sys.mdm_active");
++        return "1".equals(propertyValue);
++    }
+ }
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index 77aac47fe7602..a1997f18d8a63 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -25,6 +25,7 @@ import org.chromium.base.supplier.ObservableSupplierImpl;
+ import org.chromium.base.task.PostTask;
+ import org.chromium.base.task.TaskTraits;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
+ import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
+ import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
+ import org.chromium.chrome.browser.autofill.settings.SettingsLauncherHelper;
+@@ -177,6 +178,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
+ 
+     @Override
+     public void onStart() {
++        if (ChromeCachedFlags.isAdminActive()) {
++            getActivity().finish();
++        }
+         super.onStart();
+         SyncService syncService = SyncServiceFactory.getForProfile(getProfile());
+         if (syncService != null) {
+-- 
+2.34.1
+

@@ -26,19 +26,20 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  ...istory-number-of-days-privacy-setting.grdp | 18 ++++++
  .../core/browser/expire_history_backend.cc    | 13 +++-
  .../core/browser/expire_history_backend.h     |  2 +
- .../history/core/browser/history_backend.cc   | 15 ++++-
- .../history/core/browser/history_backend.h    |  2 +
+ .../history/core/browser/history_backend.cc   | 17 +++++
+ .../history/core/browser/history_backend.h    |  6 +-
  .../history/core/browser/history_service.cc   | 33 ++++++++++
  .../history/core/browser/history_service.h    |  8 +++
  components/history/core/common/pref_names.cc  |  4 ++
  components/history/core/common/pref_names.h   |  1 +
- 22 files changed, 254 insertions(+), 8 deletions(-)
+ .../omnibox/browser/shortcuts_backend.cc      |  4 +-
+ 23 files changed, 259 insertions(+), 13 deletions(-)
  create mode 100644 components/cromite_components_strings_grd/History-number-of-days-privacy-setting.grdp
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -128,6 +128,12 @@ found in the LICENSE file.
+@@ -133,6 +133,12 @@ found in the LICENSE file.
          android:title="@string/cablev2_paask_title"
          android:summary="@string/cablev2_paask_body"
          android:fragment="org.chromium.chrome.browser.webauthn.PrivacySettingsFragment" />
@@ -54,7 +55,7 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -45,6 +45,7 @@ import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+@@ -47,6 +47,7 @@ import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
  import org.chromium.chrome.browser.usage_stats.UsageStatsConsentDialog;
  import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
  import org.chromium.components.browser_ui.settings.SettingsUtils;
@@ -62,7 +63,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
  import org.chromium.components.browser_ui.site_settings.ContentSettingsResources;
  import org.chromium.components.browser_ui.site_settings.SingleCategorySettings;
  import org.chromium.components.browser_ui.util.TraceEventVectorDrawableCompat;
-@@ -61,6 +62,9 @@ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+@@ -72,6 +73,9 @@ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
  import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
  import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
  
@@ -72,7 +73,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
  /** Fragment to keep track of the all the privacy related preferences. */
  public class PrivacySettings extends ChromeBaseSettingsFragment
          implements Preference.OnPreferenceChangeListener {
-@@ -102,6 +106,8 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -114,6 +118,8 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
      private ChromeSwitchPreference allowCustomTabIntentsPref;
      private ChromeSwitchPreference openExternalLinksPref;
  
@@ -80,8 +81,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
 +
      @Override
      public void onCreatePreferencesCromite(Bundle savedInstanceState, String rootKey) {
-         getActivity().setTitle(R.string.prefs_privacy_security);
-@@ -232,6 +238,40 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+         mPageTitle.set(getString(R.string.prefs_privacy_security));
+@@ -244,6 +250,40 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          Preference syncAndServicesLink = findPreference(PREF_SYNC_AND_SERVICES_LINK);
          syncAndServicesLink.setSummary(buildFooterString());
  
@@ -122,8 +123,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/setting
          Preference thirdPartyCookies = findPreference(PREF_THIRD_PARTY_COOKIES);
          Preference doNotTrackPref = findPreference(PREF_DO_NOT_TRACK);
  
-@@ -470,6 +510,29 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
-                 && ChromeFeatureList.isEnabled(ChromeFeatureList.FINGERPRINTING_PROTECTION_SETTING);
+@@ -504,6 +544,29 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+                 && ChromeFeatureList.isEnabled(ChromeFeatureList.FINGERPRINTING_PROTECTION_UX);
      }
  
 +    class TimeFrequencySpinnerOption {
@@ -163,7 +164,7 @@ diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chro
  #include "components/embedder_support/pref_names.h"
  #include "components/language/core/browser/pref_names.h"
  #include "components/live_caption/pref_names.h"
-@@ -212,6 +213,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+@@ -219,6 +220,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
    (*s_allowlist)[::prefs::kShowForwardButton] =
        settings_api::PrefType::kBoolean;
  
@@ -188,7 +189,7 @@ diff --git a/chrome/browser/history/history_service_factory.cc b/chrome/browser/
 diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
 --- a/chrome/browser/profiles/profile_impl.cc
 +++ b/chrome/browser/profiles/profile_impl.cc
-@@ -376,6 +376,7 @@ std::unique_ptr<Profile> Profile::CreateProfile(const base::FilePath& path,
+@@ -379,6 +379,7 @@ std::unique_ptr<Profile> Profile::CreateProfile(const base::FilePath& path,
  void ProfileImpl::RegisterProfilePrefs(
      user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(prefs::kSavingBrowserHistoryDisabled, false);
@@ -218,7 +219,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.html b/
 diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 --- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 +++ b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
-@@ -82,6 +82,23 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
+@@ -83,6 +83,23 @@ export class SettingsPrivacyPageElement extends SettingsPrivacyPageElementBase {
  
    static get properties() {
      return {
@@ -245,7 +246,7 @@ diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/ch
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1329,6 +1329,18 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -1383,6 +1383,18 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_CLEAR_HISTORY_TITLE" desc="Title for Clear History in Clear Browsing Data dialog">
          Browsing history
        </message>
@@ -267,7 +268,7 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
 diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 --- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 +++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
-@@ -1849,6 +1849,11 @@ void AddPrivacyStrings(content::WebUIDataSource* html_source,
+@@ -1770,6 +1770,11 @@ void AddPrivacyStrings(content::WebUIDataSource* html_source,
         IDS_SETTINGS_SAFEBROWSING_ENHANCED_THINGS_TO_CONSIDER_BULLET_THREE},
        {"safeBrowsingStandard", IDS_SETTINGS_SAFEBROWSING_STANDARD},
        {"safeBrowsingStandardDesc", IDS_SETTINGS_SAFEBROWSING_STANDARD_DESC},
@@ -455,16 +456,18 @@ diff --git a/components/history/core/browser/expire_history_backend.h b/componen
 diff --git a/components/history/core/browser/history_backend.cc b/components/history/core/browser/history_backend.cc
 --- a/components/history/core/browser/history_backend.cc
 +++ b/components/history/core/browser/history_backend.cc
-@@ -165,7 +165,7 @@ const int kMaxRedirectCount = 32;
+@@ -163,6 +163,10 @@ const int kCommitIntervalSeconds = 10;
+ // deleting some.
+ const int kMaxRedirectCount = 32;
  
- // The number of days old a history entry can be before it is considered "old"
- // and is deleted.
--constexpr int kExpireDaysThreshold = 90;
++// The number of days old a history entry can be before it is considered "old"
++// and is deleted.
 +int kExpireDaysThreshold = 90;
- 
++
  // The maximum number of days for which domain visit metrics are computed
  // each time HistoryBackend::GetDomainDiversity() is called.
-@@ -1312,6 +1312,19 @@ void HistoryBackend::InitImpl(
+ constexpr int kDomainDiversityMaxBacktrackedDays = 7;
+@@ -1320,6 +1324,19 @@ void HistoryBackend::InitImpl(
    expirer_.StartExpiringOldStuff(base::Days(kExpireDaysThreshold));
  }
  
@@ -487,7 +490,18 @@ diff --git a/components/history/core/browser/history_backend.cc b/components/his
 diff --git a/components/history/core/browser/history_backend.h b/components/history/core/browser/history_backend.h
 --- a/components/history/core/browser/history_backend.h
 +++ b/components/history/core/browser/history_backend.h
-@@ -233,6 +233,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
+@@ -206,10 +206,6 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
+   // Check if the transition should increment the typed_count of a visit.
+   static bool IsTypedIncrement(ui::PageTransition transition);
+ 
+-  // The number of days old a history entry can be before it is considered "old"
+-  // and is deleted.
+-  static constexpr int kExpireDaysThreshold = 90;
+-
+   // Init must be called to complete object creation. This object can be
+   // constructed on any thread, but all other functions including Init() must
+   // be called on the history thread.
+@@ -237,6 +233,8 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
    void Init(bool force_fail,
              const HistoryDatabaseParams& history_database_params);
  
@@ -509,7 +523,7 @@ diff --git a/components/history/core/browser/history_service.cc b/components/his
  #include "components/history/core/browser/download_row.h"
  #include "components/history/core/browser/features.h"
  #include "components/history/core/browser/history_backend.h"
-@@ -568,6 +571,33 @@ base::CancelableTaskTracker::TaskId HistoryService::ScheduleDBTask(
+@@ -564,6 +567,33 @@ base::CancelableTaskTracker::TaskId HistoryService::ScheduleDBTask(
    return task_id;
  }
  
@@ -543,7 +557,7 @@ diff --git a/components/history/core/browser/history_service.cc b/components/his
  void HistoryService::ScheduleDBTaskForUI(
      base::OnceCallback<void(HistoryBackend*, URLDatabase*)> callback) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-@@ -1492,6 +1522,9 @@ void HistoryService::Cleanup() {
+@@ -1493,6 +1523,9 @@ void HistoryService::Cleanup() {
      return;
    }
  
@@ -610,4 +624,25 @@ diff --git a/components/history/core/common/pref_names.h b/components/history/co
  extern const char kAllowDeletingBrowserHistory[];
  
  }  // namespace prefs
+diff --git a/components/omnibox/browser/shortcuts_backend.cc b/components/omnibox/browser/shortcuts_backend.cc
+--- a/components/omnibox/browser/shortcuts_backend.cc
++++ b/components/omnibox/browser/shortcuts_backend.cc
+@@ -505,7 +505,7 @@ void ShortcutsBackend::ComputeDatabaseMetrics() {
+   const base::Time now(base::Time::Now());
+   for (const auto& shortcut_pair : shortcuts_map_) {
+     if (now - shortcut_pair.second.last_access_time >
+-        base::Days(history::HistoryBackend::kExpireDaysThreshold)) {
++        base::Days(90)) {
+       num_old_shortcuts++;
+     }
+   }
+@@ -623,7 +623,7 @@ bool ShortcutsBackend::DeleteOldShortcuts() {
+   const base::Time now(base::Time::Now());
+   for (const auto& guid_pair : guid_map_) {
+     if (now - guid_pair.second->second.last_access_time >
+-        base::Days(history::HistoryBackend::kExpireDaysThreshold)) {
++        base::Days(90)) {
+       shortcut_ids.push_back(guid_pair.first);
+     }
+   }
 --

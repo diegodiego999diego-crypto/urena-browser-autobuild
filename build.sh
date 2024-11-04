@@ -8,7 +8,7 @@ if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
 chromium_version=$(grep 'ENV CHROMIUM_VER' Dockerfile | awk -F'"' '{print $2}')
-chromium_code=$(echo "$chromium_version" | tr -d '.' | cut -c5-)
+chromium_code=$(echo "${chromium_version}" | tr -d '.' | cut -c1-8)
 chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
@@ -38,19 +38,8 @@ build() {
     build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
     apk_arch=${1}
-    code=$chromium_code
-    if [ $1 '==' "arm" ]; then
-        code+=00
-    elif [ $1 '==' "arm64" ]; then
-        code+=50
-    elif [ $1 '==' "x86" ]; then
-        code+=10
-    elif [ $1 '==' "x64" ]; then
-        apk_arch="x86_64"
-        code+=60
-    fi
     build_args+=' android_default_version_name="'$chromium_version'"'
-    build_args+=' android_default_version_code="'$code'"'
+    build_args+=' android_default_version_code="'$chromium_code'"'
 
     if [ $clean -eq 1 ]; then
         if [ -d "out/$1" ]; then
@@ -197,8 +186,13 @@ solutions = [{
     "url": "$chromium_url@$chromium_commit_hash",
     "managed": False,
     "name": "src",
+    "deps_file": 'DEPS',
     "custom_deps": {},
-    "custom_vars": {}
+    "custom_vars": {
+        "checkout_android_prebuilts_build_tools": True,
+        "checkout_telemetry_dependencies": False,
+        "checkout_pgo_profiles": True,
+    }
 }]
 
 target_os = ["android"]

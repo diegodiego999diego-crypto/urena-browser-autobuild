@@ -17,23 +17,16 @@ from _common import ENCODING, get_logger, add_common_params
 # List of paths to prune if they exist, excluded from domain_substitution and pruning lists
 # These allow the lists to be compatible between cloned and tarball sources
 CONTINGENT_PATHS = (
-    # Sources
+    # Overridable git sources
     'third_party/angle/third_party/VK-GL-CTS/src/',
-    'third_party/llvm/',
-    'third_party/rust-src/',
-    # Binaries
+    'third_party/instrumented_libs/',
+    # CIPD sources
     'buildtools/linux64/',
     'buildtools/reclient/',
-    'third_party/android_rust_toolchain/',
     'third_party/apache-linux/',
     'third_party/checkstyle/',
-    'third_party/dawn/third_party/ninja/',
-    'third_party/dawn/tools/golang/',
-    'third_party/depot_tools/external_bin/',
-    'third_party/devtools-frontend/src/third_party/esbuild/',
     'third_party/google-java-format/',
     'third_party/libei/',
-    'third_party/llvm-build-tools/',
     'third_party/ninja/',
     'third_party/screen-ai/',
     'third_party/siso/',
@@ -42,6 +35,21 @@ CONTINGENT_PATHS = (
     'tools/luci-go/',
     'tools/resultdb/',
     'tools/skia_goldctl/linux/',
+    # GCS sources
+    'base/tracing/test/data',
+    'build/linux/debian_bullseye_amd64-sysroot/',
+    'build/linux/debian_bullseye_i386-sysroot/',
+    'buildtools/linux64-format/',
+    'third_party/blink/renderer/core/css/perftest_data/',
+    'third_party/js_code_coverage/',
+    'third_party/llvm-build/Release+Asserts/',
+    'third_party/node/linux/',
+    'third_party/opus/tests/resources/',
+    'third_party/rust-toolchain/',
+    'third_party/subresource-filter-ruleset/data',
+    'third_party/test_fonts/test_fonts',
+    'third_party/tfhub_models/testdata/',
+    'tools/perf/page_sets/maps_perf_test/dataset/',
 )
 
 
@@ -88,18 +96,26 @@ def _prune_path(path):
                 node.rmdir()
 
 
-def prune_dirs(unpack_root):
+def prune_dirs(unpack_root, keep_contingent_paths, sysroot):
     """
     Delete all files and directories in pycache and CONTINGENT_PATHS directories.
 
     unpack_root is a pathlib.Path to the source tree
+    keep_contingent_paths is a boolean that determines if the contingent paths should be pruned
+    sysroot is a string that optionally defines a sysroot to exempt from pruning
     """
     for pycache in unpack_root.rglob('__pycache__'):
         _prune_path(pycache)
-    get_logger().info('Removing Contingent Paths')
-    for cpath in CONTINGENT_PATHS:
-        get_logger().info('%s: %s', 'Exists' if Path(cpath).exists() else 'Absent', cpath)
-        _prune_path(unpack_root / cpath)
+    if keep_contingent_paths:
+        get_logger().info('Keeping Contingent Paths')
+    else:
+        get_logger().info('Removing Contingent Paths')
+        for cpath in CONTINGENT_PATHS:
+            if sysroot and f'{sysroot}-sysroot' in cpath:
+                get_logger().info('%s: %s', 'Exempt', cpath)
+                continue
+            get_logger().info('%s: %s', 'Exists' if Path(cpath).exists() else 'Absent', cpath)
+            _prune_path(unpack_root / cpath)
 
 
 def _callback(args):
@@ -108,7 +124,7 @@ def _callback(args):
         sys.exit(1)
     if not args.pruning_list.exists():
         get_logger().error('Could not find the pruning list: %s', args.pruning_list)
-    prune_dirs(args.directory)
+    prune_dirs(args.directory, args.keep_contingent_paths, args.sysroot)
     prune_list = tuple(filter(len, args.pruning_list.read_text(encoding=ENCODING).splitlines()))
     unremovable_files = prune_files(args.directory, prune_list)
     if unremovable_files:
@@ -123,6 +139,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('directory', type=Path, help='The directory to apply binary pruning.')
     parser.add_argument('pruning_list', type=Path, help='Path to pruning.list')
+    parser.add_argument('--keep-contingent-paths',
+                        action='store_true',
+                        help=('Skip pruning the contingent paths. '
+                              'Useful when building with the Google tooling is desired.'))
+    parser.add_argument('--sysroot',
+                        choices=('amd64', 'i386'),
+                        help=('Skip pruning the sysroot for the specified architecture. '
+                              'Not needed when --keep-contingent-paths is used.'))
     add_common_params(parser)
     parser.set_defaults(callback=_callback)
 

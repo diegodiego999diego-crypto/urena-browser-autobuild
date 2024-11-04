@@ -33,6 +33,7 @@ deactivation of all pop-ups (default disabled)
  .../settings/settings_menu/settings_menu.html |    5 +
  chrome/browser/ui/tab_helpers.cc              |    6 +-
  .../adblock_internals_page_handler_impl.cc    |   23 +-
+ .../adblock_internals/adblock_internals_ui.cc |    3 +-
  .../common/extensions/api/_api_features.json  |    4 +-
  .../extensions/api/_permission_features.json  |    8 -
  .../common/extensions/api/adblock_private.idl |    8 +
@@ -42,7 +43,7 @@ deactivation of all pop-ups (default disabled)
  .../java/res/layout/adblock_custom_item.xml   |   14 +-
  .../layout/adblock_filter_lists_list_item.xml |   15 +
  ...ences.xml => eyeo_adblock_preferences.xml} |   39 +-
- .../components/adblock/AdblockController.java |   51 +-
+ .../components/adblock/AdblockController.java |   53 +-
  .../AdblockAllowedDomainsFragment.java        |    7 +-
  .../AdblockCustomFilterListsFragment.java     |   32 +-
  .../AdblockCustomFiltersFragment.java         |    7 +-
@@ -55,7 +56,7 @@ deactivation of all pop-ups (default disabled)
  .../browser/adblock_url_loader_factory.h      |    7 +-
  .../browser/adblock_webcontents_observer.cc   |   25 +-
  .../browser/adblock_webcontents_observer.h    |    5 +-
- .../content/browser/element_hider_impl.cc     |   10 +-
+ .../content/browser/element_hider_impl.cc     |    9 +-
  .../browser/frame_hierarchy_builder.cc        |    3 +-
  .../browser/resource_classification_runner.h  |    9 +
  .../resource_classification_runner_impl.cc    |   83 +-
@@ -98,9 +99,9 @@ deactivation of all pop-ups (default disabled)
  .../adblock/core/subscription/subscription.cc |   18 +
  .../adblock/core/subscription/subscription.h  |    3 +
  .../subscription_collection_impl.cc           |    1 +
- .../core/subscription/subscription_config.cc  |   24 +-
+ .../core/subscription/subscription_config.cc  |   26 +-
  .../core/subscription/subscription_config.h   |    6 +-
- .../subscription_downloader_impl.cc           |   21 +-
+ .../subscription_downloader_impl.cc           |   29 +-
  .../subscription_persistent_metadata.h        |    1 +
  .../subscription_persistent_metadata_impl.cc  |    7 +
  .../subscription_persistent_metadata_impl.h   |    1 +
@@ -129,7 +130,7 @@ deactivation of all pop-ups (default disabled)
  .../blink/renderer/core/css/style_engine.h    |    1 +
  .../renderer/core/exported/web_document.cc    |   15 +-
  .../definitions/adblock_private.d.ts          |   14 +
- 119 files changed, 6723 insertions(+), 1309 deletions(-)
+ 120 files changed, 6731 insertions(+), 1315 deletions(-)
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.html
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.ts
  rename components/adblock/android/java/res/xml/{adblock_preferences.xml => eyeo_adblock_preferences.xml} (56%)
@@ -158,10 +159,10 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
 -Use of this source code is governed by the GPLv3 that can be found in the components/adblock/LICENSE file.
 --->
 -
- <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-     xmlns:app="http://schemas.android.com/apk/res-auto"
-     android:orderingFromXml="false">
-@@ -86,6 +77,11 @@ Use of this source code is governed by the GPLv3 that can be found in the compon
+ <!-- The main_preferences file will be reordered with the upcoming autofill
+ options. Only the order changes. Each pref should exist here and in the layout
+ for the previous order (main_preferences_legacy). -->
+@@ -125,6 +116,11 @@ for the previous order (main_preferences_legacy). -->
          android:key="adblock"
          android:order="13"
          android:title="@string/prefs_adblock"/>
@@ -172,10 +173,10 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
 +        android:title="@string/adblock_settings_title" />
      <Preference
          android:key="notifications"
-         android:order="15"
-@@ -125,11 +121,6 @@ Use of this source code is governed by the GPLv3 that can be found in the compon
-         android:key="accessibility"
          android:order="22"
+@@ -139,11 +135,6 @@ for the previous order (main_preferences_legacy). -->
+         android:key="accessibility"
+         android:order="24"
          android:title="@string/prefs_accessibility"/>
 -    <Preference
 -        android:fragment="org.chromium.components.adblock.settings.AdblockSettingsFragment"
@@ -188,7 +189,7 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -159,8 +159,6 @@ static_library("browser") {
+@@ -164,8 +164,6 @@ static_library("browser") {
      "adblock/adblock_content_browser_client.h",
      "adblock/adblock_controller_factory.cc",
      "adblock/adblock_controller_factory.h",
@@ -722,7 +723,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -6696,7 +6696,9 @@ ChromeContentBrowserClient::
+@@ -6719,7 +6719,9 @@ ChromeContentBrowserClient::
  }
  
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
@@ -733,7 +734,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
  #if BUILDFLAG(ENABLE_EXTENSIONS)
    if (!frame) {
      return false;
-@@ -6719,9 +6721,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
+@@ -6742,9 +6744,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
  }
  
  void ChromeContentBrowserClient::CreateWebSocket(
@@ -750,7 +751,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chr
 +++ b/chrome/browser/chrome_content_browser_client.h
 @@ -677,11 +677,15 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
    CreateURLLoaderHandlerForServiceWorkerNavigationPreload(
-       int frame_tree_node_id,
+       content::FrameTreeNodeId frame_tree_node_id,
        const network::ResourceRequest& resource_request) override;
 -  bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
 +  bool WillInterceptWebSocket(content::RenderFrameHost* frame,
@@ -1008,7 +1009,7 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  #include "chrome/browser/adblock/content_security_policy_injector_factory.h"
  #include "chrome/browser/adblock/element_hider_factory.h"
  #include "chrome/browser/adblock/resource_classification_runner_factory.h"
-@@ -877,7 +876,6 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -902,7 +901,6 @@ void ChromeBrowserMainExtraPartsProfiles::
    FakeSmartCardDeviceServiceFactory::GetInstance();
  #endif
    adblock::AdblockControllerFactory::GetInstance();
@@ -1042,15 +1043,15 @@ diff --git a/chrome/browser/resources/adblock_internals/BUILD.gn b/chrome/browse
 diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resources/settings/BUILD.gn
 --- a/chrome/browser/resources/settings/BUILD.gn
 +++ b/chrome/browser/resources/settings/BUILD.gn
-@@ -64,6 +64,7 @@ build_webui("build") {
-     "a11y_page/a11y_page.ts",
-     "about_page/about_page.ts",
+@@ -66,6 +66,7 @@ build_webui("build") {
+     "ai_page/ai_info_card.ts",
      "ai_page/ai_page.ts",
+     "ai_page/ai_tab_organization_subpage.ts",
 +    "adblock_page/adblock_page.ts",
      "appearance_page/appearance_fonts_page.ts",
      "appearance_page/appearance_page.ts",
      "appearance_page/home_url_input.ts",
-@@ -402,6 +403,7 @@ build_webui("build") {
+@@ -387,6 +388,7 @@ build_webui("build") {
    ts_definitions = [
      "//tools/typescript/definitions/autofill_private.d.ts",
      "//tools/typescript/definitions/chrome_event.d.ts",
@@ -1105,7 +1106,7 @@ new file mode 100644
 +            <div class="cr-secondary-text">
 +                Snippets are pieces of JavaScript code, injected by the Adblock Plus, that execute within the context of a website and combat advanced ads that circumvent ordinary blocking.
 +                The functionality is ONLY allowed for the list
-+                <a href="https://easylist-downloads.adblockplus.org/abp-filters-anti-cv.txt">abp-filters-anti-cv.txt</a>
++                <a href="https://www.cromite.org/filters/abp-filters-anti-cv.txt">abp-filters-anti-cv.txt</a>
 +                which is activated by this setting.
 +                <br><a href="https://gitlab.com/eyeo/anti-cv/abp-filters-anti-cv">Open ABP anti-circumvention filter list repo</a>
 +                <br><a href="https://developers.eyeo.com/snippets/snippets-overview">Open ABP Snippets Overview</a>
@@ -1569,7 +1570,7 @@ new file mode 100644
 diff --git a/chrome/browser/resources/settings/basic_page/basic_page.html b/chrome/browser/resources/settings/basic_page/basic_page.html
 --- a/chrome/browser/resources/settings/basic_page/basic_page.html
 +++ b/chrome/browser/resources/settings/basic_page/basic_page.html
-@@ -31,6 +31,13 @@
+@@ -47,6 +47,13 @@
              <settings-ai-page prefs="{{prefs}}"></settings-ai-page>
            </settings-section>
          </template>
@@ -1608,7 +1609,7 @@ diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/brows
 diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
 --- a/chrome/browser/resources/settings/route.ts
 +++ b/chrome/browser/resources/settings/route.ts
-@@ -213,6 +213,10 @@ function createRoutes(): SettingsRoutes {
+@@ -228,6 +228,10 @@ function createRoutes(): SettingsRoutes {
      r.FONTS = r.APPEARANCE.createChild('/fonts');
    }
  
@@ -1633,7 +1634,7 @@ diff --git a/chrome/browser/resources/settings/router.ts b/chrome/browser/resour
 diff --git a/chrome/browser/resources/settings/settings.ts b/chrome/browser/resources/settings/settings.ts
 --- a/chrome/browser/resources/settings/settings.ts
 +++ b/chrome/browser/resources/settings/settings.ts
-@@ -50,6 +50,7 @@ export {AppearanceBrowserProxy, AppearanceBrowserProxyImpl} from './appearance_p
+@@ -51,6 +51,7 @@ export {AppearanceBrowserProxy, AppearanceBrowserProxyImpl} from './appearance_p
  export {SettingsAppearancePageElement, SystemTheme} from './appearance_page/appearance_page.js';
  export {HomeUrlInputElement} from './appearance_page/home_url_input.js';
  export {SettingsAutofillPageElement} from './autofill_page/autofill_page.js';
@@ -1667,7 +1668,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  #include "chrome/browser/bookmarks/bookmark_model_factory.h"
  #include "chrome/browser/breadcrumbs/breadcrumb_manager_tab_helper.h"
  #include "chrome/browser/browser_process.h"
-@@ -377,6 +378,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -378,6 +379,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
      }
    }
  
@@ -1676,7 +1677,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
    AdblockWebContentObserver::CreateForWebContents(
        web_contents,
        adblock::SubscriptionServiceFactory::GetForBrowserContext(
-@@ -385,7 +388,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -386,7 +389,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
            web_contents->GetBrowserContext()),
        adblock::SitekeyStorageFactory::GetForBrowserContext(
            web_contents->GetBrowserContext()),
@@ -1747,11 +1748,24 @@ diff --git a/chrome/browser/ui/webui/adblock_internals/adblock_internals_page_ha
  }
  
  void AdblockInternalsPageHandlerImpl::OnTelemetryServiceInfoArrived(
+diff --git a/chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.cc b/chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.cc
+--- a/chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.cc
++++ b/chrome/browser/ui/webui/adblock_internals/adblock_internals_ui.cc
+@@ -30,8 +30,7 @@ AdblockInternalsUI::AdblockInternalsUI(content::WebUI* web_ui)
+   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
+       profile_, chrome::kChromeUIAdblockInternalsHost);
+   webui::SetupWebUIDataSource(source,
+-                              base::make_span(kAdblockInternalsResources,
+-                                              kAdblockInternalsResourcesSize),
++                              base::span(kAdblockInternalsResources),
+                               IDR_ADBLOCK_INTERNALS_ADBLOCK_INTERNALS_HTML);
+ }
+ 
 diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/extensions/api/_api_features.json
 --- a/chrome/common/extensions/api/_api_features.json
 +++ b/chrome/common/extensions/api/_api_features.json
-@@ -66,7 +66,7 @@
-   }],
+@@ -70,7 +70,7 @@
+   },
    "adblockPrivate": [{
      "dependencies": ["permission:adblockPrivate"],
 -    "contexts": ["blessed_extension"]
@@ -1759,7 +1773,7 @@ diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/ext
    }, {
      "channel": "stable",
      "contexts": ["webui"],
-@@ -517,7 +517,7 @@
+@@ -537,7 +537,7 @@
    },
    "eyeoFilteringPrivate": [{
      "dependencies": ["permission:eyeoFilteringPrivate"],
@@ -1771,8 +1785,8 @@ diff --git a/chrome/common/extensions/api/_api_features.json b/chrome/common/ext
 diff --git a/chrome/common/extensions/api/_permission_features.json b/chrome/common/extensions/api/_permission_features.json
 --- a/chrome/common/extensions/api/_permission_features.json
 +++ b/chrome/common/extensions/api/_permission_features.json
-@@ -60,10 +60,6 @@
-       "5107DE9024C329EEA9C9A72D94C16723790C6422"   // Apps Developer Tool Dev.
+@@ -71,10 +71,6 @@
+       "extension"
      ]
    },
 -  "adblockPrivate": {
@@ -1782,7 +1796,7 @@ diff --git a/chrome/common/extensions/api/_permission_features.json b/chrome/com
    "autofillPrivate": {
      "channel": "trunk",
      "extension_types": ["extension", "platform_app"],
-@@ -375,10 +371,6 @@
+@@ -388,10 +384,6 @@
        "extension", "legacy_packaged_app", "hosted_app", "platform_app"
      ]
    },
@@ -1964,7 +1978,7 @@ diff --git a/components/adblock/android/adblock_strings.grd b/components/adblock
 +      <message name="IDS_ADBLOCK_SETTINGS_PRIVILEGED_FILTERS_ENABLED_SUMMARY" desc="">
 +        Snippets are pieces of JavaScript code, injected by the Adblock Plus, that execute within the context of a website and combat advanced ads that circumvent ordinary blocking.
 +The functionality is ONLY allowed for the list
-+https://easylist-downloads.adblockplus.org/abp-filters-anti-cv.txt
++https://www.cromite.org/filters/abp-filters-anti-cv.txt
 +which is activated by this setting.
 +      </message>
 +      <message name="IDS_ADBLOCK_SETTINGS_OPEN_REPO_URL_TEXT" desc="">
@@ -2146,6 +2160,15 @@ rename to components/adblock/android/java/res/xml/eyeo_adblock_preferences.xml
 diff --git a/components/adblock/android/java/src/org/chromium/components/adblock/AdblockController.java b/components/adblock/android/java/src/org/chromium/components/adblock/AdblockController.java
 --- a/components/adblock/android/java/src/org/chromium/components/adblock/AdblockController.java
 +++ b/components/adblock/android/java/src/org/chromium/components/adblock/AdblockController.java
+@@ -50,7 +50,7 @@ public final class AdblockController extends FilteringConfiguration {
+         super("adblock");
+         try {
+             mAcceptableAds =
+-                    new URL("https://easylist-downloads.adblockplus.org/exceptionrules.txt");
++                    new URL("about:blank");
+         } catch (java.net.MalformedURLException e) {
+             mAcceptableAds = null;
+         }
 @@ -73,6 +73,10 @@ public final class AdblockController extends FilteringConfiguration {
          private String mTitle;
          private String mVersion = "";
@@ -2903,7 +2926,7 @@ diff --git a/components/adblock/content/browser/element_hider_impl.cc b/componen
      return;
    }
    auto* info = ElementHiderInfo::GetOrCreateForCurrentDocument(frame_host);
-@@ -239,13 +239,9 @@ void InsertUserCSSAndApplyElemHidingEmuJS(
+@@ -239,13 +239,10 @@ void InsertUserCSSAndApplyElemHidingEmuJS(
    }
  
    if (!input.snippet_js.empty()) {
@@ -2913,9 +2936,9 @@ diff --git a/components/adblock/content/browser/element_hider_impl.cc b/componen
 -    frame_host->ExecuteJavaScriptInIsolatedWorld(
 +    frame_host->ExecuteJavaScriptForTests(
          base::UTF8ToUTF16(input.snippet_js),
--        content::RenderFrameHost::JavaScriptResultCallback(),
+         content::RenderFrameHost::JavaScriptResultCallback(),
 -        content::ISOLATED_WORLD_ID_ADBLOCK);
-+        content::RenderFrameHost::JavaScriptResultCallback());
++        content::ISOLATED_WORLD_ID_GLOBAL);
  
      DVLOG(1) << "[eyeo] Snippet - executed JS in frame"
               << " '" << frame_host->GetFrameName() << "'";
@@ -4998,6 +5021,15 @@ diff --git a/components/adblock/core/subscription/subscription_collection_impl.c
 diff --git a/components/adblock/core/subscription/subscription_config.cc b/components/adblock/core/subscription/subscription_config.cc
 --- a/components/adblock/core/subscription/subscription_config.cc
 +++ b/components/adblock/core/subscription/subscription_config.cc
+@@ -24,7 +24,7 @@ namespace {
+ int g_port_for_testing = 0;
+ 
+ std::string GetHost() {
+-  GURL url("https://easylist-downloads.adblockplus.org");
++  GURL url("https://www.cromite.org/filters/");
+   if (!g_port_for_testing) {
+     return url.spec();
+   }
 @@ -239,17 +239,23 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
         SubscriptionFirstRunBehavior::SubscribeIfLocaleMatch,
         SubscriptionPrivilegedFilterStatus::Forbidden},
@@ -5123,7 +5155,25 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
    if (!subscription_url.SchemeIs("https") &&
        !subscription_url.SchemeIs("data")) {
      return false;
-@@ -192,11 +191,11 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
+@@ -156,12 +155,14 @@ void SubscriptionDownloaderImpl::OnHeadersOnlyDownloaded(
+     scoped_refptr<net::HttpResponseHeaders> headers) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   DCHECK(ongoing_ping_.has_value());
+-  base::Time date;
++
+   std::string version("");
+ 
+   // Parse date or Date from response headers.
+-  if (headers && headers->GetDateValue(&date)) {
+-    version = utils::ConvertBaseTimeToABPFilterVersionFormat(date);
++  if (headers) {
++    if (auto date = headers->GetDateValue()) {
++      version = utils::ConvertBaseTimeToABPFilterVersionFormat(date.value());
++    }
+   }
+ 
+   std::move(std::get<HeadRequestCallback>(*ongoing_ping_))
+@@ -192,11 +193,11 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
      persistent_metadata_->IncrementDownloadErrorCount(subscription_url);
      if (std::get<RetryPolicy>(download_it->second) ==
          RetryPolicy::RetryUntilSucceeded) {
@@ -5137,7 +5187,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
                      << subscription_url << ", will abort";
        std::move(std::get<DownloadCompletedCallback>(download_it->second))
            .Run(nullptr);
-@@ -213,8 +212,10 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
+@@ -213,8 +214,10 @@ void SubscriptionDownloaderImpl::OnDownloadFinished(
        TRACE_ID_LOCAL(GenerateTraceId(subscription_url)), "url",
        subscription_url.spec());
  
@@ -5149,7 +5199,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
        base::BindOnce(&SubscriptionDownloaderImpl::OnConversionFinished,
                       weak_ptr_factory_.GetWeakPtr(), subscription_url));
  }
-@@ -228,14 +229,14 @@ void SubscriptionDownloaderImpl::OnConversionFinished(
+@@ -228,14 +231,14 @@ void SubscriptionDownloaderImpl::OnConversionFinished(
        TRACE_ID_LOCAL(GenerateTraceId(subscription_url)));
    const auto download_it = ongoing_downloads_.find(subscription_url);
    if (download_it == ongoing_downloads_.end()) {
@@ -5166,7 +5216,7 @@ diff --git a/components/adblock/core/subscription/subscription_downloader_impl.c
              << " successfully";
      std::move(std::get<DownloadCompletedCallback>(download_it->second))
          .Run(std::move(
-@@ -278,7 +279,7 @@ void SubscriptionDownloaderImpl::AbortWithWarning(
+@@ -278,7 +281,7 @@ void SubscriptionDownloaderImpl::AbortWithWarning(
    if (ongoing_download_it == ongoing_downloads_.end()) {
      return;
    }
@@ -10519,7 +10569,7 @@ diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/br
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -1066,7 +1066,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -1065,7 +1065,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
    DCHECK(browser_context);
  }
  
@@ -10528,7 +10578,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
    return false;
  }
  
-@@ -1075,9 +1075,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
+@@ -1074,9 +1074,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
  }
  
  void ContentBrowserClient::CreateWebSocket(
@@ -10543,7 +10593,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
-@@ -1994,7 +1994,7 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2014,7 +2014,7 @@ class CONTENT_EXPORT ContentBrowserClient {
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner);
  
    // Returns true when the embedder wants to intercept a websocket connection.
@@ -10552,7 +10602,7 @@ diff --git a/content/public/browser/content_browser_client.h b/content/public/br
  
    // Returns the WebSocket creation options.
    virtual uint32_t GetWebSocketOptions(RenderFrameHost* frame);
-@@ -2016,9 +2016,11 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2036,9 +2036,11 @@ class CONTENT_EXPORT ContentBrowserClient {
    // Always called on the UI thread and only when the Network Service is
    // enabled.
    virtual void CreateWebSocket(
