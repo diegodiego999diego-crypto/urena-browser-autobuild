@@ -15,15 +15,11 @@ if [ -f "$output_patch_file" ]; then
     rm "$output_patch_file"
 fi
 
-if [ -d "$output_patch_dir" ]; then
-    rm -rf "$output_patch_dir"
-fi
-
 last_patch=$(tail -n 1 "$patch_list_file")
 subject=${last_patch%.patch}
 formatted_subject=${subject//-/" "}
 
-cd ${root_dir}/src || exit 1
+cd "${root_dir}/src" || exit 1
 
 chromium_commit_hash=$(git log --pretty=format:"%H %s" | grep -F "$formatted_subject" | head -n 1 | awk '{print $1}')
 
@@ -33,7 +29,7 @@ if [ -z "$chromium_commit_hash" ]; then
 fi
 
 > "$output_patch_file"
-mkdir -p ${root_dir}/build/e_patches
+mkdir -p "$output_patch_dir"
 
 # Patches to ignore
 ignore_patches=("Browser-Replace-Chrome-with-Browser.patch" "Browser-Automated-domain-substitution.patch")
@@ -42,6 +38,7 @@ for commit in $(git rev-list --reverse "$chromium_commit_hash"..HEAD); do
     subject=$(git log -n 1 --pretty=format:%s "$commit" | tr -d '[:punct:]')
     formatted_subject=${subject// /-}
     patch_filename="${formatted_subject}.patch"
+    patch_path="${output_patch_dir}/${patch_filename}"
 
     # Check if the patch filename is in the ignore list
     if [[ " ${ignore_patches[@]} " =~ " ${patch_filename} " ]]; then
@@ -49,8 +46,23 @@ for commit in $(git rev-list --reverse "$chromium_commit_hash"..HEAD); do
         continue
     fi
 
-    echo "Creating patch: $patch_filename"
-    git format-patch -1 --stdout "$commit" --subject-prefix="" > "$patch_filename"
+    # Generate the patch to a temporary file
+    temp_patch_file=$(mktemp)
+    git format-patch -1 --stdout "$commit" --subject-prefix="" > "$temp_patch_file"
+
+    # Check if the patch differs from any existing one, ignoring the first line
+    if [ -f "$patch_path" ]; then
+        # Compare content ignoring the first line
+        if diff -q <(tail -n +2 "$temp_patch_file") <(tail -n +2 "$patch_path") > /dev/null; then
+            echo "Patch already up-to-date: $patch_filename"
+            rm "$temp_patch_file"
+            echo "$patch_filename" >> "$output_patch_file"
+            continue
+        fi
+    fi
+
+    # Move the patch to the output directory if it’s new or updated
+    echo "Updating patch: $patch_filename"
+    mv "$temp_patch_file" "$patch_path"
     echo "$patch_filename" >> "$output_patch_file"
-    mv "$patch_filename" "${root_dir}/build/e_patches/"
 done
