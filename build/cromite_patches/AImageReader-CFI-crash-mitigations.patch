@@ -22,7 +22,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
  base/android/android_image_reader_compat.cc      | 16 ++++++++++++++++
  base/android/android_image_reader_compat.h       | 14 ++++++++++++++
- chrome/browser/flag-metadata.json                |  6 +++---
+ chrome/browser/flag-metadata.json                |  4 ++++
  .../AImageReader-CFI-crash-mitigations.inc       |  4 ++++
  .../AImageReader-CFI-crash-mitigations.inc       |  1 +
  gpu/config/gpu_driver_bug_list.json              | 16 ++++++++++++++++
@@ -31,8 +31,8 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  gpu/config/gpu_util.cc                           |  8 ++++++++
  gpu/config/gpu_workaround_list.txt               |  1 +
  gpu/ipc/service/gpu_init.cc                      |  8 ++++++++
- gpu/ipc/service/stream_texture_android.cc        | 11 ++++++++++-
- 12 files changed, 87 insertions(+), 4 deletions(-)
+ gpu/ipc/service/stream_texture_android.cc        | 10 +++++++++-
+ 12 files changed, 87 insertions(+), 1 deletion(-)
  create mode 100644 cromite_flags/media/base/media_switches_cc/AImageReader-CFI-crash-mitigations.inc
  create mode 100644 cromite_flags/media/base/media_switches_h/AImageReader-CFI-crash-mitigations.inc
 
@@ -90,13 +90,11 @@ diff --git a/base/android/android_image_reader_compat.h b/base/android/android_i
 diff --git a/chrome/browser/flag-metadata.json b/chrome/browser/flag-metadata.json
 --- a/chrome/browser/flag-metadata.json
 +++ b/chrome/browser/flag-metadata.json
-@@ -3430,9 +3430,9 @@
+@@ -3408,6 +3408,10 @@
+     "name": "enable-identity-in-auth-error",
+     "owners": [ "jlebel@chromium.org", "chrome-signin-team@google.com" ],
      "expiry_milestone": 135
-   },
-   {
--    "name": "enable-image-reader",
--    "owners": [ "vikassoni@chromium.org", "liberato@chromium.org" ],
--    "expiry_milestone": 125
++  },{
 +    "name": "enable-image-reader",          // Bromite: do not expire
 +    "owners": [ "vikassoni@chromium.org", "liberato@chromium.org" ],  // flag
 +    "expiry_milestone": -1
@@ -234,19 +232,11 @@ diff --git a/gpu/ipc/service/gpu_init.cc b/gpu/ipc/service/gpu_init.cc
 diff --git a/gpu/ipc/service/stream_texture_android.cc b/gpu/ipc/service/stream_texture_android.cc
 --- a/gpu/ipc/service/stream_texture_android.cc
 +++ b/gpu/ipc/service/stream_texture_android.cc
-@@ -6,6 +6,7 @@
- 
- #include <string.h>
- 
-+#include "base/android/android_image_reader_compat.h"
- #include "base/android/scoped_hardware_buffer_fence_sync.h"
- #include "base/feature_list.h"
- #include "base/functional/bind.h"
-@@ -49,7 +50,15 @@ std::unique_ptr<ui::ScopedMakeCurrent> MakeCurrent(
+@@ -50,7 +50,15 @@ std::unique_ptr<ui::ScopedMakeCurrent> MakeCurrent(
  }
  
  TextureOwner::Mode GetTextureOwnerMode() {
--  return features::IsAImageReaderEnabled()
+-  return base::android::EnableAndroidImageReader()
 +  const bool a_image_reader_supported =
 +      base::android::AndroidImageReader::GetInstance().IsSupported();
 +
@@ -254,7 +244,7 @@ diff --git a/gpu/ipc/service/stream_texture_android.cc b/gpu/ipc/service/stream_
 +  // AImageReader - one for MCVD and other for MediaPlayer here. Merge those 2
 +  // flags into a single flag. Keeping the 2 flags separate for now since finch
 +  // experiment using this flag is in progress.
-+  return a_image_reader_supported && features::IsAImageReaderEnabled() &&
++  return a_image_reader_supported && base::android::EnableAndroidImageReader() &&
 +             base::FeatureList::IsEnabled(features::kAImageReaderMediaPlayer)
               ? TextureOwner::Mode::kAImageReaderInsecure
               : TextureOwner::Mode::kSurfaceTextureInsecure;
