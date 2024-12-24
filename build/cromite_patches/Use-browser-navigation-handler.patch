@@ -7,20 +7,22 @@ Pulling the edge to the right will go backwards, pulling it further forwards.
 
 License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 ---
- .../compositor/CompositorViewHolder.java      |  9 ++++-
+ .../compositor/CompositorViewHolder.java      |  1 +
  .../GestureNavigationProperties.java          |  4 +--
  .../GestureNavigationViewBinder.java          |  6 ++--
  .../HistoryNavigationCoordinator.java         |  4 +++
  .../gesturenav/HistoryNavigationLayout.java   |  6 ++--
  .../browser/gesturenav/NavigationHandler.java | 12 +++++--
  .../browser/gesturenav/SideSlideLayout.java   | 25 +++++++++++---
+ .../tabbed_mode/TabbedRootUiCoordinator.java  |  3 ++
  .../cromite/sUseBrowserNavigationHandler.java | 33 +++++++++++++++++++
  .../Use-browser-navigation-handler.grdp       | 12 +++++++
  .../res/xml/accessibility_preferences.xml     |  9 +++++
+ .../widget/CoordinatorLayoutForPointer.java   | 20 +++++++++++
  .../Use-browser-navigation-handler.inc        | 12 +++++++
  .../Use-browser-navigation-handler.inc        |  3 ++
  .../Use-browser-navigation-handler.inc        |  1 +
- 13 files changed, 119 insertions(+), 17 deletions(-)
+ 15 files changed, 135 insertions(+), 16 deletions(-)
  create mode 100644 chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sUseBrowserNavigationHandler.java
  create mode 100644 chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Use-browser-navigation-handler.grdp
  create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Use-browser-navigation-handler.inc
@@ -30,15 +32,7 @@ License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java b/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
-@@ -51,6 +51,7 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerHost;
- import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
- import org.chromium.chrome.browser.compositor.layouts.LayoutRenderHost;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
-+import org.chromium.chrome.browser.flags.cromite.sUseBrowserNavigationHandler;
- import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
- import org.chromium.chrome.browser.fullscreen.FullscreenManager;
- import org.chromium.chrome.browser.layouts.EventFilter.EventType;
-@@ -98,6 +99,7 @@ import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
+@@ -98,6 +98,7 @@ import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
  import org.chromium.url.GURL;
  
  import java.util.ArrayList;
@@ -46,20 +40,6 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/compositor/Comp
  import java.util.HashSet;
  import java.util.List;
  import java.util.Set;
-@@ -1325,7 +1327,12 @@ public class CompositorViewHolder extends FrameLayout
-     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-         if (changed) onViewportChanged();
-         super.onLayout(changed, l, t, r, b);
--
-+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-+                sUseBrowserNavigationHandler.getInstance().isEnabled()) {
-+            setSystemGestureExclusionRects(
-+                    Collections.singletonList(
-+                            new Rect(0, 0, Math.abs(r - l), Math.abs(t - b))));
-+        }
-         invalidateAccessibilityProvider();
-     }
- 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
@@ -114,7 +94,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Hist
  import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
  import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
  import org.chromium.chrome.browser.tab.CurrentTabObserver;
-@@ -159,6 +160,9 @@ public class HistoryNavigationCoordinator
+@@ -155,6 +156,9 @@ public class HistoryNavigationCoordinator
       * @return {@code} true if the feature is enabled.
       */
      private boolean isFeatureEnabled() {
@@ -127,9 +107,9 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Hist
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java
-@@ -68,8 +68,8 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
+@@ -67,8 +67,8 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
+      * @param forward {@code true} for forward navigation, or {@code false} for back.
       * @param initiatingEdge Which edge of the screen the gesture is navigating from.
-      * @param closeIndicator
       */
 -    void showBubble(
 -            boolean forward,
@@ -138,7 +118,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Hist
              @BackGestureEventSwipeEdge int initiatingEdge,
              @CloseTarget int closeIndicator) {
          if (mSideSlideLayout == null) {
-@@ -87,7 +87,7 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
+@@ -86,7 +86,7 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
                      });
          }
          mSideSlideLayout.setEnabled(true);
@@ -159,10 +139,23 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Navi
  import static org.chromium.chrome.browser.gesturenav.GestureNavigationProperties.EDGE;
  
  import android.app.Activity;
-@@ -233,15 +233,21 @@ class NavigationHandler implements TouchEventObserver {
+@@ -276,7 +276,11 @@ class NavigationHandler implements TouchEventObserver {
  
-         mInitiatingEdge = initiatingEdge;
+         boolean forward = isForward();
  
+-        mModel.set(DIRECTION, forward);
++        if (mInitiatingEdge == BackGestureEventSwipeEdge.RIGHT && canNavigate(true)) {
++            mModel.set(CANFORWARD, true);
++        } else {
++            mModel.set(CANFORWARD, false);
++        }
+         mModel.set(EDGE, mInitiatingEdge);
+         if (canNavigate(forward)) {
+             if (mState != GestureState.STARTED) mModel.set(ACTION, GestureAction.RESET_BUBBLE);
+@@ -483,12 +487,14 @@ class NavigationHandler implements TouchEventObserver {
+     }
+ 
+     private boolean isForward() {
 -        boolean forward = mInitiatingEdge == BackGestureEventSwipeEdge.RIGHT;
 +        boolean forward = false;
 +        @BackGestureEventSwipeEdge int edge = BackGestureEventSwipeEdge.RIGHT;
@@ -173,20 +166,12 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Navi
              forward = !forward;
 +            edge = BackGestureEventSwipeEdge.LEFT;
          }
- 
--        mModel.set(DIRECTION, forward);
-+        if (mInitiatingEdge == edge && canNavigate(true)) {
-+            mModel.set(CANFORWARD, true);
-+        } else {
-+            mModel.set(CANFORWARD, false);
-+        }
-         mModel.set(EDGE, mInitiatingEdge);
-         if (canNavigate(forward)) {
-             if (mState != GestureState.STARTED) mModel.set(ACTION, GestureAction.RESET_BUBBLE);
+         return forward;
+     }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/SideSlideLayout.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/SideSlideLayout.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/SideSlideLayout.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/SideSlideLayout.java
-@@ -106,6 +106,7 @@ public class SideSlideLayout extends ViewGroup {
+@@ -105,6 +105,7 @@ public class SideSlideLayout extends ViewGroup {
      private int mAnimationViewWidth;
  
      private boolean mIsForward;
@@ -194,7 +179,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Side
      private @CloseTarget int mCloseIndicator;
  
      private @BackGestureEventSwipeEdge int mInitiatingEdge;
-@@ -223,10 +224,10 @@ public class SideSlideLayout extends ViewGroup {
+@@ -220,10 +221,10 @@ public class SideSlideLayout extends ViewGroup {
       * Set the direction used for sliding gesture.
       * @param forward {@code true} if direction is forward.
       */
@@ -209,7 +194,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Side
      }
  
      public void setInitiatingEdge(@BackGestureEventSwipeEdge int edge) {
-@@ -332,7 +333,7 @@ public class SideSlideLayout extends ViewGroup {
+@@ -329,7 +330,7 @@ public class SideSlideLayout extends ViewGroup {
          mWillNavigate = navigating;
  
          if (mCloseIndicator != CloseTarget.NONE) {
@@ -218,7 +203,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Side
                  mArrowView.showCaption(mCloseIndicator);
                  mArrowViewWidth = mArrowView.getMeasuredWidth();
              } else {
-@@ -348,6 +349,20 @@ public class SideSlideLayout extends ViewGroup {
+@@ -345,6 +346,20 @@ public class SideSlideLayout extends ViewGroup {
                                  ? -targetDiff
                                  : targetDiff);
          setTargetOffsetLeftAndRight(targetX - mCurrentTargetOffset);
@@ -239,6 +224,26 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/Side
      }
  
      /**
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
+@@ -57,6 +57,7 @@ import org.chromium.chrome.browser.firstrun.FirstRunStatus;
+ import org.chromium.chrome.browser.flags.ActivityType;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+ import org.chromium.chrome.browser.flags.ChromeSwitches;
++import org.chromium.chrome.browser.flags.cromite.sUseBrowserNavigationHandler;
+ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+ import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+ import org.chromium.chrome.browser.gesturenav.BackActionDelegate;
+@@ -628,6 +629,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
+     @Override
+     public void onInflationComplete() {
+         mCoordinator = mActivity.findViewById(R.id.coordinator);
++        ((CoordinatorLayoutForPointer)mCoordinator).setUseBrowserNavigationHandler(
++            sUseBrowserNavigationHandler.getInstance().isEnabled());
+         super.onInflationComplete();
+     }
+ 
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sUseBrowserNavigationHandler.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sUseBrowserNavigationHandler.java
 new file mode 100644
 --- /dev/null
@@ -263,7 +268,7 @@ new file mode 100644
 +
 +package org.chromium.chrome.browser.flags.cromite;
 +
-+import org.chromium.base.cached_flags.CachedFlag;
++import org.chromium.components.cached_flags.CachedFlag;
 +import org.chromium.chrome.browser.flags.ChromeFeatureMap;
 +
 +public class sUseBrowserNavigationHandler {
@@ -297,7 +302,7 @@ new file mode 100644
 diff --git a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
 --- a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
 +++ b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
-@@ -103,4 +103,13 @@ found in the LICENSE file.
+@@ -108,4 +108,13 @@ found in the LICENSE file.
          android:summary="@string/selection_popup_smart_text_summary"
          android:title="@string/selection_popup_smart_text_title" />
  
@@ -311,6 +316,43 @@ diff --git a/components/browser_ui/accessibility/android/java/res/xml/accessibil
 +        app:featureName="UseBrowserNavigationHandler"
 +        app:needRestart="true" />
  </PreferenceScreen>
+diff --git a/components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/CoordinatorLayoutForPointer.java b/components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/CoordinatorLayoutForPointer.java
+--- a/components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/CoordinatorLayoutForPointer.java
++++ b/components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/CoordinatorLayoutForPointer.java
+@@ -14,6 +14,10 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
+ 
+ import org.chromium.base.ObserverList;
+ 
++import android.graphics.Rect;
++import android.os.Build;
++import java.util.Collections;
++
+ /**
+  * This class overrides {@link onResolvePointerIcon} method to correctly determine the pointer icon
+  * from a mouse motion event. This is needed because the default android impl does not consider view
+@@ -34,6 +38,22 @@ public class CoordinatorLayoutForPointer extends CoordinatorLayout implements To
+                 && (y >= view.getTop() && y <= view.getBottom()));
+     }
+ 
++    private boolean useBrowserNavigationHandler = false;
++
++    public void setUseBrowserNavigationHandler(boolean enabled) {
++        useBrowserNavigationHandler = enabled;
++    }
++
++    @Override
++    protected void onLayout(boolean changed, int l, int t, int r, int b) {
++        super.onLayout(changed, l, t, r, b);
++        if (useBrowserNavigationHandler && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++            setSystemGestureExclusionRects(
++                Collections.singletonList(
++                    new Rect(0, 0, Math.abs(r - l), Math.abs(t - b))));
++        }
++    }
++
+     @Override
+     public PointerIcon onResolvePointerIcon(MotionEvent event, int pointerIndex) {
+         final int x = (int) event.getX(pointerIndex);
 diff --git a/cromite_flags/chrome/browser/about_flags_cc/Use-browser-navigation-handler.inc b/cromite_flags/chrome/browser/about_flags_cc/Use-browser-navigation-handler.inc
 new file mode 100644
 --- /dev/null

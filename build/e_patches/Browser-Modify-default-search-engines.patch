@@ -1,4 +1,4 @@
-From e49ef24df0d2677c930c935743024763256d2171 Mon Sep 17 00:00:00 2001
+From 6eacc6a7917334673baf22643857124285aef2de Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
 Date: Thu, 18 Mar 2021 13:42:44 +0100
 Subject: Browser: Modify default search engines
@@ -102,10 +102,10 @@ index c63dc8bd3eab2..b9c9db2d6d08d 100644
    LocaleTemplateUrlLoader(const LocaleTemplateUrlLoader&) = delete;
    LocaleTemplateUrlLoader& operator=(const LocaleTemplateUrlLoader&) = delete;
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-index 4ef1f73cb30ed..326fb8ddae2f2 100644
+index 145b3c997fab6..9d1195d973403 100644
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-@@ -140,7 +140,6 @@ public class LocaleManagerDelegate {
+@@ -141,7 +141,6 @@ public class LocaleManagerDelegate {
       */
      private void revertDefaultSearchEngineOverride() {
          if (!isSearchEngineAutoSwitchEnabled() || isSpecialLocaleEnabled()) return;
@@ -114,10 +114,10 @@ index 4ef1f73cb30ed..326fb8ddae2f2 100644
      }
  
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-index 62cc958ac7857..ed1b48622109c 100644
+index b672ac77cd523..819cf19ce7a53 100644
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-@@ -71,12 +71,6 @@ public class LocaleTemplateUrlLoader {
+@@ -70,12 +70,6 @@ public class LocaleTemplateUrlLoader {
                  .overrideDefaultSearchProvider(mNativeLocaleTemplateUrlLoader);
      }
  
@@ -130,7 +130,7 @@ index 62cc958ac7857..ed1b48622109c 100644
      @NativeMethods
      interface Natives {
          long init(String localeId, @JniType("Profile*") Profile profile);
-@@ -88,7 +82,5 @@ public class LocaleTemplateUrlLoader {
+@@ -87,7 +81,5 @@ public class LocaleTemplateUrlLoader {
          void removeTemplateUrls(long nativeLocaleTemplateUrlLoader);
  
          void overrideDefaultSearchProvider(long nativeLocaleTemplateUrlLoader);
@@ -139,7 +139,7 @@ index 62cc958ac7857..ed1b48622109c 100644
      }
  }
 diff --git a/components/search_engines/prepopulated_engines.json b/components/search_engines/prepopulated_engines.json
-index 760b3ec475533..8a3b7e6eff002 100644
+index 10f740dc22b26..faf696d762d5c 100644
 --- a/components/search_engines/prepopulated_engines.json
 +++ b/components/search_engines/prepopulated_engines.json
 @@ -143,6 +143,16 @@
@@ -160,7 +160,7 @@ index 760b3ec475533..8a3b7e6eff002 100644
        "name": "Ecosia",
        "keyword": "ecosia.org",
 diff --git a/components/search_engines/search_engine_countries-inc.cc b/components/search_engines/search_engine_countries-inc.cc
-index 40e5dca728495..8ecad995b90d0 100644
+index 53f87a2ab8086..38964682da20f 100644
 --- a/components/search_engines/search_engine_countries-inc.cc
 +++ b/components/search_engines/search_engine_countries-inc.cc
 @@ -38,10 +38,10 @@ struct EngineAndTier {
@@ -197,10 +197,10 @@ index 18413c59ccdfd..2a53f07d642d8 100644
  
  // Enum to record the type of search engine a user used in keyword mode. This
 diff --git a/components/search_engines/search_engine_utils.cc b/components/search_engines/search_engine_utils.cc
-index eaa4068131f1f..321cb90c9037a 100644
+index 559e63c6c543c..5d61dd5895bb8 100644
 --- a/components/search_engines/search_engine_utils.cc
 +++ b/components/search_engines/search_engine_utils.cc
-@@ -33,17 +33,7 @@ SearchEngineType GetEngineType(const GURL& url) {
+@@ -28,17 +28,7 @@ SearchEngineType GetEngineType(const GURL& url) {
    DCHECK(url.is_valid());
    if ((true)) return SEARCH_ENGINE_OTHER;
  
@@ -216,14 +216,14 @@ index eaa4068131f1f..321cb90c9037a 100644
 -
 -  // Now check the rest of the prepopulate data.
 +  // Check the prepopulate data.
-   for (size_t i = 0; i < TemplateURLPrepopulateData::kAllEnginesLength; ++i) {
-     // First check the main search URL.
-     if (SameDomain(
+   for (const auto* engine : TemplateURLPrepopulateData::kAllEngines) {
+     if (SameDomain(url, GURL(engine->search_url))) {
+       return engine->type;
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index ae4a5cef2d044..4336447d40a57 100644
+index 2882651b9a923..835f994a74dbb 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -89,6 +89,11 @@ GetPrepopulatedEnginesForEeaRegionCountries(int country_id,
+@@ -84,6 +84,11 @@ GetPrepopulatedEnginesForEeaRegionCountries(int country_id,
  std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedTemplateURLData(
      int country_id,
      PrefService* prefs) {
@@ -235,7 +235,7 @@ index ae4a5cef2d044..4336447d40a57 100644
    std::vector<std::unique_ptr<TemplateURLData>> t_urls;
  
    if (!prefs) {
-@@ -323,7 +328,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
+@@ -317,7 +322,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
      PrefService* prefs,
      search_engines::SearchEngineChoiceService* search_engine_choice_service) {
    return FindPrepopulatedEngineInternal(prefs, search_engine_choice_service,
@@ -245,5 +245,5 @@ index ae4a5cef2d044..4336447d40a57 100644
  }
  
 -- 
-2.34.1
+2.47.1
 
