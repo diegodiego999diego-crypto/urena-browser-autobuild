@@ -15,13 +15,13 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../DefaultSearchEngineFirstRunFragment.java  |   3 -
  .../browser/firstrun/FirstRunActivity.java    |  32 +-
  .../firstrun/FirstRunActivityBase.java        |   6 +-
- .../firstrun/FirstRunFlowSequencer.java       |  70 +---
+ .../firstrun/FirstRunFlowSequencer.java       |  73 +---
  .../browser/firstrun/FirstRunUtils.java       |   1 +
  .../firstrun/ToSAndUMAFirstRunFragment.java   | 335 +++++++++++++++++
  .../firstrun/TosAndUmaFragmentView.java       | 336 ++++++++++++++++++
  .../browser/locale/LocaleManagerDelegate.java |   5 +-
  .../Welcome-screen.grdp                       |  27 ++
- 15 files changed, 915 insertions(+), 110 deletions(-)
+ 15 files changed, 915 insertions(+), 113 deletions(-)
  create mode 100644 chrome/android/java/res/layout/fre_tosanduma.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/firstrun/TosAndUmaFragmentView.java
@@ -35,13 +35,13 @@ diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_ja
    "java/res/layout/find_toolbar.xml",
    "java/res/layout/fre_tos_privacy_disclaimer.xml",
 +  "java/res/layout/fre_tosanduma.xml",
+   "java/res/layout/hats_survey_container.xml",
    "java/res/layout/history_clear_browsing_data_header.xml",
    "java/res/layout/history_item_view.xml",
-   "java/res/layout/history_main.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -658,6 +658,8 @@ chrome_java_sources = [
+@@ -655,6 +655,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/firstrun/SkipTosDialogPolicyListener.java",
    "java/src/org/chromium/chrome/browser/firstrun/SyncConsentFirstRunFragment.java",
    "java/src/org/chromium/chrome/browser/firstrun/TosDialogBehaviorSharedPrefInvalidator.java",
@@ -414,11 +414,12 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
-@@ -28,14 +28,9 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
+@@ -29,15 +29,9 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
  import org.chromium.chrome.browser.profiles.Profile;
  import org.chromium.chrome.browser.profiles.ProfileProvider;
  import org.chromium.chrome.browser.search_engines.SearchEnginePromoType;
 -import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
+-import org.chromium.chrome.browser.signin.services.SigninPreferencesManager;
 -import org.chromium.chrome.browser.ui.signin.history_sync.HistorySyncHelper;
  import org.chromium.components.crash.CrashKeyIndex;
  import org.chromium.components.crash.CrashKeys;
@@ -429,7 +430,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
  
  /**
   * A helper to determine what should be the sequence of First Run Experience screens, and whether
-@@ -63,46 +58,17 @@ public abstract class FirstRunFlowSequencer {
+@@ -65,46 +59,17 @@ public abstract class FirstRunFlowSequencer {
  
          /** Returns true if the sync consent promo page should be shown. */
          boolean shouldShowSyncConsentPage(boolean isChild) {
@@ -479,7 +480,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
          }
      }
  
-@@ -154,18 +120,8 @@ public abstract class FirstRunFlowSequencer {
+@@ -156,18 +121,8 @@ public abstract class FirstRunFlowSequencer {
       * method.
       */
      void start() {
@@ -500,7 +501,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
      }
  
      @VisibleForTesting
-@@ -188,14 +144,10 @@ public abstract class FirstRunFlowSequencer {
+@@ -190,14 +145,10 @@ public abstract class FirstRunFlowSequencer {
      }
  
      private void maybeProcessFreEnvironmentPreNative() {
@@ -515,7 +516,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
  
          onFlowIsKnown(freProperties);
      }
-@@ -206,8 +158,8 @@ public abstract class FirstRunFlowSequencer {
+@@ -208,8 +159,8 @@ public abstract class FirstRunFlowSequencer {
       * @param freProperties Resulting FRE properties bundle.
       */
      public void updateFirstRunProperties(Bundle freProperties) {
@@ -526,7 +527,16 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstR
          boolean isHistorySyncEnabled =
                  ChromeFeatureList.isEnabled(
                          ChromeFeatureList.REPLACE_SYNC_PROMOS_WITH_SIGN_IN_PROMOS);
-@@ -322,13 +274,17 @@ public abstract class FirstRunFlowSequencer {
+@@ -237,8 +188,6 @@ public abstract class FirstRunFlowSequencer {
+ 
+         // Mark the FRE flow as complete.
+         FirstRunStatus.setFirstRunFlowComplete(true);
+-        SigninPreferencesManager.getInstance()
+-                .setCctMismatchNoticeSuppressionPeriodStart(TimeUtils.currentTimeMillis());
+     }
+ 
+     /**
+@@ -327,13 +276,17 @@ public abstract class FirstRunFlowSequencer {
              if (!(caller instanceof Activity)) {
                  freIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
              }
@@ -1241,7 +1251,7 @@ new file mode 100644
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-@@ -312,8 +312,9 @@ public class LocaleManagerDelegate {
+@@ -375,8 +375,9 @@ public class LocaleManagerDelegate {
  
      /** @see LocaleManager#getSearchEnginesForPromoDialog  */
      public List<TemplateUrl> getSearchEnginesForPromoDialog(@SearchEnginePromoType int promoType) {

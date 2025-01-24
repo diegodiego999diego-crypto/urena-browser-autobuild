@@ -32,7 +32,7 @@ deactivation of all pop-ups (default disabled)
  chrome/browser/resources/settings/settings.ts |    1 +
  .../settings/settings_menu/settings_menu.html |    5 +
  chrome/browser/ui/tab_helpers.cc              |    6 +-
- .../adblock_internals_page_handler_impl.cc    |   23 +-
+ .../adblock_internals_page_handler_impl.cc    |   21 +-
  .../adblock_internals/adblock_internals_ui.cc |    3 +-
  .../common/extensions/api/_api_features.json  |    4 +-
  .../extensions/api/_permission_features.json  |    8 -
@@ -52,7 +52,7 @@ deactivation of all pop-ups (default disabled)
  .../settings/AdblockSettingsFragment.java     |   51 +-
  components/adblock/content/browser/BUILD.gn   |   18 +-
  .../adblock_controller_factory_base.cc        |    5 +-
- .../browser/adblock_url_loader_factory.cc     |   68 +-
+ .../browser/adblock_url_loader_factory.cc     |   66 +-
  .../browser/adblock_url_loader_factory.h      |    7 +-
  .../browser/adblock_webcontents_observer.cc   |   25 +-
  .../browser/adblock_webcontents_observer.h    |    5 +-
@@ -130,7 +130,7 @@ deactivation of all pop-ups (default disabled)
  .../blink/renderer/core/css/style_engine.h    |    1 +
  .../renderer/core/exported/web_document.cc    |   15 +-
  .../definitions/adblock_private.d.ts          |   14 +
- 120 files changed, 6731 insertions(+), 1315 deletions(-)
+ 120 files changed, 6729 insertions(+), 1313 deletions(-)
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.html
  create mode 100644 chrome/browser/resources/settings/adblock_page/adblock_page.ts
  rename components/adblock/android/java/res/xml/{adblock_preferences.xml => eyeo_adblock_preferences.xml} (56%)
@@ -189,7 +189,7 @@ diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/j
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -164,8 +164,6 @@ static_library("browser") {
+@@ -166,8 +166,6 @@ static_library("browser") {
      "adblock/adblock_content_browser_client.h",
      "adblock/adblock_controller_factory.cc",
      "adblock/adblock_controller_factory.h",
@@ -626,7 +626,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.cc b/chrome/b
 diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/browser/adblock/adblock_content_browser_client.h
 --- a/chrome/browser/adblock/adblock_content_browser_client.h
 +++ b/chrome/browser/adblock/adblock_content_browser_client.h
-@@ -44,25 +44,37 @@ class AdblockContentBrowserClient : public ChromeContentBrowserClient {
+@@ -45,25 +45,37 @@ class AdblockContentBrowserClient : public ChromeContentBrowserClient {
    static void ForceAdblockProxyForTesting();
  #endif
  
@@ -667,7 +667,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
        mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
            header_client,
        bool* bypass_redirect_checks,
-@@ -71,25 +83,51 @@ class AdblockContentBrowserClient : public ChromeContentBrowserClient {
+@@ -72,25 +84,51 @@ class AdblockContentBrowserClient : public ChromeContentBrowserClient {
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner)
        override;
  
@@ -723,7 +723,7 @@ diff --git a/chrome/browser/adblock/adblock_content_browser_client.h b/chrome/br
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -6724,7 +6724,9 @@ ChromeContentBrowserClient::
+@@ -6722,7 +6722,9 @@ ChromeContentBrowserClient::
  }
  
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
@@ -734,7 +734,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
  #if BUILDFLAG(ENABLE_EXTENSIONS)
    if (!frame) {
      return false;
-@@ -6747,9 +6749,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
+@@ -6745,9 +6747,11 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
  }
  
  void ChromeContentBrowserClient::CreateWebSocket(
@@ -749,7 +749,7 @@ diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/ch
 diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
 --- a/chrome/browser/chrome_content_browser_client.h
 +++ b/chrome/browser/chrome_content_browser_client.h
-@@ -683,11 +683,15 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+@@ -686,11 +686,15 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
    CreateURLLoaderHandlerForServiceWorkerNavigationPreload(
        content::FrameTreeNodeId frame_tree_node_id,
        const network::ResourceRequest& resource_request) override;
@@ -1009,7 +1009,7 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
  #include "chrome/browser/adblock/content_security_policy_injector_factory.h"
  #include "chrome/browser/adblock/element_hider_factory.h"
  #include "chrome/browser/adblock/resource_classification_runner_factory.h"
-@@ -872,7 +871,6 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -892,7 +891,6 @@ void ChromeBrowserMainExtraPartsProfiles::
    FakeSmartCardDeviceServiceFactory::GetInstance();
  #endif
    adblock::AdblockControllerFactory::GetInstance();
@@ -1043,7 +1043,7 @@ diff --git a/chrome/browser/resources/adblock_internals/BUILD.gn b/chrome/browse
 diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resources/settings/BUILD.gn
 --- a/chrome/browser/resources/settings/BUILD.gn
 +++ b/chrome/browser/resources/settings/BUILD.gn
-@@ -69,6 +69,7 @@ build_webui("build") {
+@@ -62,6 +62,7 @@ build_webui("build") {
      "ai_page/ai_tab_organization_subpage.ts",
      "ai_page/history_search_page.ts",
      "ai_page/offer_writing_help_page.ts",
@@ -1051,7 +1051,7 @@ diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resourc
      "appearance_page/appearance_fonts_page.ts",
      "appearance_page/appearance_page.ts",
      "appearance_page/home_url_input.ts",
-@@ -392,6 +393,7 @@ build_webui("build") {
+@@ -382,6 +383,7 @@ build_webui("build") {
    ts_definitions = [
      "//tools/typescript/definitions/autofill_private.d.ts",
      "//tools/typescript/definitions/chrome_event.d.ts",
@@ -1609,7 +1609,7 @@ diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/brows
 diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
 --- a/chrome/browser/resources/settings/route.ts
 +++ b/chrome/browser/resources/settings/route.ts
-@@ -237,6 +237,10 @@ function createRoutes(): SettingsRoutes {
+@@ -241,6 +241,10 @@ function createRoutes(): SettingsRoutes {
      r.FONTS = r.APPEARANCE.createChild('/fonts');
    }
  
@@ -1634,7 +1634,7 @@ diff --git a/chrome/browser/resources/settings/router.ts b/chrome/browser/resour
 diff --git a/chrome/browser/resources/settings/settings.ts b/chrome/browser/resources/settings/settings.ts
 --- a/chrome/browser/resources/settings/settings.ts
 +++ b/chrome/browser/resources/settings/settings.ts
-@@ -51,6 +51,7 @@ export {AppearanceBrowserProxy, AppearanceBrowserProxyImpl} from './appearance_p
+@@ -53,6 +53,7 @@ export {AppearanceBrowserProxy, AppearanceBrowserProxyImpl} from './appearance_p
  export {SettingsAppearancePageElement, SystemTheme} from './appearance_page/appearance_page.js';
  export {HomeUrlInputElement} from './appearance_page/home_url_input.js';
  export {SettingsAutofillPageElement} from './autofill_page/autofill_page.js';
@@ -1668,7 +1668,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
  #include "chrome/browser/bookmarks/bookmark_model_factory.h"
  #include "chrome/browser/breadcrumbs/breadcrumb_manager_tab_helper.h"
  #include "chrome/browser/browser_process.h"
-@@ -377,6 +378,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -364,6 +365,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
      }
    }
  
@@ -1677,7 +1677,7 @@ diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
    AdblockWebContentObserver::CreateForWebContents(
        web_contents,
        adblock::SubscriptionServiceFactory::GetForBrowserContext(
-@@ -385,7 +388,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
+@@ -372,7 +375,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
            web_contents->GetBrowserContext()),
        adblock::SitekeyStorageFactory::GetForBrowserContext(
            web_contents->GetBrowserContext()),
@@ -1704,13 +1704,11 @@ diff --git a/chrome/browser/ui/webui/adblock_internals/adblock_internals_page_ha
  #include "components/adblock/core/session_stats.h"
  #include "components/adblock/core/subscription/subscription_config.h"
  #include "components/adblock/core/subscription/subscription_service.h"
-@@ -41,8 +40,7 @@ std::string SubscriptionInstallationStateToString(
-     case State::Unknown:
+@@ -42,7 +41,6 @@ std::string SubscriptionInstallationStateToString(
        return "Unknown";
    }
--  NOTREACHED();
+   NOTREACHED();
 -  return "";
-+  NOTREACHED_NORETURN();
  }
  
  std::string DebugLine(std::string name, std::string value, int level) {
@@ -2657,9 +2655,8 @@ diff --git a/components/adblock/content/browser/adblock_url_loader_factory.cc b/
      case network::mojom::RequestDestination::kWebIdentity:
        return ContentType::Other;
    }
--  NOTREACHED();
+   NOTREACHED();
 -  return ContentType::Other;
-+  NOTREACHED_NORETURN();
  }
  
  }  // namespace
@@ -4990,7 +4987,7 @@ diff --git a/components/adblock/core/subscription/subscription.cc b/components/a
 +    case State::Unknown:
 +      return "Unknown";
 +  }
-+  NOTREACHED_NORETURN();
++  NOTREACHED();
 +}
 +
  }  // namespace adblock
@@ -10569,7 +10566,7 @@ diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/br
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -1076,7 +1076,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -1088,7 +1088,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
    DCHECK(browser_context);
  }
  
@@ -10578,7 +10575,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
    return false;
  }
  
-@@ -1085,9 +1085,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
+@@ -1097,9 +1097,11 @@ uint32_t ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
  }
  
  void ContentBrowserClient::CreateWebSocket(
@@ -10593,7 +10590,7 @@ diff --git a/content/public/browser/content_browser_client.cc b/content/public/b
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
-@@ -2038,7 +2038,7 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2053,7 +2053,7 @@ class CONTENT_EXPORT ContentBrowserClient {
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner);
  
    // Returns true when the embedder wants to intercept a websocket connection.
@@ -10602,7 +10599,7 @@ diff --git a/content/public/browser/content_browser_client.h b/content/public/br
  
    // Returns the WebSocket creation options.
    virtual uint32_t GetWebSocketOptions(RenderFrameHost* frame);
-@@ -2060,9 +2060,11 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2075,9 +2075,11 @@ class CONTENT_EXPORT ContentBrowserClient {
    // Always called on the UI thread and only when the Network Service is
    // enabled.
    virtual void CreateWebSocket(
@@ -10654,7 +10651,7 @@ diff --git a/third_party/blink/renderer/core/css/style_engine.cc b/third_party/b
 diff --git a/third_party/blink/renderer/core/css/style_engine.h b/third_party/blink/renderer/core/css/style_engine.h
 --- a/third_party/blink/renderer/core/css/style_engine.h
 +++ b/third_party/blink/renderer/core/css/style_engine.h
-@@ -253,6 +253,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
+@@ -266,6 +266,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
        const ComputedStyle* embedder_style) const;
    void ViewportStyleSettingChanged();
  
