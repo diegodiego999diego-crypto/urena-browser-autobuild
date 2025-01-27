@@ -29,9 +29,9 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/browser/resources/proxy_config.html    |  77 ++++
  chrome/browser/resources/proxy_config.js      | 278 +++++++++++++
  chrome/browser/ui/BUILD.gn                    |   2 +
- .../webui/chrome_web_ui_controller_factory.cc |   5 +-
+ .../browser/ui/webui/chrome_web_ui_configs.cc |   4 +
  chrome/browser/ui/webui/proxy_config_ui.cc    | 389 ++++++++++++++++++
- chrome/browser/ui/webui/proxy_config_ui.h     |  31 ++
+ chrome/browser/ui/webui/proxy_config_ui.h     |  41 ++
  chrome/common/webui_url_constants.cc          |   2 +
  chrome/common/webui_url_constants.h           |   2 +
  .../pref_proxy_config_tracker_impl.cc         |   5 +-
@@ -40,7 +40,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../proxy_config/proxy_policy_handler.cc      |   2 +-
  net/proxy_resolution/proxy_config.cc          |  51 ++-
  net/proxy_resolution/proxy_config.h           |   3 +
- 25 files changed, 974 insertions(+), 18 deletions(-)
+ 25 files changed, 984 insertions(+), 17 deletions(-)
  create mode 100644 chrome/browser/resources/proxy_config.css
  create mode 100644 chrome/browser/resources/proxy_config.html
  create mode 100644 chrome/browser/resources/proxy_config.js
@@ -77,7 +77,7 @@ diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/androi
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -75,6 +75,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -76,6 +76,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
      private static final String PREF_SAFE_BROWSING = "safe_browsing";
      private static final String PREF_SYNC_AND_SERVICES_LINK = "sync_and_services_link";
      private static final String PREF_PRIVACY_SANDBOX = "privacy_sandbox";
@@ -112,7 +112,7 @@ diff --git a/chrome/browser/browser_resources.grd b/chrome/browser/browser_resou
 diff --git a/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc b/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
 --- a/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
 +++ b/chrome/browser/extensions/api/proxy/proxy_api_helpers.cc
-@@ -392,7 +392,7 @@ std::optional<base::Value::Dict> CreateProxyConfigDict(
+@@ -372,7 +372,7 @@ std::optional<base::Value::Dict> CreateProxyConfigDict(
          return std::nullopt;
        }
        return ProxyConfigDictionary::CreateFixedServers(proxy_rules_string,
@@ -196,7 +196,7 @@ diff --git a/chrome/browser/net/proxy_service_factory.h b/chrome/browser/net/pro
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -202,6 +202,8 @@
+@@ -198,6 +198,8 @@
  #include "printing/buildflags/buildflags.h"
  #include "rlz/buildflags/buildflags.h"
  
@@ -205,7 +205,7 @@ diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browse
  #if BUILDFLAG(ENABLE_BACKGROUND_MODE)
  #include "chrome/browser/background/background_mode_manager.h"
  #endif
-@@ -1652,6 +1654,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+@@ -1615,6 +1617,8 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
    component_updater::RegisterPrefs(registry);
    domain_reliability::RegisterPrefs(registry);
    embedder_support::OriginTrialPrefs::RegisterPrefs(registry);
@@ -660,7 +660,7 @@ new file mode 100644
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -238,6 +238,8 @@ static_library("ui") {
+@@ -224,6 +224,8 @@ static_library("ui") {
      "webui/metrics_internals/metrics_internals_ui.h",
      "webui/net_export_ui.cc",
      "webui/net_export_ui.h",
@@ -669,28 +669,25 @@ diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
      "webui/net_internals/net_internals_ui.cc",
      "webui/net_internals/net_internals_ui.h",
      "webui/ntp_tiles_internals_ui.cc",
-diff --git a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
---- a/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-+++ b/chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc
-@@ -32,6 +32,7 @@
- #include "chrome/browser/ui/webui/about/about_ui.h"
- #include "chrome/browser/ui/webui/components/components_ui.h"
- #include "chrome/browser/ui/webui/crashes_ui.h"
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -56,6 +56,9 @@
+ #include "extensions/buildflags/buildflags.h"
+ #include "printing/buildflags/buildflags.h"
+ 
 +#include "chrome/browser/ui/webui/proxy_config_ui.h"
- #include "chrome/browser/ui/webui/download_internals/download_internals_ui.h"
- #include "chrome/browser/ui/webui/flags/flags_ui.h"
- #include "chrome/browser/ui/webui/webui_util.h"
-@@ -261,7 +262,9 @@ WebUIFactoryFunction GetWebUIFactoryFunction(WebUI* web_ui,
-       history_clusters_internals::kChromeUIHistoryClustersInternalsHost) {
-     return &NewWebUI<HistoryClustersInternalsUI>;
-   }
--
-+  if (url.host_piece() == chrome::kChromeUIProxyConfigHost) {
-+    return &NewWebUI<ProxyConfigUI>;
-+  }
- #if !BUILDFLAG(IS_ANDROID)
-   if (url.host_piece() == chrome::kChromeUINewTabHost) {
-     // The URL chrome://newtab/ can be either a virtual or a real URL,
++
++
+ #if BUILDFLAG(ENABLE_NACL)
+ #include "chrome/browser/ui/webui/nacl_ui.h"
+ #endif
+@@ -410,4 +413,5 @@ void RegisterChromeWebUIConfigs() {
+   map.AddWebUIConfig(std::make_unique<SigninErrorUIConfig>());
+   map.AddWebUIConfig(std::make_unique<SigninEmailConfirmationUIConfig>());
+ #endif  //  !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_ANDROID)
++  map.AddWebUIConfig(std::make_unique<ProxyConfigUIConfig>());
+ }
 diff --git a/chrome/browser/ui/webui/proxy_config_ui.cc b/chrome/browser/ui/webui/proxy_config_ui.cc
 new file mode 100644
 --- /dev/null
@@ -893,7 +890,7 @@ new file mode 100644
 +      state.SetByDottedPath("config.rules.fallback_proxies", base::Value(omitDirect(rules.fallback_proxies.ToPacString())));
 +      break;
 +    default:
-+     NOTREACHED_NORETURN();
++     NOTREACHED();
 +  }
 +  state.SetByDottedPath("config.rules.type", base::Value(type));
 +  state.SetByDottedPath("config.rules.bypass_rules", base::Value(rules.bypass_rules.ToString()));
@@ -1089,7 +1086,7 @@ diff --git a/chrome/browser/ui/webui/proxy_config_ui.h b/chrome/browser/ui/webui
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/webui/proxy_config_ui.h
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,41 @@
 +/*
 +    This file is part of Bromite.
 +
@@ -1110,7 +1107,9 @@ new file mode 100644
 +#ifndef CHROME_BROWSER_UI_WEBUI_PROXY_CONFIG_UI_H_
 +#define CHROME_BROWSER_UI_WEBUI_PROXY_CONFIG_UI_H_
 +
++#include "chrome/common/webui_url_constants.h"
 +#include "content/public/browser/web_ui_controller.h"
++#include "content/public/browser/webui_config.h"
 +
 +// The WebUI for chrome://proxy/.
 +class ProxyConfigUI : public content::WebUIController {
@@ -1118,6 +1117,14 @@ new file mode 100644
 +  ProxyConfigUI(const ProxyConfigUI&) = delete;
 +  ProxyConfigUI& operator=(const ProxyConfigUI&) = delete;
 +  explicit ProxyConfigUI(content::WebUI* web_ui);
++};
++
++class ProxyConfigUIConfig
++    : public content::DefaultWebUIConfig<ProxyConfigUI> {
++ public:
++  ProxyConfigUIConfig()
++      : DefaultWebUIConfig(content::kChromeUIScheme,
++                           chrome::kChromeUIProxyConfigHost) {}
 +};
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_PROXY_CONFIG_UI_H_
@@ -1321,8 +1328,8 @@ diff --git a/components/proxy_config/proxy_policy_handler.cc b/components/proxy_
 diff --git a/net/proxy_resolution/proxy_config.cc b/net/proxy_resolution/proxy_config.cc
 --- a/net/proxy_resolution/proxy_config.cc
 +++ b/net/proxy_resolution/proxy_config.cc
-@@ -131,7 +131,7 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules,
-             url_scheme, &single_proxies, ProxyServer::SCHEME_HTTP,
+@@ -129,7 +129,7 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules,
+             std::move(url_scheme), &single_proxies, ProxyServer::SCHEME_HTTP,
              allow_bracketed_proxy_chains, is_quic_allowed);
          type = Type::PROXY_LIST;
 -        return;
@@ -1330,7 +1337,7 @@ diff --git a/net/proxy_resolution/proxy_config.cc b/net/proxy_resolution/proxy_c
        }
  
        // Trim whitespace off the url scheme.
-@@ -162,6 +162,55 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules,
+@@ -160,6 +160,55 @@ void ProxyConfig::ProxyRules::ParseFromString(const std::string& proxy_rules,
    }
  }
  

@@ -4,7 +4,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 
 cd $root_dir/domain_substitution
 
-branch="131.0.6778.139-1"
+branch="132.0.6834.83-1"
 if [ -d ungoogled-chromium ]; then
     cd ungoogled-chromium
     git fetch origin $branch

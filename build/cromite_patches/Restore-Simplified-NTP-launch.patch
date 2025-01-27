@@ -22,8 +22,8 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../chrome/browser/ntp/NewTabPageLayout.java  |  25 ++-
  .../SuggestionsNavigationDelegate.java        |  17 ++
  .../mostvisited/MostVisitedSitesBridge.java   |   2 +-
- .../tile/MostVisitedTilesCoordinator.java     |  10 +-
- .../tile/MostVisitedTilesGridLayout.java      | 194 ++++++++++++++++++
+ .../tile/MostVisitedTilesCoordinator.java     |   7 +-
+ .../tile/MostVisitedTilesGridLayout.java      | 193 ++++++++++++++++++
  .../tile/MostVisitedTilesMediator.java        |   9 +-
  .../engagement/important_sites_util.cc        |   2 +-
  .../flags/android/chrome_feature_list.cc      |   1 +
@@ -32,7 +32,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../Restore-Simplified-NTP-launch.inc         |  12 ++
  .../Restore-Simplified-NTP-launch.inc         |   5 +
  .../Restore-Simplified-NTP-launch.inc         |   1 +
- 26 files changed, 399 insertions(+), 34 deletions(-)
+ 26 files changed, 398 insertions(+), 31 deletions(-)
  create mode 100644 chrome/android/java/res/layout/ntp_shortcuts.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/feedback/SimplifiedNtpFeedbackSource.java
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesGridLayout.java
@@ -43,7 +43,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -537,6 +537,7 @@ chrome_java_resources = [
+@@ -538,6 +538,7 @@ chrome_java_resources = [
    "java/res/layout/new_tab_page_layout.xml",
    "java/res/layout/new_tab_page_tile_grid_placeholder.xml",
    "java/res/layout/open_full_chrome_history_header.xml",
@@ -54,7 +54,7 @@ diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_ja
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -631,6 +631,7 @@ chrome_java_sources = [
+@@ -628,6 +628,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/feedback/FeedFeedbackCollector.java",
    "java/src/org/chromium/chrome/browser/feedback/HelpAndFeedbackLauncherImpl.java",
    "java/src/org/chromium/chrome/browser/feedback/ScreenshotTask.java",
@@ -62,7 +62,7 @@ diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbar.java",
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbarManager.java",
    "java/src/org/chromium/chrome/browser/findinpage/FindToolbarObserver.java",
-@@ -1051,6 +1052,7 @@ chrome_java_sources = [
+@@ -1046,6 +1047,7 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/suggestions/mostvisited/MostVisitedSitesMetadataUtils.java",
    "java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java",
    "java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesLayout.java",
@@ -309,7 +309,7 @@ new file mode 100644
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java b/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
-@@ -153,7 +153,10 @@ public class IdentityDiscController
+@@ -155,7 +155,10 @@ public class IdentityDiscController
  
          mButtonData.setButtonSpec(
                  buttonSpecWithDrawableAndDescription(mButtonData.getButtonSpec(), email));
@@ -378,7 +378,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageL
          initializeSearchBoxTextView();
          initializeVoiceSearchButton();
          initializeLensButton();
-@@ -589,7 +594,7 @@ public class NewTabPageLayout extends LinearLayout {
+@@ -585,7 +590,7 @@ public class NewTabPageLayout extends LinearLayout {
                  && mInitialized) {
              return;
          }
@@ -387,7 +387,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageL
          mSearchProviderIsGoogle = isGoogle;
  
          if (!mSearchProviderIsGoogle) {
-@@ -924,6 +929,22 @@ public class NewTabPageLayout extends LinearLayout {
+@@ -918,6 +923,22 @@ public class NewTabPageLayout extends LinearLayout {
          return mMostVisitedTilesCoordinator;
      }
  
@@ -420,7 +420,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/Sug
 +import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 +import org.chromium.chrome.browser.download.DownloadUtils;
 +import org.chromium.chrome.browser.download.DownloadOpenSource;
-+import org.chromium.chrome.browser.profiles.OTRProfileID;
++import org.chromium.chrome.browser.profiles.OtrProfileId;
 +
  /** Extension of {@link NativePageNavigationDelegate} with suggestions-specific methods. */
  public class SuggestionsNavigationDelegate extends NativePageNavigationDelegateImpl {
@@ -434,9 +434,9 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/Sug
 +    }
 +
 +    public void navigateToDownloadManager() {
-+        OTRProfileID otrProfileID = null;
++        OtrProfileId otrProfileID = null;
 +        if (mProfile != null && mTab != null && mTab.isIncognito()) {
-+            otrProfileID = mProfile.getOTRProfileID();
++            otrProfileID = mProfile.getOtrProfileId();
 +        }
 +        DownloadUtils.showDownloadManager(mActivity, mTab, otrProfileID, DownloadOpenSource.NEW_TAB_PAGE);
 +    }
@@ -459,16 +459,15 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/mos
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinator.java
-@@ -38,7 +38,7 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
+@@ -38,6 +38,7 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
      private final MostVisitedTilesMediator mMediator;
      private final WindowAndroid mWindowAndroid;
      private final UiConfig mUiConfig;
--    private final PropertyModelChangeProcessor mModelChangeProcessor;
 +    private PropertyModelChangeProcessor mModelChangeProcessor;
      private TileRenderer mRenderer;
      private ContextMenuManager mContextMenuManager;
      private OfflinePageBridge mOfflinePageBridge;
-@@ -66,17 +66,11 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
+@@ -65,15 +66,11 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
          mWindowAndroid = windowAndroid;
  
          ((ViewStub) mvTilesContainerLayout.findViewById(R.id.mv_tiles_layout_stub)).inflate();
@@ -478,12 +477,10 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/til
  
          mUiConfig = new UiConfig(tilesLayout);
          PropertyModel propertyModel = new PropertyModel(MostVisitedTilesProperties.ALL_KEYS);
--        mModelChangeProcessor =
--                PropertyModelChangeProcessor.create(
--                        propertyModel,
--                        new MostVisitedTilesViewBinder.ViewHolder(
--                                mvTilesContainerLayout, tilesLayout),
--                        MostVisitedTilesViewBinder::bind);
+-        PropertyModelChangeProcessor.create(
+-                propertyModel,
+-                new MostVisitedTilesViewBinder.ViewHolder(mvTilesContainerLayout, tilesLayout),
+-                MostVisitedTilesViewBinder::bind);
          mRenderer =
                  new TileRenderer(
                          mActivity, SuggestionsConfig.getTileStyle(mUiConfig), TITLE_LINES, null);
@@ -491,7 +488,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/suggestions/til
 new file mode 100644
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesGridLayout.java
-@@ -0,0 +1,194 @@
+@@ -0,0 +1,193 @@
 +// Copyright 2015 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -514,7 +511,6 @@ new file mode 100644
 +import org.chromium.base.library_loader.LibraryLoader;
 +import org.chromium.chrome.R;
 +import org.chromium.chrome.browser.flags.ChromeFeatureList;
-+import org.chromium.chrome.browser.ntp.FeedPositionUtils;
 +import org.chromium.chrome.browser.suggestions.SiteSuggestion;
 +import org.chromium.ui.base.DeviceFormFactor;
 +
@@ -741,9 +737,9 @@ diff --git a/chrome/browser/engagement/important_sites_util.cc b/chrome/browser/
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -265,6 +265,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+@@ -266,6 +266,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+     &kHideTabletToolbarDownloadButton,
      &kLockBackPressHandlerAtStart,
-     &kIncognitoReauthenticationForAndroid,
      &kIncognitoScreenshot,
 +    &kSimplifiedNTP,
      &kLensOnQuickActionSearchWidget,
@@ -752,15 +748,15 @@ diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browse
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -385,6 +385,7 @@ public abstract class ChromeFeatureList {
+@@ -373,6 +373,7 @@ public abstract class ChromeFeatureList {
+     public static final String MAGIC_STACK_ANDROID = "MagicStackAndroid";
      public static final String MAYLAUNCHURL_USES_SEPARATE_STORAGE_PARTITION =
              "MayLaunchUrlUsesSeparateStoragePartition";
-     public static final String MESSAGES_FOR_ANDROID_ADS_BLOCKED = "MessagesForAndroidAdsBlocked";
 +    public static final String SIMPLIFIED_NTP = "SimplifiedNTP";
      public static final String SEARCH_READY_OMNIBOX = "SearchReadyOmnibox";
      public static final String MOST_VISITED_TILES_RESELECT = "MostVisitedTilesReselect";
      public static final String MUlTI_INSTANCE_APPLICATION_STATUS_CLEANUP =
-@@ -694,7 +695,7 @@ public abstract class ChromeFeatureList {
+@@ -664,7 +665,7 @@ public abstract class ChromeFeatureList {
      public static final CachedFlag sLogoPolish = newCachedFlag(LOGO_POLISH, true);
      public static final CachedFlag sLogoPolishAnimationKillSwitch =
              newCachedFlag(LOGO_POLISH_ANIMATION_KILL_SWITCH, true);

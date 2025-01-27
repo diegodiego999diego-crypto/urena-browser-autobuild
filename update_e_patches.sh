@@ -50,10 +50,14 @@ for commit in $(git rev-list --reverse "$chromium_commit_hash"..HEAD); do
     temp_patch_file=$(mktemp)
     git format-patch -1 --stdout "$commit" --subject-prefix="" > "$temp_patch_file"
 
-    # Check if the patch differs from any existing one, ignoring the first line
+    # Check if the patch differs from any existing one, ignoring the first line and the last non-empty line
     if [ -f "$patch_path" ]; then
-        # Compare content ignoring the first line
-        if diff -q <(tail -n +2 "$temp_patch_file") <(tail -n +2 "$patch_path") > /dev/null; then
+        # Remove trailing empty lines and skip the first and last non-empty line
+        temp_content=$(sed '/./!d' "$temp_patch_file" | tail -n +2 | head -n -1)
+        existing_content=$(sed '/./!d' "$patch_path" | tail -n +2 | head -n -1)
+
+        # Compare processed content
+        if diff -q <(echo "$temp_content") <(echo "$existing_content") > /dev/null; then
             echo "Patch already up-to-date: $patch_filename"
             rm "$temp_patch_file"
             echo "$patch_filename" >> "$output_patch_file"
