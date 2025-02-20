@@ -1,16 +1,17 @@
-From 63eceea28f3b7c1a7d00da01acd894a63f2d41f2 Mon Sep 17 00:00:00 2001
+From 7d9786f58085457727d0b35e747e7a633c07d295 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Tue, 5 Nov 2024 10:08:21 +0530
 Subject: Browser: Enable external intent requests
 
 ---
  .../java/res/xml/privacy_preferences.xml      |  3 +-
+ .../customtabs/CustomTabDelegateFactory.java  |  4 +--
  .../ExternalNavigationDelegateImpl.java       |  6 ++--
  .../privacy/settings/PrivacySettings.java     | 11 +++++++
  .../cromite/sAllowExternalIntentRequests.java | 33 -------------------
  ...ag-to-disable-external-intent-requests.inc | 13 --------
  ...ag-to-disable-external-intent-requests.inc |  3 --
- 6 files changed, 15 insertions(+), 54 deletions(-)
+ 7 files changed, 17 insertions(+), 56 deletions(-)
  delete mode 100644 chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java
  delete mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc
  delete mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
@@ -29,6 +30,35 @@ index a256c92115cff..c38eb74ff06f2 100644
      <PreferenceCategory
          android:key="security_section"
          android:title="@string/security_section_title" />
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+index 3aa592e78abfa..35c5970cb157b 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+@@ -17,6 +17,7 @@ import androidx.annotation.VisibleForTesting;
+ import androidx.browser.trusted.TrustedWebActivityDisplayMode.ImmersiveMode;
+ 
+ import org.chromium.base.CallbackUtils;
++import org.chromium.base.ContextUtils;
+ import org.chromium.base.metrics.RecordHistogram;
+ import org.chromium.base.supplier.Supplier;
+ import org.chromium.blink.mojom.DisplayMode;
+@@ -36,7 +37,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+ import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
+ import org.chromium.chrome.browser.flags.ActivityType;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.flags.cromite.sAllowExternalIntentRequests;
+ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+ import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+ import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
+@@ -134,7 +134,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
+ 
+         @Override
+         public boolean shouldDisableAllExternalIntents() {
+-            if (!sAllowExternalIntentRequests.getInstance().isEnabled()) return true;
++            if (!ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true)) return true;
+             return mActivityType == ActivityType.AUTH_TAB
+                     && ChromeFeatureList.sCctAuthTabDisableAllExternalIntents.isEnabled();
+         }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
 index f293f54b31b00..a6b3082e44cfe 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
