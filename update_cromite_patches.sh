@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 root_dir=$(dirname "$(readlink -f "$0")")
 

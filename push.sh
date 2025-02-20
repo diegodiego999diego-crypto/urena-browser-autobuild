@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 adb shell pm uninstall foundation.e.browser
 adb shell pm uninstall com.android.webview
