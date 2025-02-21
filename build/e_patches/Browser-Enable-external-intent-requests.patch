@@ -1,25 +1,26 @@
-From 671d22da5400d61bb7608a35eb02045f21e25c59 Mon Sep 17 00:00:00 2001
+From 9c795d12032aef6093e246f9bb70e91beece3c7b Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Tue, 5 Nov 2024 10:08:21 +0530
 Subject: Browser: Enable external intent requests
 
 ---
  .../java/res/xml/privacy_preferences.xml      |  3 +-
+ .../customtabs/CustomTabDelegateFactory.java  |  4 +--
  .../ExternalNavigationDelegateImpl.java       |  6 ++--
  .../privacy/settings/PrivacySettings.java     | 11 +++++++
  .../cromite/sAllowExternalIntentRequests.java | 33 -------------------
  ...ag-to-disable-external-intent-requests.inc | 13 --------
  ...ag-to-disable-external-intent-requests.inc |  3 --
- 6 files changed, 15 insertions(+), 54 deletions(-)
+ 7 files changed, 17 insertions(+), 56 deletions(-)
  delete mode 100644 chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java
  delete mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc
  delete mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
-index 91183f69c335e..abab143d39093 100644
+index a256c92115cff..c38eb74ff06f2 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -93,8 +93,7 @@ found in the LICENSE file.
+@@ -92,8 +92,7 @@ found in the LICENSE file.
          android:key="allow_external_intent_requests"
          android:title="@string/allow_external_intent_requests_title"
          android:summary="@string/allow_external_intent_requests_summary"
@@ -29,11 +30,40 @@ index 91183f69c335e..abab143d39093 100644
      <PreferenceCategory
          android:key="security_section"
          android:title="@string/security_section_title" />
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+index 3aa592e78abfa..35c5970cb157b 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+@@ -17,6 +17,7 @@ import androidx.annotation.VisibleForTesting;
+ import androidx.browser.trusted.TrustedWebActivityDisplayMode.ImmersiveMode;
+ 
+ import org.chromium.base.CallbackUtils;
++import org.chromium.base.ContextUtils;
+ import org.chromium.base.metrics.RecordHistogram;
+ import org.chromium.base.supplier.Supplier;
+ import org.chromium.blink.mojom.DisplayMode;
+@@ -36,7 +37,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+ import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
+ import org.chromium.chrome.browser.flags.ActivityType;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.flags.cromite.sAllowExternalIntentRequests;
+ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+ import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+ import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
+@@ -134,7 +134,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
+ 
+         @Override
+         public boolean shouldDisableAllExternalIntents() {
+-            if (!sAllowExternalIntentRequests.getInstance().isEnabled()) return true;
++            if (!ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true)) return true;
+             return mActivityType == ActivityType.AUTH_TAB
+                     && ChromeFeatureList.sCctAuthTabDisableAllExternalIntents.isEnabled();
+         }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
-index c7ad21ed8c9af..ec58d93767b52 100644
+index f293f54b31b00..a6b3082e44cfe 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
-@@ -19,7 +19,6 @@ import org.chromium.base.IntentUtils;
+@@ -20,7 +20,6 @@ import org.chromium.base.IntentUtils;
  import org.chromium.base.PackageManagerUtils;
  import org.chromium.base.supplier.Supplier;
  import org.chromium.chrome.browser.ChromeTabbedActivity2;
@@ -41,7 +71,7 @@ index c7ad21ed8c9af..ec58d93767b52 100644
  import org.chromium.chrome.browser.IntentHandler;
  import org.chromium.chrome.browser.password_manager.CctPasswordSavingMetricsRecorderBridge;
  import org.chromium.chrome.browser.safe_browsing.SafeBrowsingBridge;
-@@ -44,6 +43,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+@@ -46,6 +45,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
  
      private boolean mIsTabDestroyed;
  
@@ -50,7 +80,7 @@ index c7ad21ed8c9af..ec58d93767b52 100644
      public ExternalNavigationDelegateImpl(Tab tab) {
          mTab = tab;
          mTabModelSelectorSupplier = TabModelSelectorSupplier.from(tab.getWindowAndroid());
-@@ -106,8 +107,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+@@ -108,8 +109,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
  
      @Override
      public boolean shouldDisableExternalIntentRequestsForUrl(GURL url) {
@@ -61,10 +91,10 @@ index c7ad21ed8c9af..ec58d93767b52 100644
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 073ec4c2dac3b..f369505f11f0d 100644
+index 228944ae9d304..5d45545a8b404 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -121,6 +121,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -129,6 +129,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
      private ChromeSwitchPreference allowCustomTabIntentsPref;
      private ChromeSwitchPreference openExternalLinksPref;
@@ -72,7 +102,7 @@ index 073ec4c2dac3b..f369505f11f0d 100644
  
      private static final String PREF_HISTORY_EXPIRE_DAYS_THRESHOLD = "history_expire_days_threshold";
  
-@@ -387,6 +388,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -409,6 +410,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
      public static final String PREF_ALLOW_CUSTOM_TAB_INTENTS = "allow_custom_tab_intents";
      public static final String PREF_OPEN_EXTERNAL_LINKS_INCOGNITO = "open_external_links_incognito";
@@ -80,7 +110,7 @@ index 073ec4c2dac3b..f369505f11f0d 100644
  
      @Override
      public boolean onPreferenceChange(Preference preference, Object newValue) {
-@@ -429,6 +431,10 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -455,6 +457,10 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
              SharedPreferences.Editor sharedPreferencesEditor = ContextUtils.getAppSharedPreferences().edit();
              sharedPreferencesEditor.putBoolean(PREF_OPEN_EXTERNAL_LINKS_INCOGNITO, (boolean)newValue);
              sharedPreferencesEditor.apply();
@@ -91,7 +121,7 @@ index 073ec4c2dac3b..f369505f11f0d 100644
          }
          return true;
      }
-@@ -461,6 +467,11 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -497,6 +503,11 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          openExternalLinksPref.setOnPreferenceChangeListener(this);
          openExternalLinksPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
  

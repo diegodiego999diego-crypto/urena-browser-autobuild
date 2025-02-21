@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 root_dir=$(dirname "$(readlink -f "$0")")
 
 cd $root_dir/domain_substitution
 
-branch="132.0.6834.83-1"
+branch="133.0.6943.98-1"
 if [ -d ungoogled-chromium ]; then
     cd ungoogled-chromium
     git fetch origin $branch
@@ -20,4 +20,3 @@ cd ungoogled-chromium/utils
 cp _common.py domain_substitution.py _extraction.py prune_binaries.py ../../
 
 echo "Copy done"
-

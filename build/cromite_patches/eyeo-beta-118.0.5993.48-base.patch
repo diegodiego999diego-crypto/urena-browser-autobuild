@@ -15,7 +15,7 @@ Based on Chromium 118.0.5993.48
  components/adblock/README.md                  |   80 +
  components/adblock/content/BUILD.gn           |   22 +
  components/adblock/content/browser/BUILD.gn   |  136 ++
- .../adblock_controller_factory_base.cc        |   87 +
+ .../adblock_controller_factory_base.cc        |   88 +
  .../browser/adblock_controller_factory_base.h |   50 +
  .../content/browser/adblock_filter_match.h    |   30 +
  .../adblock_telemetry_service_factory_base.cc |  100 ++
@@ -43,7 +43,7 @@ Based on Chromium 118.0.5993.48
  .../resource_classification_runner_impl.h     |  156 ++
  .../content/browser/session_stats_impl.cc     |   86 +
  .../content/browser/session_stats_impl.h      |   71 +
- .../subscription_service_factory_base.cc      |  224 +++
+ .../subscription_service_factory_base.cc      |  225 +++
  .../subscription_service_factory_base.h       |   60 +
  components/adblock/core/BUILD.gn              |  175 ++
  .../activeping_telemetry_topic_provider.cc    |  285 ++++
@@ -223,7 +223,7 @@ Based on Chromium 118.0.5993.48
  tools/eyeo/generate_modules.sh                |  209 +++
  tools/eyeo/snippets_deps.py                   |   61 +
  tools/gritsettings/resource_ids.spec          |   11 +-
- 219 files changed, 22051 insertions(+), 4 deletions(-)
+ 219 files changed, 22053 insertions(+), 4 deletions(-)
  create mode 100644 components/adblock/CHANGELOG.md
  create mode 100644 components/adblock/LICENSE
  create mode 100644 components/adblock/README.md
@@ -424,7 +424,7 @@ Based on Chromium 118.0.5993.48
 diff --git a/DEPS b/DEPS
 --- a/DEPS
 +++ b/DEPS
-@@ -164,6 +164,10 @@ vars = {
+@@ -168,6 +168,10 @@ vars = {
    # flag is set True.
    'checkout_wpr_archives': False,
  
@@ -435,7 +435,7 @@ diff --git a/DEPS b/DEPS
    # By default, do not check out WebKit for iOS, as it is not needed unless
    # running against ToT WebKit rather than system WebKit. This can be overridden
    # e.g. with custom_vars.
-@@ -258,6 +262,8 @@ vars = {
+@@ -262,6 +266,8 @@ vars = {
    'download_libvpx_testdata': False,
  
    'android_git': 'https://android.googlesource.com',
@@ -444,9 +444,9 @@ diff --git a/DEPS b/DEPS
    'aomedia_git': 'https://aomedia.googlesource.com',
    'boringssl_git': 'https://boringssl.googlesource.com',
    'chrome_git': 'https://chrome-internal.googlesource.com',
-@@ -482,6 +488,11 @@ vars = {
+@@ -502,6 +508,11 @@ vars = {
    # and whatever else without interference from each other.
-   'llvm_libc_revision':    'ca74a72e2b32ad804522bbef04dfe32560a10206',
+   'llvm_libc_revision':    '039fea2058d14b408637a931b36a717169617227',
  
 +  # Three lines of non-changing comments so that
 +  # the commit queue can handle CLs rolling feed
@@ -455,8 +455,8 @@ diff --git a/DEPS b/DEPS
 +
    # If you change this, also update the libc++ revision in
    # //buildtools/deps_revisions.gni.
-   'libcxx_revision':       '8e31ad42561900383e10dbefc1d3e8f38cedfbe9',
-@@ -1285,6 +1296,10 @@ deps = {
+   'libcxx_revision':       '1f7db7501cf902d5d3ad5fd9b31bea33bb8bf9da',
+@@ -1447,6 +1458,10 @@ deps = {
      'condition': 'checkout_android and checkout_src_internal',
    },
  
@@ -465,9 +465,9 @@ diff --git a/DEPS b/DEPS
 +  },
 +
    'src/docs/website': {
-     'url': Var('chromium_git') + '/website.git' + '@' + 'be9c3dfd3781964fc0bab0d6c91d9ad117b71b02',
+     'url': Var('chromium_git') + '/website.git' + '@' + '4d214097ba7305ec2b3f2dfcf0aa4fd2104c960a',
    },
-@@ -1420,6 +1435,13 @@ deps = {
+@@ -1587,6 +1602,13 @@ deps = {
        'dep_type': 'cipd',
    },
  
@@ -525,7 +525,7 @@ diff --git a/README.md b/README.md
 diff --git a/base/trace_event/builtin_categories.h b/base/trace_event/builtin_categories.h
 --- a/base/trace_event/builtin_categories.h
 +++ b/base/trace_event/builtin_categories.h
-@@ -93,6 +93,7 @@
+@@ -98,6 +98,7 @@
    X("exo")                                                               \
    X("extensions")                                                        \
    X("explore_sites")                                                     \
@@ -573,7 +573,7 @@ diff --git a/components/BUILD.gn b/components/BUILD.gn
  
  import("//base/debug/debug.gni")
  import("//build/config/chrome_build.gni")
-@@ -178,6 +181,14 @@ test("components_unittests") {
+@@ -177,6 +180,14 @@ test("components_unittests") {
  
    deps = [
      "//base",
@@ -2165,7 +2165,7 @@ diff --git a/components/adblock/content/browser/adblock_controller_factory_base.
 new file mode 100644
 --- /dev/null
 +++ b/components/adblock/content/browser/adblock_controller_factory_base.cc
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,88 @@
 +/*
 + * This file is part of eyeo Chromium SDK,
 + * Copyright (C) 2006-present eyeo GmbH
@@ -2208,7 +2208,8 @@ new file mode 100644
 +          "AdblockController",
 +          BrowserContextDependencyManager::GetInstance()) {}
 +
-+KeyedService* AdblockControllerFactoryBase::BuildServiceInstanceFor(
++std::unique_ptr<KeyedService>
++AdblockControllerFactoryBase::BuildServiceInstanceForBrowserContext(
 +    content::BrowserContext* context) const {
 +  auto* prefs = GetPrefs(context);
 +  auto adblock_filtering_configuration =
@@ -2236,7 +2237,7 @@ new file mode 100644
 +  subscription_service->InstallFilteringConfiguration(
 +      std::move(adblock_filtering_configuration));
 +
-+  return controller.release();
++  return controller;
 +}
 +
 +void AdblockControllerFactoryBase::RegisterProfilePrefs(
@@ -2297,7 +2298,7 @@ new file mode 100644
 +
 + private:
 +  // BrowserContextKeyedServiceFactory:
-+  KeyedService* BuildServiceInstanceFor(
++  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
 +      content::BrowserContext* context) const override;
 +  void RegisterProfilePrefs(
 +      user_prefs::PrefRegistrySyncable* registry) override;
@@ -6178,7 +6179,7 @@ diff --git a/components/adblock/content/browser/subscription_service_factory_bas
 new file mode 100644
 --- /dev/null
 +++ b/components/adblock/content/browser/subscription_service_factory_base.cc
-@@ -0,0 +1,224 @@
+@@ -0,0 +1,225 @@
 +/*
 + * This file is part of eyeo Chromium SDK,
 + * Copyright (C) 2006-present eyeo GmbH
@@ -6341,10 +6342,11 @@ new file mode 100644
 +
 +SubscriptionServiceFactoryBase::~SubscriptionServiceFactoryBase() = default;
 +
-+KeyedService* SubscriptionServiceFactoryBase::BuildServiceInstanceFor(
++std::unique_ptr<KeyedService>
++SubscriptionServiceFactoryBase::BuildServiceInstanceForBrowserContext(
 +    content::BrowserContext* context) const {
 +  auto* prefs = GetPrefs(context);
-+  auto* subscription_service = new SubscriptionServiceImpl(
++  auto subscription_service = std::make_unique<SubscriptionServiceImpl>(
 +      base::BindRepeating(&MakeFilterConfigurationMaintainer, context, prefs,
 +                          GetSubscriptionPersistentMetadata(context),
 +                          static_cast<const ConversionExecutors*>(this)),
@@ -6459,7 +6461,7 @@ new file mode 100644
 +  ~SubscriptionServiceFactoryBase() override;
 +
 +  // BrowserContextKeyedServiceFactory:
-+  KeyedService* BuildServiceInstanceFor(
++  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
 +      content::BrowserContext* context) const override;
 +  void RegisterProfilePrefs(
 +      user_prefs::PrefRegistrySyncable* registry) override;
@@ -13856,9 +13858,9 @@ new file mode 100644
 +
 +  crypto::SignatureVerifier verifier;
 +  if (verifier.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA1,
-+                          base::as_bytes(base::make_span(signature)),
-+                          base::as_bytes(base::make_span(public_key)))) {
-+    verifier.VerifyUpdate(base::as_bytes(base::make_span(data)));
++                          base::as_byte_span(signature),
++                          base::as_byte_span(public_key))) {
++    verifier.VerifyUpdate(base::as_byte_span(data));
 +    return verifier.VerifyFinal();
 +  }
 +
@@ -31339,7 +31341,7 @@ new file mode 100644
 diff --git a/components/resources/BUILD.gn b/components/resources/BUILD.gn
 --- a/components/resources/BUILD.gn
 +++ b/components/resources/BUILD.gn
-@@ -84,6 +84,11 @@ grit("components_resources") {
+@@ -88,6 +88,11 @@ grit("components_resources") {
    if (is_android && safe_browsing_mode == 2) {
      deps += [ "//components/safe_browsing/content/resources/real_time_url_checks_allowlist:make_real_time_url_allowlist_protobuf" ]
    }
@@ -52295,7 +52297,7 @@ diff --git a/content/browser/loader/navigation_url_loader_impl.cc b/content/brow
  #include "content/browser/loader/navigation_url_loader_impl.h"
  
  #include <map>
-@@ -1131,7 +1135,7 @@ void NavigationURLLoaderImpl::OnReceiveRedirect(
+@@ -1190,7 +1194,7 @@ void NavigationURLLoaderImpl::OnReceiveRedirect(
    LogQueueTimeHistogram("Navigation.QueueTime.OnReceiveRedirect",
                          resource_request_->is_outermost_main_frame);
    net::Error error = net::OK;
@@ -52318,7 +52320,7 @@ diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/b
  
  #include "content/browser/renderer_host/render_frame_host_impl.h"
  
-@@ -3183,6 +3187,12 @@ void RenderFrameHostImpl::ExecuteJavaScriptMethod(
+@@ -3169,6 +3173,12 @@ void RenderFrameHostImpl::ExecuteJavaScriptMethod(
        std::move(callback));
  }
  
@@ -52345,7 +52347,7 @@ diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/br
  
  #ifndef CONTENT_BROWSER_RENDERER_HOST_RENDER_FRAME_HOST_IMPL_H_
  #define CONTENT_BROWSER_RENDERER_HOST_RENDER_FRAME_HOST_IMPL_H_
-@@ -488,6 +492,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+@@ -482,6 +486,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
                                 const std::u16string& method_name,
                                 base::Value::List arguments,
                                 JavaScriptResultCallback callback) override;
@@ -52488,7 +52490,7 @@ diff --git a/third_party/blink/public/mojom/frame/frame.mojom b/third_party/blin
  
  module blink.mojom;
  
-@@ -969,6 +973,10 @@ interface LocalFrame {
+@@ -968,6 +972,10 @@ interface LocalFrame {
    // the given point in the view coordinate space.
    PluginActionAt(gfx.mojom.Point location, blink.mojom.PluginActionType action);
  
@@ -52553,7 +52555,7 @@ diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_pa
 +  if (props.PropertyCount() != 1)
 +    return false;
 +  const auto& ref = props.PropertyAt(0);
-+  return ref.Id() == CSSPropertyID::kDisplay && ref.IsImportant();
++  return ref.PropertyID() == CSSPropertyID::kDisplay && ref.IsImportant();
 +}
 +
 +// Should be same as WebDocument::InsertStyleSheet, excluding content
@@ -53109,7 +53111,7 @@ diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_
  # This file is used to assign starting resource ids for resources and strings
  # used by Chromium.  This is done to ensure that resource ids are unique
  # across all the grd files.  If you are adding a new grd file, please add
-@@ -1391,7 +1395,12 @@
+@@ -1421,7 +1425,12 @@
    "<(SHARED_INTERMEDIATE_DIR)/third_party/blink/public/strings/permission_element_generated_strings.grd": {
      "META": {"sizes": {"messages": [2000],}},
      "messages": [10080],

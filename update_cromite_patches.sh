@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 root_dir=$(dirname "$(readlink -f "$0")")
 
 cd $root_dir/build
 
-branch="v132.0.6834.83-36e27b9c60c551348fe4e65a537d16c76d9b48e8"
+branch="v133.0.6943.99-f987ea3d750501f851e708a49b2c66e318206e73"
 if [ -d cromite ]; then
     cd cromite
     git fetch origin $branch
@@ -22,4 +22,3 @@ for file in $cromite_patches_list; do
 done
 
 echo "Copy done"
-
