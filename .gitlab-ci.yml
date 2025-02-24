@@ -1,6 +1,11 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "schedule"
+
 stages:
   - prepare
   - build
+  - filters
 
 variables:
   CONTAINER_IMAGE: registry.gitlab.e.foundation:5000/$CI_PROJECT_PATH
@@ -9,6 +14,8 @@ variables:
 build-docker:
   image: docker:25.0.5-git
   stage: prepare
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   tags:
     - generic_privileged
   variables:
@@ -24,6 +31,8 @@ build-docker:
 
 .build-cromite:
   image: $CONTAINER_IMAGE
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   tags:
     - build-browser
   artifacts:
@@ -56,3 +65,37 @@ build-cromite-x64:
   extends: .build-cromite
   script:
     - $CI_PROJECT_DIR/build.sh -c -s -a x64
+
+.build-filters:
+  image: debian:12-slim
+  stage: filters
+
+update-filters:
+  stage: filters
+  extends: .build-filters
+  needs: []
+  script: 
+    - apt-get update && apt-get install -y curl
+    - bash generate_filters.sh
+  artifacts:
+    paths:
+      - filters.dat
+
+deploy_rsync:
+  stage: filters
+  extends: .build-filters
+  needs:
+    - job: update-filters
+  before_script:
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_PRIVATE_KEY_ED" > $HOME/.ssh/id_ed25519
+    - echo "$SSH_PUBKEY_ED" > $HOME/.ssh/id_ed25519.pub
+    - echo "$SSH_KNOWN_HOSTS" > $HOME/.ssh/known_hosts
+    - chmod 600 ~/.ssh/id_ed25519
+    - chmod 644 ~/.ssh/known_hosts ~/.ssh/id_ed25519.pub
+    - apt-get update && apt-get install -y rsync openssh-client
+  script:
+    - rsync -avz --chown=$REMOTE_USER:www-data --chmod=F644 filters.dat $REMOTE_USER@$IMAGES_HOSTNAME:$BROWSER_PATH
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
