@@ -1,4 +1,4 @@
-From 279a6b1d77fe99114d64e83c8c35472ec8029f96 Mon Sep 17 00:00:00 2001
+From cf3bf72c6505c7288bd1bf92f4cc2433a2ac0cef Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 4 Sep 2022 18:47:58 +0200
 Subject: Re-introduce kWebAuthCable
@@ -18,10 +18,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  6 files changed, 30 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc b/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
-index 5a9201d66664c..dad05a3f9cbd5 100644
+index 826860213ee00..aeb91d3a89438 100644
 --- a/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
 +++ b/chrome/browser/ui/views/webauthn/authenticator_dialog_view_browsertest.cc
-@@ -109,6 +109,12 @@ class StepTransitionObserver
+@@ -110,6 +110,12 @@ class StepTransitionObserver
  
  class AuthenticatorDialogViewTest : public DialogBrowserTest {
   public:
@@ -32,22 +32,22 @@ index 5a9201d66664c..dad05a3f9cbd5 100644
 +  }
 +
    // DialogBrowserTest:
-   void ShowUi(const std::string& name) override {
-     dialog_model_ =
-@@ -147,6 +153,7 @@ class AuthenticatorDialogViewTest : public DialogBrowserTest {
-     dialog_model_->RemoveObserver(&step_transition_observer);
-   }
- 
+   void TearDownOnMainThread() override {
+     view_controller_.reset();
+@@ -141,6 +147,7 @@ class AuthenticatorDialogViewTest : public DialogBrowserTest {
+       // devices" button to be shown.
+       dialog_model_->mechanisms.emplace_back(
+           AuthenticatorRequestDialogModel::Mechanism::Phone("Phone"), u"Phone",
 +  base::test::ScopedFeatureList scoped_feature_list_;
-   scoped_refptr<AuthenticatorRequestDialogModel> dialog_model_;
- };
- 
+           u"Phone", kSmartphoneIcon, base::DoNothing());
+       dialog_model_->SetStep(
+           AuthenticatorRequestDialogModel::Step::kMechanismSelection);
 diff --git a/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc b/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
-index b66c78ff53b5f..c152e986d278f 100644
+index b35cb4db63825..f955638f4e9bc 100644
 --- a/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
 +++ b/chrome/browser/ui/webauthn/authenticator_dialog_browsertest.cc
-@@ -70,6 +70,12 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
-         "user@example.com", signin::ConsentLevel::kSync);
+@@ -98,6 +98,12 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
+     DialogBrowserTest::TearDownOnMainThread();
    }
  
 +  void SetUp() override {
@@ -59,7 +59,7 @@ index b66c78ff53b5f..c152e986d278f 100644
    // DialogBrowserTest:
    void ShowUi(const std::string& name) override {
      // Web modal dialogs' bounds may exceed the display's work area.
-@@ -377,6 +383,7 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
+@@ -405,6 +411,7 @@ class AuthenticatorDialogTest : public DialogBrowserTest {
    std::unique_ptr<AuthenticatorRequestDialogController> controller_;
    base::RepeatingTimer timer_;
    int bio_samples_remaining_ = 5;
@@ -68,10 +68,10 @@ index b66c78ff53b5f..c152e986d278f 100644
  
  IN_PROC_BROWSER_TEST_F(AuthenticatorDialogTest, InvokeUi_default) {
 diff --git a/chrome/browser/webauthn/chrome_webauthn_browsertest.cc b/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
-index 6db2309d4a48b..f7d770bc6c01a 100644
+index b0bad6d998d45..04a53db5809fb 100644
 --- a/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
 +++ b/chrome/browser/webauthn/chrome_webauthn_browsertest.cc
-@@ -1159,6 +1159,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnCableExtension, ServerLink) {
+@@ -1158,6 +1158,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnCableExtension, ServerLink) {
  class WebAuthnCableSecondFactor : public WebAuthnBrowserTest {
   public:
    WebAuthnCableSecondFactor() {
@@ -79,7 +79,7 @@ index 6db2309d4a48b..f7d770bc6c01a 100644
      // This makes it a little easier to compare against.
      trace_ << std::endl;
    }
-@@ -1407,6 +1408,7 @@ class WebAuthnCableSecondFactor : public WebAuthnBrowserTest {
+@@ -1406,6 +1407,7 @@ class WebAuthnCableSecondFactor : public WebAuthnBrowserTest {
    };
  
   protected:
@@ -88,7 +88,7 @@ index 6db2309d4a48b..f7d770bc6c01a 100644
    raw_ptr<AuthenticatorRequestDialogController, DanglingUntriaged> controller_ =
        nullptr;
 diff --git a/content/browser/webauth/authenticator_impl_unittest.cc b/content/browser/webauth/authenticator_impl_unittest.cc
-index e5e4fe8242569..b144c726e167b 100644
+index dca681a3f79ff..2689e3024f11f 100644
 --- a/content/browser/webauth/authenticator_impl_unittest.cc
 +++ b/content/browser/webauth/authenticator_impl_unittest.cc
 @@ -1512,7 +1512,12 @@ TEST_F(AuthenticatorImplTest, OversizedCredentialId) {
@@ -106,10 +106,10 @@ index e5e4fe8242569..b144c726e167b 100644
    NavigateAndCommit(GURL(kTestOrigin1));
  
 diff --git a/content/public/common/content_features.cc b/content/public/common/content_features.cc
-index bef3b6b8256d7..7f450d1287e8f 100644
+index 666267bff0159..084b7f68aca8a 100644
 --- a/content/public/common/content_features.cc
 +++ b/content/public/common/content_features.cc
-@@ -1219,6 +1219,13 @@ BASE_FEATURE(kWebAssemblyTrapHandler,
+@@ -1217,6 +1217,13 @@ BASE_FEATURE(kWebAssemblyTrapHandler,
  #endif
  );
  
@@ -124,10 +124,10 @@ index bef3b6b8256d7..7f450d1287e8f 100644
  // https://webbluetoothcg.github.io/web-bluetooth/
  BASE_FEATURE(kWebBluetooth, "WebBluetooth", base::FEATURE_DISABLED_BY_DEFAULT);
 diff --git a/content/public/common/content_features.h b/content/public/common/content_features.h
-index d048bb7bf3c81..21478d40fd00a 100644
+index 89a8e1ce97965..f823c26d37502 100644
 --- a/content/public/common/content_features.h
 +++ b/content/public/common/content_features.h
-@@ -273,6 +273,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAssemblyLazyCompilation);
+@@ -270,6 +270,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAssemblyLazyCompilation);
  CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAssemblyMemory64);
  CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAssemblyTiering);
  CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebAssemblyTrapHandler);
