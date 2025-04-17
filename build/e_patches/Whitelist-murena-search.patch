@@ -1,0 +1,53 @@
+From c9d89a1e494a311b37bbf3aa43c58acda316aa1e Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Wed, 16 Apr 2025 16:39:02 +0000
+Subject: Whitelist murena search
+
+---
+ .../settings/AdblockAllowedDomainsFragment.java  | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/components/adblock/android/java/src/org/chromium/components/adblock/settings/AdblockAllowedDomainsFragment.java b/components/adblock/android/java/src/org/chromium/components/adblock/settings/AdblockAllowedDomainsFragment.java
+index d3fa1142c4a90..fc03240220242 100644
+--- a/components/adblock/android/java/src/org/chromium/components/adblock/settings/AdblockAllowedDomainsFragment.java
++++ b/components/adblock/android/java/src/org/chromium/components/adblock/settings/AdblockAllowedDomainsFragment.java
+@@ -20,6 +20,8 @@ package org.chromium.components.adblock.settings;
+ import android.app.Activity;
+ import android.os.Bundle;
+ import android.view.View;
++import android.content.SharedPreferences;
++import android.content.Context;
+ 
+ import org.chromium.components.adblock.AdblockController;
+ import org.chromium.components.adblock.R;
+@@ -27,6 +29,8 @@ import org.chromium.components.adblock.R;
+ import java.util.List;
+ 
+ public class AdblockAllowedDomainsFragment extends AdblockCustomItemFragment<String> {
++    private static final String PREF_NAME = "adblock_domain_history";
++
+     public AdblockAllowedDomainsFragment() {}
+ 
+     @Override
+@@ -38,6 +42,18 @@ public class AdblockAllowedDomainsFragment extends AdblockCustomItemFragment<Str
+     public void onActivityCreated(Bundle savedInstanceState) {
+         super.onActivityCreated(savedInstanceState);
+         getActivity().setTitle(R.string.fragment_adblock_settings_allowed_domains_title);
++
++        String domain = "murena.qwant.com";
++        if (getContext() != null) {
++            SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
++            boolean wasAdded = prefs.getBoolean(domain, false);
++            List<String> allowedDomains = AdblockController.getInstance().getAllowedDomains();
++
++            if (!wasAdded && allowedDomains != null && !allowedDomains.contains(domain)) {
++                AdblockController.getInstance().addAllowedDomain(domain);
++                prefs.edit().putBoolean(domain, true).apply();
++            }
++        }
+     }
+ 
+     @Override
+-- 
+2.34.1
+

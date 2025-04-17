@@ -1,23 +1,25 @@
-From a583aa33914da82d3a76a5cb71da25f105b0dc32 Mon Sep 17 00:00:00 2001
+From 7461780b80b4b4bd73f8a1c5fbbc16c431be74e4 Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
 Date: Thu, 18 Mar 2021 13:42:44 +0100
 Subject: Browser: Modify default search engines
 
 Signed-off-by: althafvly <althafvly@gmail.com>
+
+Co-authored-by: althafvly <althafvly@gmail.com>
 ---
  .../locale/locale_template_url_loader.cc      | 42 ++-----------------
  .../locale/locale_template_url_loader.h       |  1 -
  .../browser/locale/LocaleManagerDelegate.java |  1 -
  .../locale/LocaleTemplateUrlLoader.java       |  8 ----
- .../cromite/cromite_prepopulated_engines.json | 10 +++++
- .../search_engine_countries-inc.cc            |  7 ++--
- .../search_engines/search_engine_type.h       |  3 +-
+ .../cromite/cromite_prepopulated_engines.json | 32 ++++++++++++++
+ .../search_engine_countries-inc.cc            |  8 ++--
+ .../search_engines/search_engine_type.h       |  4 +-
  .../search_engines/search_engine_utils.cc     | 12 +-----
  .../template_url_prepopulate_data.cc          |  7 +++-
- 9 files changed, 26 insertions(+), 65 deletions(-)
+ 9 files changed, 50 insertions(+), 65 deletions(-)
 
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index 1cb4b8bd94469..412d2a7b29faf 100644
+index 1cb4b8bd94469..d65f18f980387 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
 @@ -11,6 +11,7 @@
@@ -93,7 +95,7 @@ index 1cb4b8bd94469..412d2a7b29faf 100644
  
  int LocaleTemplateUrlLoader::GetDesignatedSearchEngineForChina() {
 -  return TemplateURLPrepopulateData::sogou.id;
-+  return TemplateURLPrepopulateData::espot.id;
++  return TemplateURLPrepopulateData::murenasearch.id;
  }
  
  LocaleTemplateUrlLoader::~LocaleTemplateUrlLoader() = default;
@@ -147,20 +149,42 @@ index a5ba6b961e6b0..52295c0b59e19 100644
      }
  }
 diff --git a/components/search_engines/cromite/cromite_prepopulated_engines.json b/components/search_engines/cromite/cromite_prepopulated_engines.json
-index 0d2ebbf08bfc7..d40c9982737d2 100644
+index 0d2ebbf08bfc7..9a7616e880b02 100644
 --- a/components/search_engines/cromite/cromite_prepopulated_engines.json
 +++ b/components/search_engines/cromite/cromite_prepopulated_engines.json
-@@ -13,6 +13,16 @@
+@@ -13,6 +13,38 @@
              "id": 12
          },
  
-+        "espot": {
++        "murenasearch": {
++          "name": "Murena Search",
++          "keyword": "murena.qwant.com",
++          "favicon_url": "https://www.qwant.com/favicon.ico",
++          "search_url": "https://murena.qwant.com/?q={searchTerms}",
++          "suggest_url": "https://api.qwant.com/api/suggest/?q={searchTerms}",
++          "type": "SEARCH_ENGINE_MURENASEARCH",
++          "id": 10,
++          "regulatory_extensions": [
++            {
++              "variant": "RegulatoryExtensionType::kDefault",
++              "search_params": "client=cs-chrome",
++              "suggest_params": "client=opensearch"
++            },
++            {
++              "variant": "RegulatoryExtensionType::kAndroidEEA",
++              "search_params": "client=acs",
++              "suggest_params": "client=opensearch"
++            }
++          ]
++        },
++
++        "spot": {
 +            "name": "/e/ spot",
 +            "keyword": "spot.murena.io",
 +            "favicon_url": "https://spot.murena.io/favicon.ico",
 +            "search_url": "https://spot.murena.io/?q={searchTerms}",
 +            "suggest_url": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list",
-+            "type": "SEARCH_ENGINE_ESPOT",
++            "type": "SEARCH_ENGINE_SPOT",
 +            "id": 11
 +        },
 +
@@ -168,17 +192,18 @@ index 0d2ebbf08bfc7..d40c9982737d2 100644
              "name": "Google in English",
              "keyword": "googleen",
 diff --git a/components/search_engines/search_engine_countries-inc.cc b/components/search_engines/search_engine_countries-inc.cc
-index 235377432cf9c..38964682da20f 100644
+index 235377432cf9c..2184d45677dcd 100644
 --- a/components/search_engines/search_engine_countries-inc.cc
 +++ b/components/search_engines/search_engine_countries-inc.cc
-@@ -38,9 +38,10 @@ struct EngineAndTier {
+@@ -38,9 +38,11 @@ struct EngineAndTier {
  
  // Default (for countries with no better engine set)
  constexpr EngineAndTier engines_default[] = {
 -    {SearchEngineTier::kTopEngines, &google},
 -    {SearchEngineTier::kTopEngines, &bing},
 -    {SearchEngineTier::kTopEngines, &yahoo},
-+    {SearchEngineTier::kTopEngines, &espot},
++    {SearchEngineTier::kTopEngines, &murenasearch},
++    {SearchEngineTier::kTopEngines, &spot},
 +    {SearchEngineTier::kTopEngines, &qwant},
 +    {SearchEngineTier::kTopEngines, &duckduckgo},
 +    {SearchEngineTier::kTopEngines, &duckduckgo_light},
@@ -186,20 +211,21 @@ index 235377432cf9c..38964682da20f 100644
  
  // Note, the below entries are sorted by country code, not the name in comment.
 diff --git a/components/search_engines/search_engine_type.h b/components/search_engines/search_engine_type.h
-index 18413c59ccdfd..2a53f07d642d8 100644
+index 18413c59ccdfd..0b33877ee8bac 100644
 --- a/components/search_engines/search_engine_type.h
 +++ b/components/search_engines/search_engine_type.h
-@@ -93,11 +93,12 @@ enum SearchEngineType {
+@@ -93,11 +93,13 @@ enum SearchEngineType {
    SEARCH_ENGINE_LILO = 74,
    SEARCH_ENGINE_GOOGLE_EN = 75,
    SEARCH_ENGINE_DUCKDUCKGOLIGHT = 76,
-+  SEARCH_ENGINE_ESPOT = 77,
++  SEARCH_ENGINE_MURENASEARCH = 77,
++  SEARCH_ENGINE_SPOT = 78,
  
    SEARCH_ENGINE_MAX  // Bounding value needed for UMA histogram macro.
  };
  
 -static_assert(SEARCH_ENGINE_DUCKDUCKGOLIGHT == (SEARCH_ENGINE_MAX - 1),
-+static_assert(SEARCH_ENGINE_ESPOT == (SEARCH_ENGINE_MAX - 1),
++static_assert(SEARCH_ENGINE_SPOT == (SEARCH_ENGINE_MAX - 1),
                "Please check this patch");
  
  // Enum to record the type of search engine a user used in keyword mode. This
@@ -227,7 +253,7 @@ index 4b32c2424922b..9808a5e92ff3a 100644
      if (SameDomain(url, GURL(engine->search_url))) {
        return engine->type;
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index 5738c4f9853c7..e3dc518996051 100644
+index 5738c4f9853c7..8c9beddc44a59 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
 @@ -86,6 +86,11 @@ GetPrepopulatedEnginesForEeaRegionCountries(int country_id,
@@ -247,10 +273,10 @@ index 5738c4f9853c7..e3dc518996051 100644
      search_engines::SearchEngineChoiceService* search_engine_choice_service) {
    return FindPrepopulatedEngineInternal(prefs, search_engine_choice_service,
 -                                        google.id,
-+                                        espot.id,
++                                        murenasearch.id,
                                          /*use_first_as_fallback=*/true);
  }
  
 -- 
-2.48.1
+2.34.1
 
