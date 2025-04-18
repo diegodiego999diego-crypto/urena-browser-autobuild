@@ -115,13 +115,6 @@ patch() {
         git am -C0 -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
     done
 
-    while read dir patch; do
-        [ -z "$dir" ] && continue  # skip empty lines
-        cd $chromium_dir/src/third_party/$dir
-        git am -C0 -3 --ignore-whitespace "${root_dir}/build/third_party/$patch"
-        cd $chromium_dir/src
-    done < "${root_dir}/build/third_party_patches_list.txt"
-
     # Rename Chrome to Browser
     rename
 
