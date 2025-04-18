@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 
 ENV CHROMIUM_DIR "/srv/chromium"
-ENV CHROMIUM_VER "134.0.6998.89"
+ENV CHROMIUM_VER "135.0.7049.100"
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
