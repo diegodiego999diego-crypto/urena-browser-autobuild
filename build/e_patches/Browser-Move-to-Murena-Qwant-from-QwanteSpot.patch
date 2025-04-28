@@ -1,0 +1,68 @@
+From 16b7b86ca978c318005903fc1282c1037bf95c11 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Fri, 25 Apr 2025 11:15:25 +0530
+Subject: Browser: Move to Murena Qwant from Qwant/eSpot
+
+---
+ .../chrome/browser/settings/MainSettings.java | 31 +++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+index 5e83dbc4b856e..66bb90afd486f 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
+@@ -74,6 +74,7 @@ import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
+ import org.chromium.components.browser_ui.settings.SettingsNavigation;
+ import org.chromium.components.browser_ui.settings.SettingsUtils;
+ import org.chromium.components.browser_ui.styles.SemanticColorUtils;
++import org.chromium.components.search_engines.ChoiceMadeLocation;
+ import org.chromium.components.search_engines.TemplateUrl;
+ import org.chromium.components.search_engines.TemplateUrlService;
+ import org.chromium.components.signin.AccountManagerFacade;
+@@ -250,6 +251,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
+         cachePreferences();
+         updateAutofillPreferences();
+         updatePlusAddressesPreference();
++        changeSearchEngine();
+ 
+         // TODO(crbug.com/40242060): Remove the passwords managed subtitle for local and UPM
+         // unenrolled users who can see it directly in the context of the setting.
+@@ -440,6 +442,35 @@ public class MainSettings extends ChromeBaseSettingsFragment
+                 });
+     }
+ 
++    public static final String SEARCH_ENGINE_MURENA_SWITCH_DONE = "Chrome.Search.Switch";
++
++    private void changeSearchEngine() {
++        SharedPreferencesManager sharedPreferences = ChromeSharedPreferences.getInstance();
++        if (sharedPreferences.readBoolean(SEARCH_ENGINE_MURENA_SWITCH_DONE, false)) {
++            return; // Already changed once, skip.
++        }
++
++        TemplateUrlService templateUrlService =
++                TemplateUrlServiceFactory.getForProfile(getProfile());
++        if (templateUrlService.isLoaded()) {
++            String defaultSearchEngineName = null;
++            TemplateUrl dseTemplateUrl = templateUrlService.getDefaultSearchEngineTemplateUrl();
++            if (dseTemplateUrl != null) {
++                defaultSearchEngineName = dseTemplateUrl.getShortName();
++            }
++
++            if (defaultSearchEngineName != null &&
++                ("qwant".equalsIgnoreCase(defaultSearchEngineName) ||
++                 defaultSearchEngineName.toLowerCase().contains("spot"))) {
++                templateUrlService.setSearchEngine(
++                    "murena.qwant.com", ChoiceMadeLocation.SEARCH_ENGINE_SETTINGS);
++            }
++
++            // Mark change done
++            sharedPreferences.writeBoolean(SEARCH_ENGINE_MURENA_SWITCH_DONE, true);
++        }
++    }
++
+     private void updateSearchEnginePreference() {
+         TemplateUrlService templateUrlService =
+                 TemplateUrlServiceFactory.getForProfile(getProfile());
+-- 
+2.34.1
+
