@@ -1,4 +1,4 @@
-From db8cd5e2d8fccd7b1cb6c407ccdbd229d6438cb7 Mon Sep 17 00:00:00 2001
+From ae536d662a9384b8866127dc6e2d31982a78728a Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Thu, 11 Jul 2024 11:11:15 +0530
 Subject: Browser: Hide settings when parental control is active
@@ -11,10 +11,10 @@ Subject: Browser: Hide settings when parental control is active
  4 files changed, 40 insertions(+), 1 deletion(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-index 7287d541b043f..1f785c9eb267a 100644
+index 99378d7f5b830..7c4ba4977f412 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-@@ -71,6 +71,7 @@ import org.chromium.chrome.browser.WarmupManager;
+@@ -72,6 +72,7 @@ import org.chromium.chrome.browser.WarmupManager;
  import org.chromium.chrome.browser.ai.AiAssistantService;
  import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
  import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
@@ -22,7 +22,7 @@ index 7287d541b043f..1f785c9eb267a 100644
  import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
  import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingDelegateFactory;
  import org.chromium.chrome.browser.app.tab_activity_glue.TabReparentingController;
-@@ -2373,7 +2374,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
+@@ -2417,7 +2418,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
          @BrowserProfileType
          int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
  
@@ -32,7 +32,7 @@ index 7287d541b043f..1f785c9eb267a 100644
                      SettingsNavigationFactory.createSettingsNavigation();
              settingsNavigation.startSettings(this);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
-index ec19a7db64a51..59b8b9fc57e7f 100644
+index 0706ef94e4d7c..f4f977c8397fa 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
 @@ -37,6 +37,7 @@ import org.chromium.base.supplier.OneshotSupplier;
@@ -41,32 +41,32 @@ index ec19a7db64a51..59b8b9fc57e7f 100644
  import org.chromium.chrome.R;
 +import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
  import org.chromium.chrome.browser.ActivityTabProvider;
- import org.chromium.chrome.browser.AlwaysIncognitoLinkInterceptor;
- import org.chromium.chrome.browser.profiles.ProfileManager;
-@@ -674,6 +675,10 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate
-                 item.setEnabled(isIncognitoEnabled() && !isIncognitoReauthShowing);
-             }
- 
+ import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+ import org.chromium.chrome.browser.bookmarks.PowerBookmarkUtils;
+@@ -670,6 +671,10 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
+     /** Return whether the given {@link MenuItem} is managed by policy. */
+     protected boolean isMenuItemManaged(MenuItem item) {
+         if (item.getItemId() == R.id.new_incognito_tab_menu_id) {
 +            if (item.getItemId() == R.id.preferences_id && item.isVisible()) {
 +                item.setEnabled(!ChromeCachedFlags.isAdminActive());
 +            }
 +
-             if (item.getItemId() == R.id.divider_line_id) {
-                 item.setEnabled(false);
-             }
+             return IncognitoUtils.isIncognitoModeManaged(
+                     mTabModelSelector.getCurrentModel().getProfile());
+         }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
-index 6040e96c47e0d..23a9a0d8dfdf4 100644
+index eede1c3436602..8e12c0c141d49 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java
-@@ -26,6 +26,7 @@ import org.chromium.components.cached_flags.CachedFlagUtils;
- import org.chromium.components.cached_flags.CachedFlagsSafeMode;
+@@ -27,6 +27,7 @@ import org.chromium.components.cached_flags.CachedFlagsSafeMode;
  import org.chromium.components.omnibox.OmniboxFeatures;
+ import org.chromium.ui.base.UiAndroidFeatureList;
  
 +import java.lang.reflect.Method;
  import java.util.ArrayList;
  import java.util.List;
  
-@@ -177,4 +178,32 @@ public class ChromeCachedFlags {
+@@ -180,4 +181,32 @@ public class ChromeCachedFlags {
  
          return cachedFlag.isEnabled();
      }
@@ -100,18 +100,18 @@ index 6040e96c47e0d..23a9a0d8dfdf4 100644
 +    }
  }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-index 3fe67443571f8..5e83dbc4b856e 100644
+index b8afd85d390cc..b448838375c98 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-@@ -30,6 +30,7 @@ import org.chromium.base.supplier.ObservableSupplierImpl;
- import org.chromium.base.task.PostTask;
- import org.chromium.base.task.TaskTraits;
- import org.chromium.chrome.R;
+@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle;
+ import androidx.preference.Preference;
+ 
+ import org.chromium.base.BuildInfo;
 +import org.chromium.chrome.browser.app.flags.ChromeCachedFlags;
- import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
- import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
- import org.chromium.chrome.browser.autofill.settings.SettingsNavigationHelper;
-@@ -182,6 +183,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
+ import org.chromium.base.ContextUtils;
+ import org.chromium.base.DeviceInfo;
+ import org.chromium.base.shared_preferences.SharedPreferencesManager;
+@@ -188,6 +189,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
  
      @Override
      public void onStart() {
@@ -122,5 +122,5 @@ index 3fe67443571f8..5e83dbc4b856e 100644
          SyncService syncService = SyncServiceFactory.getForProfile(getProfile());
          if (syncService != null) {
 -- 
-2.34.1
+2.49.0
 

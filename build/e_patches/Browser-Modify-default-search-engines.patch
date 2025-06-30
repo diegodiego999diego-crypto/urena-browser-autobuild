@@ -1,4 +1,4 @@
-From d91e41ab5facc78ed043dc31025dcef5537ebdbc Mon Sep 17 00:00:00 2001
+From 10154e3be6dfe6deebc0ff18859507adc98b42a0 Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
 Date: Thu, 18 Mar 2021 13:42:44 +0100
 Subject: Browser: Modify default search engines
@@ -6,17 +6,18 @@ Subject: Browser: Modify default search engines
 Signed-off-by: althafvly <althafvly@gmail.com>
 
 Co-authored-by: althafvly <althafvly@gmail.com>
+Co-authored-by: Nishith Khanna <nishithkhanna@e.email>
 ---
  .../locale/locale_template_url_loader.cc      | 42 ++-----------------
  .../locale/locale_template_url_loader.h       |  1 -
  .../browser/locale/LocaleManagerDelegate.java |  1 -
  .../locale/LocaleTemplateUrlLoader.java       |  8 ----
+ .../regional_capabilities_service.cc          |  4 ++
  .../cromite/cromite_prepopulated_engines.json | 32 ++++++++++++++
- .../search_engine_countries-inc.cc            |  8 ++--
  .../search_engines/search_engine_type.h       |  4 +-
  .../search_engines/search_engine_utils.cc     | 12 +-----
- .../template_url_prepopulate_data.cc          |  7 +++-
- 9 files changed, 50 insertions(+), 65 deletions(-)
+ .../template_url_prepopulate_data.cc          |  8 ++--
+ 9 files changed, 48 insertions(+), 64 deletions(-)
 
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
 index 1cb4b8bd94469..d65f18f980387 100644
@@ -112,10 +113,10 @@ index c63dc8bd3eab2..b9c9db2d6d08d 100644
    LocaleTemplateUrlLoader(const LocaleTemplateUrlLoader&) = delete;
    LocaleTemplateUrlLoader& operator=(const LocaleTemplateUrlLoader&) = delete;
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-index 22f8ec082c49a..5d44feaf4a8f9 100644
+index 7f2244850c635..36d77300bfaa5 100644
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleManagerDelegate.java
-@@ -153,7 +153,6 @@ public class LocaleManagerDelegate {
+@@ -165,7 +165,6 @@ public class LocaleManagerDelegate {
       */
      private void revertDefaultSearchEngineOverride() {
          if (!isSearchEngineAutoSwitchEnabled() || isSpecialLocaleEnabled()) return;
@@ -124,10 +125,10 @@ index 22f8ec082c49a..5d44feaf4a8f9 100644
                  ContextUtils.getApplicationContext().getString(R.string.using_google));
      }
 diff --git a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-index a5ba6b961e6b0..52295c0b59e19 100644
+index 26c187bbcff33..60a32065acd26 100644
 --- a/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
 +++ b/chrome/browser/locale/java/src/org/chromium/chrome/browser/locale/LocaleTemplateUrlLoader.java
-@@ -70,12 +70,6 @@ public class LocaleTemplateUrlLoader {
+@@ -72,12 +72,6 @@ public class LocaleTemplateUrlLoader {
                  .overrideDefaultSearchProvider(mNativeLocaleTemplateUrlLoader);
      }
  
@@ -140,7 +141,7 @@ index a5ba6b961e6b0..52295c0b59e19 100644
      @NativeMethods
      interface Natives {
          long init(@JniType("std::string") String localeId, @JniType("Profile*") Profile profile);
-@@ -87,7 +81,5 @@ public class LocaleTemplateUrlLoader {
+@@ -89,7 +83,5 @@ public class LocaleTemplateUrlLoader {
          void removeTemplateUrls(long nativeLocaleTemplateUrlLoader);
  
          void overrideDefaultSearchProvider(long nativeLocaleTemplateUrlLoader);
@@ -148,6 +149,21 @@ index a5ba6b961e6b0..52295c0b59e19 100644
 -        void setGoogleAsDefaultSearch(long nativeLocaleTemplateUrlLoader);
      }
  }
+diff --git a/components/regional_capabilities/regional_capabilities_service.cc b/components/regional_capabilities/regional_capabilities_service.cc
+index a2e55a3def654..04466a2901dc4 100644
+--- a/components/regional_capabilities/regional_capabilities_service.cc
++++ b/components/regional_capabilities/regional_capabilities_service.cc
+@@ -159,6 +159,10 @@ CountryIdHolder RegionalCapabilitiesService::GetCountryId() {
+ 
+ std::vector<const TemplateURLPrepopulateData::PrepopulatedEngine*>
+ RegionalCapabilitiesService::GetRegionalPrepopulatedEngines() {
++  bool use_default = true;
++  if (use_default) {
++    return GetDefaultPrepopulatedEngines();
++  }
+   if (HasSearchEngineCountryListOverride()) {
+     auto country_override = std::get<SearchEngineCountryListOverride>(
+         GetSearchEngineCountryOverride().value());
 diff --git a/components/search_engines/cromite/cromite_prepopulated_engines.json b/components/search_engines/cromite/cromite_prepopulated_engines.json
 index 0d2ebbf08bfc7..9a7616e880b02 100644
 --- a/components/search_engines/cromite/cromite_prepopulated_engines.json
@@ -191,38 +207,20 @@ index 0d2ebbf08bfc7..9a7616e880b02 100644
          "googleen": {
              "name": "Google in English",
              "keyword": "googleen",
-diff --git a/components/search_engines/search_engine_countries-inc.cc b/components/search_engines/search_engine_countries-inc.cc
-index 18fee305eb091..d24cf8e7f4478 100644
---- a/components/search_engines/search_engine_countries-inc.cc
-+++ b/components/search_engines/search_engine_countries-inc.cc
-@@ -38,9 +38,11 @@ struct EngineAndTier {
- 
- // Default (for countries with no better engine set)
- constexpr EngineAndTier engines_default[] = {
--    {SearchEngineTier::kTopEngines, &google},
--    {SearchEngineTier::kTopEngines, &bing},
--    {SearchEngineTier::kTopEngines, &yahoo},
-+    {SearchEngineTier::kTopEngines, &murenasearch},
-+    {SearchEngineTier::kTopEngines, &spot},
-+    {SearchEngineTier::kTopEngines, &qwant},
-+    {SearchEngineTier::kTopEngines, &duckduckgo},
-+    {SearchEngineTier::kTopEngines, &duckduckgo_light},
- };
- 
- // Note, the below entries are sorted by country code, not the name in comment.
 diff --git a/components/search_engines/search_engine_type.h b/components/search_engines/search_engine_type.h
-index 205baa60bf23a..5b6b03f2aee08 100644
+index 91b236acd990d..f17a33f9e183d 100644
 --- a/components/search_engines/search_engine_type.h
 +++ b/components/search_engines/search_engine_type.h
-@@ -96,11 +96,13 @@ enum SearchEngineType {
-   SEARCH_ENGINE_MCAFEE = 77,
-   SEARCH_ENGINE_GOOGLE_EN = 78,
-   SEARCH_ENGINE_DUCKDUCKGOLIGHT = 79,
-+  SEARCH_ENGINE_MURENASEARCH = 80,
-+  SEARCH_ENGINE_SPOT = 81,
+@@ -99,12 +99,14 @@ enum SearchEngineType {
+   SEARCH_ENGINE_KAGI = 79,
+   SEARCH_ENGINE_GOOGLE_EN = 80,
+   SEARCH_ENGINE_DUCKDUCKGOLIGHT = 81,
++  SEARCH_ENGINE_MURENASEARCH = 82,
++  SEARCH_ENGINE_SPOT = 83,
  
    SEARCH_ENGINE_MAX  // Bounding value needed for UMA histogram macro.
  };
+ // LINT.ThenChange(//tools/metrics/histograms/enums.xml:OmniboxSearchEngineType)
  
 -static_assert(SEARCH_ENGINE_DUCKDUCKGOLIGHT == (SEARCH_ENGINE_MAX - 1),
 +static_assert(SEARCH_ENGINE_SPOT == (SEARCH_ENGINE_MAX - 1),
@@ -253,30 +251,38 @@ index 4b32c2424922b..9808a5e92ff3a 100644
      if (SameDomain(url, GURL(engine->search_url))) {
        return engine->type;
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index 3883a557fa6a0..fc5db64634650 100644
+index fdb5ed979e02b..c45ee177a3eaf 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -75,6 +75,11 @@ GetPrepopulatedEnginesForEeaRegionCountries(CountryID country_id,
- std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedTemplateURLData(
-     CountryID country_id,
-     PrefService& prefs) {
-+  bool use_default = true;
-+  if (use_default) {
-+    return GetDefaultPrepopulatedEngines();
-+  }
-+
-   if (regional_capabilities::HasSearchEngineCountryListOverride()) {
-     auto country_override =
-         std::get<regional_capabilities::SearchEngineCountryListOverride>(
-@@ -284,7 +289,7 @@ void ClearPrepopulatedEnginesInPrefs(PrefService* prefs) {
- std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
-     PrefService& prefs,
-     CountryID country_id) {
--  return FindPrepopulatedEngineInternal(prefs, country_id, google.id,
-+  return FindPrepopulatedEngineInternal(prefs, country_id, murenasearch.id,
+@@ -147,7 +147,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+         regional_prepopulated_engines) {
+   std::vector<std::unique_ptr<TemplateURLData>> t_urls =
+     GetPrepopulatedEnginesChromium(prefs, regional_prepopulated_engines);
+-  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(googleen));
++  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(murenasearch));
++  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(spot));
+   t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
+   return t_urls;
+ }
+@@ -177,7 +178,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
+     base::ToVector(
+       regional_capabilities::GetPrepopulatedEngines(country_id, prefs),
+       &PrepopulatedEngineToTemplateURLData);
+-  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(googleen));
++  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(murenasearch));
++  t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(spot));
+   t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
+   return t_urls;
+ }
+@@ -239,7 +241,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
+     std::vector<const TemplateURLPrepopulateData::PrepopulatedEngine*>
+         regional_prepopulated_engines) {
+   return FindPrepopulatedEngineInternal(prefs, regional_prepopulated_engines,
+-                                        google.id,
++                                        murenasearch.id,
                                          /*use_first_as_fallback=*/true);
  }
  
 -- 
-2.34.1
+2.49.0
 
