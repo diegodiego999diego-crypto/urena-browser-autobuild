@@ -1,4 +1,4 @@
-From bed4a637a3fae5eda1348f45143744099a503bbf Mon Sep 17 00:00:00 2001
+From b97c8bb5d5cebeb851c1201b078709270cf45e79 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Fri, 30 Mar 2018 10:09:03 +0200
 Subject: Multiple fingerprinting mitigations
@@ -43,28 +43,28 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../renderer/core/html/canvas/text_metrics.cc |  18 ++
  .../renderer/core/html/canvas/text_metrics.h  |   2 +
  .../renderer/core/svg/svg_graphics_element.cc |   2 +
- .../core/svg/svg_text_content_element.cc      |  28 +++-
+ .../core/svg/svg_text_content_element.cc      |  30 +++-
  .../canvas2d/base_rendering_context_2d.cc     |  25 ++-
  third_party/blink/renderer/platform/BUILD.gn  |   5 +-
  .../platform/exported/web_runtime_features.cc |  13 ++
- .../platform/graphics/image_data_buffer.cc    |   8 +
+ .../platform/graphics/image_data_buffer.cc    |   9 +
  .../platform/graphics/static_bitmap_image.cc  | 154 ++++++++++++++++++
  .../platform/graphics/static_bitmap_image.h   |   2 +
  .../platform/runtime_enabled_features.json5   |   9 +
  third_party/ungoogled/BUILD.gn                |  10 ++
  third_party/ungoogled/ungoogled_switches.cc   |  18 ++
  third_party/ungoogled/ungoogled_switches.h    |  18 ++
- 27 files changed, 391 insertions(+), 8 deletions(-)
+ 27 files changed, 393 insertions(+), 9 deletions(-)
  create mode 100755 cromite_flags/chrome/browser/about_flags_cc/Multiple-fingerprinting-mitigations.inc
  create mode 100644 third_party/ungoogled/BUILD.gn
  create mode 100644 third_party/ungoogled/ungoogled_switches.cc
  create mode 100644 third_party/ungoogled/ungoogled_switches.h
 
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 744fdcba44cd9..192f98cdc4a81 100644
+index a03b0c2914343..e2d26d2f7de08 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -2468,6 +2468,7 @@ static_library("browser") {
+@@ -2502,6 +2502,7 @@ static_library("browser") {
      "//services/device/public/cpp/bluetooth",
      "//services/device/public/cpp/geolocation",
      "//services/device/public/cpp/usb",
@@ -73,10 +73,10 @@ index 744fdcba44cd9..192f98cdc4a81 100644
      "//services/device/public/mojom:usb",
      "//services/image_annotation:service",
 diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
-index 93b46c8a42a43..50d06234684bf 100644
+index 121f7b8e3db7f..252f905c9be39 100644
 --- a/chrome/browser/about_flags.cc
 +++ b/chrome/browser/about_flags.cc
-@@ -261,6 +261,8 @@
+@@ -265,6 +265,8 @@
  #include "extensions/common/extension_features.h"
  #endif
  
@@ -86,10 +86,10 @@ index 93b46c8a42a43..50d06234684bf 100644
  #include "base/allocator/buildflags.h"
  #endif
 diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
-index 1bc1315a26668..fb423dad7e153 100644
+index 3256304fe1bfb..bb6f8185d00ff 100644
 --- a/content/browser/BUILD.gn
 +++ b/content/browser/BUILD.gn
-@@ -290,6 +290,7 @@ source_set("browser") {
+@@ -295,6 +295,7 @@ source_set("browser") {
      "//third_party/re2",
      "//third_party/snappy",
      "//third_party/sqlite",
@@ -98,10 +98,10 @@ index 1bc1315a26668..fb423dad7e153 100644
      "//third_party/zlib",
      "//tools/v8_context_snapshot:buildflags",
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
-index c4447c160f16a..4b5e045e8022c 100644
+index 84bc5bd62309e..e5358ab0bb57c 100644
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc
-@@ -217,6 +217,7 @@
+@@ -216,6 +216,7 @@
  #include "url/gurl.h"
  #include "url/origin.h"
  
@@ -109,9 +109,9 @@ index c4447c160f16a..4b5e045e8022c 100644
  #if BUILDFLAG(IS_ANDROID)
  #include "base/android/child_process_binding_types.h"
  #include "content/browser/font_unique_name_lookup/font_unique_name_lookup_service.h"
-@@ -3376,6 +3377,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
+@@ -3455,6 +3456,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
+       switches::kDisableBestEffortTasks,
        switches::kDisableBreakpad,
-       switches::kDisableDatabases,
        switches::kDisableFileSystem,
 +    switches::kFingerprintingClientRectsNoise,
 +    switches::kFingerprintingCanvasMeasureTextNoise,
@@ -120,7 +120,7 @@ index c4447c160f16a..4b5e045e8022c 100644
        switches::kDisableGpuMemoryBufferVideoFrames,
        switches::kDisableHistogramCustomizer,
 diff --git a/content/child/BUILD.gn b/content/child/BUILD.gn
-index d3dd4586104a4..5ca3953276ffb 100644
+index cecc5e382a962..9fcf743091040 100644
 --- a/content/child/BUILD.gn
 +++ b/content/child/BUILD.gn
 @@ -110,6 +110,7 @@ target(link_target_type, "child") {
@@ -132,11 +132,11 @@ index d3dd4586104a4..5ca3953276ffb 100644
      "//ui/base",
      "//ui/events/blink",
 diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.cc
-index 0fa8341523476..5e3735e3cefdf 100644
+index ae0bbe6dce783..b09c2d47b8687 100644
 --- a/content/child/runtime_features.cc
 +++ b/content/child/runtime_features.cc
 @@ -48,6 +48,8 @@
- #include "ui/native_theme/native_theme_features.h"
+ #include "ui/native_theme/features/native_theme_features.h"
  #include "ui/native_theme/native_theme_utils.h"
  
 +#include "third_party/ungoogled/ungoogled_switches.h"
@@ -144,7 +144,7 @@ index 0fa8341523476..5e3735e3cefdf 100644
  #if BUILDFLAG(IS_ANDROID)
  #include "base/android/build_info.h"
  #endif
-@@ -524,6 +526,12 @@ void SetRuntimeFeaturesFromCommandLine(const base::CommandLine& command_line) {
+@@ -526,6 +528,12 @@ void SetRuntimeFeaturesFromCommandLine(const base::CommandLine& command_line) {
  // as a last resort.
  void SetCustomizedRuntimeFeaturesFromCombinedArgs(
      const base::CommandLine& command_line) {
@@ -194,7 +194,7 @@ index d7d110b9f8f30..136b67c51f120 100644
    static void EnableFluentOverlayScrollbars(bool);
    static void EnableVibration(bool);
 diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
-index 5ccca83ad1fbf..5b4529f68d6a7 100644
+index 53c4b772705f2..f6bf220e5a9cc 100644
 --- a/third_party/blink/renderer/core/dom/document.cc
 +++ b/third_party/blink/renderer/core/dom/document.cc
 @@ -39,6 +39,7 @@
@@ -203,9 +203,9 @@ index 5ccca83ad1fbf..5b4529f68d6a7 100644
  #include "base/i18n/time_formatting.h"
 +#include "base/rand_util.h"
  #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
  #include "base/not_fatal_until.h"
- #include "base/notreached.h"
-@@ -867,6 +868,17 @@ Document::Document(const DocumentInit& initializer,
+@@ -889,6 +890,17 @@ Document::Document(const DocumentInit& initializer,
    TRACE_EVENT_WITH_FLOW0("blink", "Document::Document", TRACE_ID_LOCAL(this),
                           TRACE_EVENT_FLAG_FLOW_OUT);
    DCHECK(agent_);
@@ -223,7 +223,7 @@ index 5ccca83ad1fbf..5b4529f68d6a7 100644
    if (base::FeatureList::IsEnabled(features::kDelayAsyncScriptExecution) &&
        features::kDelayAsyncScriptExecutionDelayByDefaultParam.Get()) {
      script_runner_delayer_->Activate();
-@@ -2493,6 +2505,14 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
+@@ -2566,6 +2578,14 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
  #endif
  }
  
@@ -239,10 +239,10 @@ index 5ccca83ad1fbf..5b4529f68d6a7 100644
    DCHECK(IsActive());
    DCHECK(IsMainThread());
 diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
-index a3181b3dcd9ee..121bec8637f3d 100644
+index 1763aa06cdab5..115e4e84d2812 100644
 --- a/third_party/blink/renderer/core/dom/document.h
 +++ b/third_party/blink/renderer/core/dom/document.h
-@@ -545,6 +545,10 @@ class CORE_EXPORT Document : public ContainerNode,
+@@ -546,6 +546,10 @@ class CORE_EXPORT Document : public ContainerNode,
      return static_cast<StandaloneStatus>(xml_standalone_);
    }
    bool HasXMLDeclaration() const { return has_xml_declaration_; }
@@ -253,7 +253,7 @@ index a3181b3dcd9ee..121bec8637f3d 100644
  
    void SetXMLEncoding(const String& encoding) {
      xml_encoding_ = encoding;
-@@ -2644,6 +2648,9 @@ class CORE_EXPORT Document : public ContainerNode,
+@@ -2732,6 +2736,9 @@ class CORE_EXPORT Document : public ContainerNode,
  
    base::ElapsedTimer start_time_;
  
@@ -264,10 +264,10 @@ index a3181b3dcd9ee..121bec8637f3d 100644
    Member<ScriptRunnerDelayer> script_runner_delayer_;
  
 diff --git a/third_party/blink/renderer/core/dom/element.cc b/third_party/blink/renderer/core/dom/element.cc
-index 33c2bc9979f7a..b75620bad00ea 100644
+index 84a5082c411d8..9d2e17c1d4e32 100644
 --- a/third_party/blink/renderer/core/dom/element.cc
 +++ b/third_party/blink/renderer/core/dom/element.cc
-@@ -2640,6 +2640,7 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
+@@ -2852,6 +2852,7 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
        quads.push_back(element_layout_object->LocalToAbsoluteQuad(
            gfx::QuadF(element_layout_object->ObjectBoundingBox())));
      }
@@ -275,7 +275,7 @@ index 33c2bc9979f7a..b75620bad00ea 100644
      return;
    }
  
-@@ -2648,6 +2649,10 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
+@@ -2860,6 +2861,10 @@ void Element::ClientQuads(Vector<gfx::QuadF>& quads) const {
        element_layout_object->IsBR()) {
      element_layout_object->AbsoluteQuads(quads);
    }
@@ -286,7 +286,7 @@ index 33c2bc9979f7a..b75620bad00ea 100644
  }
  
  DOMRectList* Element::getClientRects() {
-@@ -2693,6 +2698,9 @@ gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdate() const {
+@@ -2905,6 +2910,9 @@ gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdate() const {
    DCHECK(element_layout_object);
    GetDocument().AdjustRectForScrollAndAbsoluteZoom(result,
                                                     *element_layout_object);
@@ -297,10 +297,10 @@ index 33c2bc9979f7a..b75620bad00ea 100644
  }
  
 diff --git a/third_party/blink/renderer/core/dom/range.cc b/third_party/blink/renderer/core/dom/range.cc
-index b0e1831b283b4..f79e0316d9120 100644
+index 3539765589369..f139899721ba5 100644
 --- a/third_party/blink/renderer/core/dom/range.cc
 +++ b/third_party/blink/renderer/core/dom/range.cc
-@@ -1632,6 +1632,12 @@ DOMRectList* Range::getClientRects() const {
+@@ -1648,6 +1648,12 @@ DOMRectList* Range::getClientRects() const {
    Vector<gfx::QuadF> quads;
    GetBorderAndTextQuads(quads);
  
@@ -313,7 +313,7 @@ index b0e1831b283b4..f79e0316d9120 100644
    return MakeGarbageCollected<DOMRectList>(quads);
  }
  
-@@ -1770,7 +1776,11 @@ gfx::RectF Range::BoundingRect() const {
+@@ -1786,7 +1792,11 @@ gfx::RectF Range::BoundingRect() const {
  
    // If all rects are empty, return the first rect.
    if (result.IsEmpty() && !quads.empty())
@@ -327,10 +327,10 @@ index b0e1831b283b4..f79e0316d9120 100644
    return result;
  }
 diff --git a/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc b/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc
-index 82d59224dd3c6..63c3eb5e664a5 100644
+index 22d1ba29bf29d..6689f09e08c51 100644
 --- a/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc
 +++ b/third_party/blink/renderer/core/html/canvas/canvas_async_blob_creator.cc
-@@ -21,6 +21,7 @@
+@@ -22,6 +22,7 @@
  #include "third_party/blink/renderer/core/fileapi/blob.h"
  #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
  #include "third_party/blink/renderer/platform/graphics/image_data_buffer.h"
@@ -338,7 +338,7 @@ index 82d59224dd3c6..63c3eb5e664a5 100644
  #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
  #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
  #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-@@ -214,6 +215,9 @@ CanvasAsyncBlobCreator::CanvasAsyncBlobCreator(
+@@ -219,6 +220,9 @@ CanvasAsyncBlobCreator::CanvasAsyncBlobCreator(
                             std::min(info.height(), max_dimension));
          src_data_.reset(info, src_data_.addr(), src_data_.rowBytes());
        }
@@ -349,10 +349,10 @@ index 82d59224dd3c6..63c3eb5e664a5 100644
    }
  
 diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
-index b81464e5515ed..adfc1002a3e76 100644
+index 30ec9c8e99ac0..f2272bda93298 100644
 --- a/third_party/blink/renderer/core/html/canvas/text_metrics.cc
 +++ b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
-@@ -107,6 +107,24 @@ const ShapeResult* ShapeWord(const TextRun& word_run, const Font& font) {
+@@ -106,6 +106,24 @@ const ShapeResult* ShapeWord(const TextRun& word_run, const Font& font) {
  }
  }  // namespace
  
@@ -378,10 +378,10 @@ index b81464e5515ed..adfc1002a3e76 100644
                           const TextDirection& direction,
                           const V8CanvasTextBaseline::Enum baseline,
 diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.h b/third_party/blink/renderer/core/html/canvas/text_metrics.h
-index 287a83d1db21e..3bbf5c451a02a 100644
+index b98001b1782e8..50565b1ff0429 100644
 --- a/third_party/blink/renderer/core/html/canvas/text_metrics.h
 +++ b/third_party/blink/renderer/core/html/canvas/text_metrics.h
-@@ -112,6 +112,8 @@ class CORE_EXPORT TextMetrics final : public ScriptWrappable {
+@@ -111,6 +111,8 @@ class CORE_EXPORT TextMetrics final : public ScriptWrappable {
      float x_position_;
    };
  
@@ -404,10 +404,10 @@ index ed8e6f5b855bf..a97783e63bc16 100644
        UseCounter::Count(GetDocument(), WebFeature::kGetBBoxForText);
      }
 diff --git a/third_party/blink/renderer/core/svg/svg_text_content_element.cc b/third_party/blink/renderer/core/svg/svg_text_content_element.cc
-index 5a99fbc971f44..1132b34307b5a 100644
+index 59878fc32ee9b..6e969ca993fbb 100644
 --- a/third_party/blink/renderer/core/svg/svg_text_content_element.cc
 +++ b/third_party/blink/renderer/core/svg/svg_text_content_element.cc
-@@ -111,11 +111,16 @@ float SVGTextContentElement::getComputedTextLength() {
+@@ -112,11 +112,16 @@ float SVGTextContentElement::getComputedTextLength() {
    GetDocument().UpdateStyleAndLayoutForNode(this,
                                              DocumentUpdateReason::kJavaScript);
    auto* layout_object = GetLayoutObject();
@@ -426,7 +426,7 @@ index 5a99fbc971f44..1132b34307b5a 100644
  }
  
  float SVGTextContentElement::getSubStringLength(
-@@ -138,9 +143,13 @@ float SVGTextContentElement::getSubStringLength(
+@@ -139,9 +144,13 @@ float SVGTextContentElement::getSubStringLength(
      nchars = number_of_chars - charnum;
  
    auto* layout_object = GetLayoutObject();
@@ -442,7 +442,7 @@ index 5a99fbc971f44..1132b34307b5a 100644
  }
  
  SVGPointTearOff* SVGTextContentElement::getStartPositionOfChar(
-@@ -162,6 +171,8 @@ SVGPointTearOff* SVGTextContentElement::getStartPositionOfChar(
+@@ -163,6 +172,8 @@ SVGPointTearOff* SVGTextContentElement::getStartPositionOfChar(
    if (IsNGTextOrInline(layout_object)) {
      point = SvgTextQuery(*layout_object).StartPositionOfCharacter(charnum);
    }
@@ -451,7 +451,7 @@ index 5a99fbc971f44..1132b34307b5a 100644
    return SVGPointTearOff::CreateDetached(point);
  }
  
-@@ -184,6 +195,8 @@ SVGPointTearOff* SVGTextContentElement::getEndPositionOfChar(
+@@ -185,6 +196,8 @@ SVGPointTearOff* SVGTextContentElement::getEndPositionOfChar(
    if (IsNGTextOrInline(layout_object)) {
      point = SvgTextQuery(*layout_object).EndPositionOfCharacter(charnum);
    }
@@ -460,7 +460,7 @@ index 5a99fbc971f44..1132b34307b5a 100644
    return SVGPointTearOff::CreateDetached(point);
  }
  
-@@ -206,6 +219,8 @@ SVGRectTearOff* SVGTextContentElement::getExtentOfChar(
+@@ -207,6 +220,8 @@ SVGRectTearOff* SVGTextContentElement::getExtentOfChar(
    if (IsNGTextOrInline(layout_object)) {
      rect = SvgTextQuery(*layout_object).ExtentOfCharacter(charnum);
    }
@@ -469,37 +469,37 @@ index 5a99fbc971f44..1132b34307b5a 100644
    return SVGRectTearOff::CreateDetached(rect);
  }
  
-@@ -235,9 +250,12 @@ int SVGTextContentElement::getCharNumAtPosition(
-   GetDocument().UpdateStyleAndLayoutForNode(this,
+@@ -242,8 +257,11 @@ int SVGTextContentElement::getCharNumAtPosition(
                                              DocumentUpdateReason::kJavaScript);
    auto* layout_object = GetLayoutObject();
-+  gfx::PointF target = gfx::PointF(point->Target()->Value());
-+  if (RuntimeEnabledFeatures::FingerprintingCanvasMeasureTextNoiseEnabled())
-+    target.Scale(GetDocument().GetNoiseFactorX(), GetDocument().GetNoiseFactorY());
    if (IsNGTextOrInline(layout_object)) {
-     return SvgTextQuery(*layout_object)
--        .CharacterNumberAtPosition(point->Target()->Value());
-+        .CharacterNumberAtPosition(target);
+-    const gfx::PointF local_point(ClampTo<float>(point->x()),
+-                                  ClampTo<float>(point->y()));
++    gfx::PointF local_point(ClampTo<float>(point->x()),
++                            ClampTo<float>(point->y()));
++    if (RuntimeEnabledFeatures::FingerprintingCanvasMeasureTextNoiseEnabled()) {
++      local_point.Scale(GetDocument().GetNoiseFactorX(), GetDocument().GetNoiseFactorY());
++    }
+     return SvgTextQuery(*layout_object).CharacterNumberAtPosition(local_point);
    }
    return -1;
- }
 diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
-index 2570b5a8e377a..7d45ab0a79990 100644
+index e6a284dd677f2..0629f5b9710ed 100644
 --- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
 +++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
-@@ -205,6 +205,11 @@
- #include "ui/gfx/geometry/size.h"
- #include "ui/gfx/geometry/size_f.h"
+@@ -105,6 +105,11 @@
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
  #include "ui/gfx/geometry/skia_conversions.h"
-+
+ 
 +#include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 +#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 +#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 +
- #include "ui/gfx/geometry/vector2d.h"
- #include "ui/gfx/geometry/vector2d_f.h"
- #include "v8/include/v8-local-handle.h"
-@@ -2964,6 +2969,10 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
++
+ // Including "base/time/time.h" triggers a bug in IWYU.
+ // https://github.com/include-what-you-use/include-what-you-use/issues/1122
+ // IWYU pragma: no_include "base/numerics/clamped_math.h"
+@@ -612,6 +617,10 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
            snapshot->PaintImageForCurrentFrame().GetSkImageInfo().bounds();
        DCHECK(!bounds.intersect(SkIRect::MakeXYWH(sx, sy, sw, sh)));
      }
@@ -510,16 +510,17 @@ index 2570b5a8e377a..7d45ab0a79990 100644
    }
  
    return image_data;
-@@ -3763,12 +3772,26 @@ TextMetrics* BaseRenderingContext2D::measureText(const String& text) {
-   TextDirection direction = ToTextDirection(
-       state.GetDirection(), GetCanvasRenderingContextHost(), computed_style);
+@@ -1293,13 +1302,27 @@ TextMetrics* BaseRenderingContext2D::measureText(const String& text) {
+   TextDirection direction =
+       ToTextDirection(state.GetDirection(), host, computed_style);
  
 -  return MakeGarbageCollected<TextMetrics>(
 +  auto* text_metrics = MakeGarbageCollected<TextMetrics>(
        font, direction, state.GetTextBaseline().AsEnum(),
        state.GetTextAlign().AsEnum(), text,
-       RuntimeEnabledFeatures::CanvasTextNgEnabled()
-           ? &GetCanvasRenderingContextHost()->GetPlainTextPainter()
+       RuntimeEnabledFeatures::CanvasTextNgEnabled(
+           host->GetTopExecutionContext())
+           ? &host->GetPlainTextPainter()
            : nullptr);
 +  // Scale text metrics if enabled
 +  if (RuntimeEnabledFeatures::FingerprintingCanvasMeasureTextNoiseEnabled()) {
@@ -537,12 +538,12 @@ index 2570b5a8e377a..7d45ab0a79990 100644
 +  return text_metrics;
  }
  
- void BaseRenderingContext2D::SnapshotStateForFilter() {
+ String BaseRenderingContext2D::lang() const {
 diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
-index 8546d85128cc9..758a47e3fe8eb 100644
+index 6718aad4a16cd..49876f1a33025 100644
 --- a/third_party/blink/renderer/platform/BUILD.gn
 +++ b/third_party/blink/renderer/platform/BUILD.gn
-@@ -1717,7 +1717,9 @@ component("platform") {
+@@ -1741,7 +1741,9 @@ component("platform") {
      "//third_party/blink/renderer:non_test_config",
    ]
  
@@ -553,7 +554,7 @@ index 8546d85128cc9..758a47e3fe8eb 100644
  
    allow_circular_includes_from = [
      "//third_party/blink/renderer/platform/blob",
-@@ -1801,6 +1803,7 @@ component("platform") {
+@@ -1826,6 +1828,7 @@ component("platform") {
      "//third_party/blink/public/strings",
      "//third_party/blink/renderer/platform/wtf",
      "//third_party/ced",
@@ -584,34 +585,35 @@ index fa290b49acf77..cbadd2def8699 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
-index 04b28c377e17d..e797596516811 100644
+index acfc9255c3c43..e607d724385b3 100644
 --- a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
 +++ b/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
 @@ -34,7 +34,10 @@
  
  #include "base/compiler_specific.h"
  #include "base/memory/ptr_util.h"
-+#include "base/rand_util.h"
 +#include "base/logging.h"
- #include "third_party/blink/renderer/platform/image-encoders/image_encoder.h"
++#include "base/rand_util.h"
+ #include "third_party/blink/renderer/platform/image-encoders/image_encoder_utils.h"
 +#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
  #include "third_party/blink/renderer/platform/wtf/text/base64.h"
  #include "third_party/skia/include/core/SkImage.h"
  #include "third_party/skia/include/core/SkSurface.h"
-@@ -140,6 +143,11 @@ bool ImageDataBuffer::EncodeImageInternal(const ImageEncodingMimeType mime_type,
-                                           const SkPixmap& pixmap) const {
+@@ -136,6 +139,12 @@ String ImageDataBuffer::ToDataURL(const ImageEncodingMimeType mime_type,
+                                   const double& quality) const {
    DCHECK(is_valid_);
- 
+   Vector<unsigned char> result;
++
 +  if (RuntimeEnabledFeatures::FingerprintingCanvasImageDataNoiseEnabled()) {
 +    // shuffle subchannel color data within the pixmap
 +    StaticBitmapImage::ShuffleSubchannelColorData(pixmap_, 0, 0);
 +  }
 +
-   if (mime_type == kMimeTypeJpeg) {
-     SkJpegEncoder::Options options;
-     options.fQuality = ImageEncoder::ComputeJpegQuality(quality);
+   if (!ImageEncoder::Encode(&result, pixmap_, mime_type, quality)) {
+     return "data:,";
+   }
 diff --git a/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc b/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
-index 2d9a294e195f9..10fb72e575c0b 100644
+index 3fa796c6edca7..aca576e7498be 100644
 --- a/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
 +++ b/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
 @@ -4,6 +4,8 @@
@@ -633,8 +635,8 @@ index 2d9a294e195f9..10fb72e575c0b 100644
  namespace blink {
  
  scoped_refptr<StaticBitmapImage> StaticBitmapImage::Create(
-@@ -115,4 +120,153 @@ void StaticBitmapImage::DrawHelper(cc::PaintCanvas* canvas,
-       WebCoreClampingModeToSkiaRectConstraint(draw_options.clamping_mode));
+@@ -114,4 +119,153 @@ void StaticBitmapImage::DrawHelper(cc::PaintCanvas* canvas,
+                         ToSkiaRectConstraint(draw_options.clamping_mode));
  }
  
 +// set the component to maximum-delta if it is >= maximum, or add to existing color component (color + delta)
@@ -788,10 +790,10 @@ index 2d9a294e195f9..10fb72e575c0b 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
-index 5872cea92c158..ee16ff35f2af4 100644
+index 58671c1affb4c..929ce55c68a3b 100644
 --- a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
 +++ b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
-@@ -39,6 +39,8 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
+@@ -38,6 +38,8 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
  
    StaticBitmapImage(ImageOrientation orientation) : orientation_(orientation) {}
  
@@ -801,10 +803,10 @@ index 5872cea92c158..ee16ff35f2af4 100644
  
    // Methods overridden by all sub-classes
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-index 198f4505cebb5..c97233fa6f65a 100644
+index 382f5d928a548..cfaf648bdd314 100644
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -3033,6 +3033,15 @@
+@@ -3146,6 +3146,15 @@
        status: {"Mac": "test", "default": "stable"},
        base_feature: "none",
      },
