@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 ENV CHROMIUM_DIR "/srv/chromium"
-ENV CHROMIUM_VER "138.0.7204.50"
+ENV CHROMIUM_VER "138.0.7204.97"
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
