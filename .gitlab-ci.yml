@@ -1,7 +1,8 @@
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "schedule"
-
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_TAG
 stages:
   - prepare
   - build
@@ -14,11 +15,7 @@ variables:
 build-docker:
   image: docker:25.0.5-git
   stage: prepare
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_COMMIT_TAG
-    - when: manual
+
   tags:
     - generic_privileged
   variables:
@@ -34,8 +31,6 @@ build-docker:
 
 .build-cromite:
   image: $CONTAINER_IMAGE
-  rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
   needs: ["build-docker"]
   tags:
     - build-browser
@@ -73,6 +68,10 @@ build-cromite-x64:
 .build-filters:
   image: debian:12-slim
   stage: filters
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - when: manual
 
 update-filters:
   stage: filters
@@ -101,5 +100,3 @@ deploy_rsync:
     - apt-get update && apt-get install -y rsync openssh-client
   script:
     - rsync -avz --chown=$REMOTE_USER:www-data --chmod=F644 filters.dat $REMOTE_USER@$IMAGES_HOSTNAME:$BROWSER_PATH
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
