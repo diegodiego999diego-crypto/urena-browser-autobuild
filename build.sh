@@ -14,6 +14,7 @@ clean=0
 gsync=0
 history=1
 patchonly=0
+debug=0
 arch=""
 
 usage() {
@@ -26,6 +27,7 @@ usage() {
     echo "    -u Show this message"
     echo "    -s Sync source"
     echo "    -h Sync without history"
+    echo "    -d Debug build"
     echo "    -p Apply patches - Only after synced"
     echo
     exit 1
@@ -59,6 +61,24 @@ build() {
     build_args+=' android_keystore_password="platform"'
     build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
 
+    if [ $debug -eq 1 ]; then
+        build_args+=' is_official_build=false'
+        build_args+=' is_debug=true'
+        build_args+=' chrome_pgo_phase=0'
+        build_args+=' v8_enable_debugging_features=false'
+        build_args+=' enable_android_secondary_abi=true'
+        build_args+=' android_static_analysis="off"'
+        build_args+=' generate_linker_map=false'
+        build_args+=' strip_debug_info=false'
+        build_args+=' dcheck_always_on=true'
+    else
+        build_args+=' is_official_build=true'
+        build_args+=' is_debug=false'
+        build_args+=' chrome_pgo_phase=2'
+        build_args+=' generate_linker_map=true'
+        build_args+=' dcheck_always_on=false'
+    fi
+
     echo ">> [$(date)] Building chromium $chromium_version for $1"
     gn gen "out/$1" --args="$build_args"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
@@ -67,7 +87,7 @@ build() {
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
 
-    ninja -C out/$1 $build_targets
+    autoninja -C out/$1 $build_targets
     mkdir -p "${root_dir}/apks/${apk_arch}"
 
     for apk in $apks; do
@@ -221,7 +241,7 @@ init_repo() {
     fi
 }
 
-while getopts ":a:cur:shp" opt; do
+while getopts ":a:cur:shpd" opt; do
     case $opt in
     a) arch="$OPTARG" ;;
     c) clean=1 ;;
@@ -229,6 +249,7 @@ while getopts ":a:cur:shp" opt; do
     s) gsync=1 ;;
     h) history=0 ;;
     p) patchonly=1 ;;
+    d) debug=1 ;;
     :)
         echo "Option -$OPTARG requires an argument"
         echo
