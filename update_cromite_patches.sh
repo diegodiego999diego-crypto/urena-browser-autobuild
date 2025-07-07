@@ -4,7 +4,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 
 cd $root_dir/build
 
-branch="v138.0.7204.50-f44f153674d484bc6b33d005f4441407b0b588a7"
+branch="v138.0.7204.97-418943de425329115e0783375c12ee5aec36e2b6"
 if [ -d cromite ]; then
     cd cromite
     git fetch origin $branch
