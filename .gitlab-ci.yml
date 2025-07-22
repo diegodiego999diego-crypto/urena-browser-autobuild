@@ -4,34 +4,11 @@ workflow:
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_COMMIT_TAG
 stages:
-  - prepare
   - build
   - filters
 
-variables:
-  CONTAINER_IMAGE: registry.gitlab.e.foundation:5000/$CI_PROJECT_PATH
-  GIT_SUBMODULE_STRATEGY: recursive
-
-build-docker:
-  image: docker:25.0.5-git
-  stage: prepare
-
-  tags:
-    - generic_privileged
-  variables:
-    DOCKER_DRIVER: overlay2
-  services:
-    - docker:25.0.5-dind
-  script:
-    - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.e.foundation:5000 -u gitlab-ci-token --password-stdin
-    - docker pull $CONTAINER_IMAGE:latest || true
-    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:latest ${CI_PROJECT_DIR}
-    - docker push $CONTAINER_IMAGE:latest
-  retry: 2
-
 .build-cromite:
-  image: $CONTAINER_IMAGE
-  needs: ["build-docker"]
+  image: registry.gitlab.e.foundation/e/os/docker-android-apps-cicd:chromium-latest
   tags:
     - build-browser
   artifacts:
@@ -66,7 +43,7 @@ build-cromite-x64:
     - $CI_PROJECT_DIR/build.sh -c -s -a x64
 
 .build-filters:
-  image: debian:12-slim
+  image: registry.gitlab.e.foundation/e/os/docker-android-apps-cicd:slim-latest
   stage: filters
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -78,8 +55,7 @@ update-filters:
   extends: .build-filters
   needs: []
   script: 
-    - apt-get update && apt-get install -y curl jq
-    - bash generate_filters.sh
+    - $CI_PROJECT_DIR/generate_filters.sh
   artifacts:
     paths:
       - filters.dat
@@ -97,6 +73,5 @@ deploy_rsync:
     - echo "$SSH_KNOWN_HOSTS" > $HOME/.ssh/known_hosts
     - chmod 600 ~/.ssh/id_ed25519
     - chmod 644 ~/.ssh/known_hosts ~/.ssh/id_ed25519.pub
-    - apt-get update && apt-get install -y rsync openssh-client
   script:
     - rsync -avz --chown=$REMOTE_USER:www-data --chmod=F644 filters.dat $REMOTE_USER@$IMAGES_HOSTNAME:$BROWSER_PATH
