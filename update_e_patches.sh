@@ -70,3 +70,13 @@ for commit in $(git rev-list --reverse "$chromium_commit_hash"..HEAD); do
     mv "$temp_patch_file" "$patch_path"
     echo "$patch_filename" >> "$output_patch_file"
 done
+
+while read dir patch; do
+  [ -z "$dir" ] && continue  # skip empty lines
+  subject=${patch%.patch}
+  formatted_subject=${subject//-/" "}
+  echo "Updating patch: $formatted_subject"
+  cd $root_dir/src/third_party/$dir
+  commit_hash=$(git log --pretty=format:"%H %s" | grep -F "$formatted_subject" | head -n 1 | awk '{print $1}')
+  git format-patch -1 --stdout "$commit_hash" --subject-prefix="" > $root_dir/build/third_party/$patch
+done < "${root_dir}/build/third_party_patches_list.txt"
