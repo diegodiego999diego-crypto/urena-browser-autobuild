@@ -2,9 +2,11 @@
 
 root_dir=$(dirname "$(readlink -f "$0")")
 
+
+branch=$(grep 'ungoogled_chromium_branch' versions.txt | awk -F'"' '{print $2}')
+
 cd $root_dir/domain_substitution
 
-branch="138.0.7204.157-1"
 if [ -d ungoogled-chromium ]; then
     cd ungoogled-chromium
     git fetch origin $branch

@@ -7,7 +7,7 @@ root_dir=$(dirname "$(readlink -f "$0")")
 if [ ! -d "$chromium_dir" ]; then
     chromium_dir=$root_dir
 fi
-chromium_version=$(grep 'ENV CHROMIUM_VER' Dockerfile | awk -F'"' '{print $2}')
+chromium_version=$(grep 'chromium_version' versions.txt | awk -F'"' '{print $2}')
 chromium_code=$(echo "${chromium_version}" | tr -d '.' | cut -c1-8)
 chromium_url=https://github.com/chromium/chromium.git
 clean=0

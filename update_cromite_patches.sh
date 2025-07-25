@@ -2,9 +2,10 @@
 
 root_dir=$(dirname "$(readlink -f "$0")")
 
-cd $root_dir/build
 
-branch="v138.0.7204.97-418943de425329115e0783375c12ee5aec36e2b6"
+branch=$(grep 'cromite_branch' versions.txt | awk -F'"' '{print $2}')
+
+cd $root_dir/build
 if [ -d cromite ]; then
     cd cromite
     git fetch origin $branch
