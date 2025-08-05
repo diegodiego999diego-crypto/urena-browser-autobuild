@@ -50,8 +50,6 @@ build() {
         fi
     fi
 
-    build_args+=' cc_wrapper="ccache"'
-
     echo ">> [$(date)] Using AOSP test-key for release build"
     keystore_path="${root_dir}/platform.jks"
     build_args+=' android_keystore_path="'$keystore_path'"'
@@ -67,7 +65,7 @@ build() {
         build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
     fi
 
-    ninja -C out/$1 $build_targets
+    autoninja -C out/$1 $build_targets
     mkdir -p "${root_dir}/apks/${apk_arch}"
 
     for apk in $apks; do
@@ -81,24 +79,12 @@ build() {
         echo ">> [$(date)] Building chromium subresource_filter_tools"
         mkdir -p "${root_dir}/bin"
         build_args=$(cat "${root_dir}"/build/filters.gn_args)
-        build_args+=' cc_wrapper="ccache"'
         gn gen out/${1} --args="$build_args"
         autoninja -C out/${1} subresource_filter_tools
         if [ -f "out/${1}/ruleset_converter" ]; then
             cp -r out/${1}/ruleset_converter ${root_dir}/bin/ruleset_converter
         fi
     fi
-}
-
-setup_ccache() {
-    echo ">> [$(date)] Settings up ccache"
-    export USE_CCACHE=1
-    export CCACHE_EXEC=$(command -v ccache)
-    export PATH=$chromium_dir/src/third_party/llvm-build/Release+Asserts/bin:$PATH
-    export CCACHE_CPP2=yes
-    export CCACHE_SLOPPINESS=time_macros
-    export CCACHE_DIR=$chromium_dir/.ccache
-    ccache -M 200G
 }
 
 patch() {
@@ -295,7 +281,6 @@ fi
 
 cd $chromium_dir/src
 . build/android/envsetup.sh
-setup_ccache
 
 if [ ! -z "$arch" ]; then
     build $arch
