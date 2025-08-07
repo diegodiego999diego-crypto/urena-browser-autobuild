@@ -1,4 +1,4 @@
-From e9d102af71384db3b43eb21fed851ddc4680292a Mon Sep 17 00:00:00 2001
+From f7b9ff2a4af5204b92690cc5233b1c0a328b8aa0 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 26 Sep 2021 11:17:53 +0200
 Subject: Disable AGSA by default
@@ -16,10 +16,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  8 files changed, 8 insertions(+), 64 deletions(-)
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 3511504b1b683..5812777f7f008 100644
+index 5865ee9dd6c89..ed39119a56733 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -413,7 +413,6 @@ if (_is_default_toolchain) {
+@@ -417,7 +417,6 @@ if (_is_default_toolchain) {
        "//chrome/browser/flags:java",
        "//chrome/browser/fullscreen/android:java",
        "//chrome/browser/gesturenav/android:java",
@@ -28,7 +28,7 @@ index 3511504b1b683..5812777f7f008 100644
        "//chrome/browser/history_clusters:java",
        "//chrome/browser/hub:factory_java",
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
-index 338df94c1043d..5f5739e198a22 100644
+index c3531dcc78888..e937f4769a582 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 @@ -47,7 +47,6 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -37,9 +37,9 @@ index 338df94c1043d..5f5739e198a22 100644
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
 -import org.chromium.chrome.browser.gsa.GSAUtils;
  import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
+ import org.chromium.chrome.browser.pdf.PdfUtils;
  import org.chromium.chrome.browser.profiles.Profile;
- import org.chromium.chrome.browser.profiles.ProfileManager;
-@@ -279,9 +278,6 @@ public class IntentHandler {
+@@ -284,9 +283,6 @@ public class IntentHandler {
  
      public static final String EXTRA_CCT_EARLY_NAV = "org.chromium.chrome.browser.cct_early_nav";
  
@@ -49,7 +49,7 @@ index 338df94c1043d..5f5739e198a22 100644
      private static Pair<Integer, String> sPendingReferrer;
      private static int sReferrerId;
      private static String sPendingIncognitoUrl;
-@@ -326,7 +322,6 @@ public class IntentHandler {
+@@ -331,7 +327,6 @@ public class IntentHandler {
          ExternalAppId.NEWS,
          ExternalAppId.LINE,
          ExternalAppId.WHATSAPP,
@@ -57,7 +57,7 @@ index 338df94c1043d..5f5739e198a22 100644
          ExternalAppId.WEBAPK,
          ExternalAppId.YAHOO_MAIL,
          ExternalAppId.VIBER,
-@@ -350,7 +345,6 @@ public class IntentHandler {
+@@ -355,7 +350,6 @@ public class IntentHandler {
          int NEWS = 8;
          int LINE = 9;
          int WHATSAPP = 10;
@@ -65,7 +65,7 @@ index 338df94c1043d..5f5739e198a22 100644
          int WEBAPK = 12;
          int YAHOO_MAIL = 13;
          int VIBER = 14;
-@@ -557,8 +551,6 @@ public class IntentHandler {
+@@ -569,8 +563,6 @@ public class IntentHandler {
              return ExternalAppId.LINE;
          } else if (packageName.equals(PACKAGE_WHATSAPP)) {
              return ExternalAppId.WHATSAPP;
@@ -75,10 +75,10 @@ index 338df94c1043d..5f5739e198a22 100644
              return ExternalAppId.CHROME;
          } else if (packageName.startsWith(WEBAPK_PACKAGE_PREFIX)) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-index d9c973c1c4ff6..2f1bc754c589f 100644
+index a97b367853183..1c1e065d277dd 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-@@ -41,7 +41,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+@@ -43,7 +43,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
  import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
  import org.chromium.chrome.browser.firstrun.FirstRunStatus;
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -86,7 +86,7 @@ index d9c973c1c4ff6..2f1bc754c589f 100644
  import org.chromium.chrome.browser.lens.LensController;
  import org.chromium.chrome.browser.lens.LensEntryPoint;
  import org.chromium.chrome.browser.lens.LensIntentParams;
-@@ -1113,12 +1112,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+@@ -1136,12 +1135,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                      LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE);
              return false;
          }
@@ -97,7 +97,7 @@ index d9c973c1c4ff6..2f1bc754c589f 100644
 -            return false;
 -        }
  
-         if (LensUtils.isDeviceOsBelowMinimum()) {
+         if (!LensUtils.isValidAgsaPackage()) {
              LensMetrics.recordLensSupportStatus(
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
 index 3f20edd697978..c3a1f7882591b 100644
@@ -146,10 +146,10 @@ index cdf206688020e..65971858a332a 100644
                  return "webapk";
              case ExternalAppId.YAHOO_MAIL:
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
-index d28f7ade3313c..8ff94a355de29 100644
+index 1e8dd8c340392..554f6738ed312 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
-@@ -10,7 +10,6 @@ import android.os.Build;
+@@ -9,7 +9,6 @@ import android.content.Context;
  import org.chromium.base.ResettersForTesting;
  import org.chromium.chrome.browser.IntentHandler;
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -157,7 +157,7 @@ index d28f7ade3313c..8ff94a355de29 100644
  import org.chromium.components.externalauth.ExternalAuthUtils;
  
  /** This class provides utilities for intenting into Google Lens. */
-@@ -46,15 +45,7 @@ public class LensUtils {
+@@ -45,15 +44,7 @@ public class LensUtils {
          if (sFakePassableLensEnvironmentForTesting) {
              return MIN_AGSA_VERSION_NAME_FOR_LENS_POSTCAPTURE;
          } else {
@@ -174,7 +174,7 @@ index d28f7ade3313c..8ff94a355de29 100644
          }
      }
  
-@@ -92,11 +83,7 @@ public class LensUtils {
+@@ -76,11 +67,7 @@ public class LensUtils {
       * @return Whether the package is valid.
       */
      public static boolean isValidAgsaPackage() {
@@ -188,10 +188,10 @@ index d28f7ade3313c..8ff94a355de29 100644
  
      public static boolean isGoogleLensFeatureEnabled(boolean isIncognito) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-index baa15964c4608..3a6c4545fc7f5 100644
+index 92802519d0fa2..cddb8ec25c80b 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-@@ -899,23 +899,6 @@ public class RootUiCoordinator
+@@ -919,23 +919,6 @@ public class RootUiCoordinator
                              mLayoutStateProviderOneShotSupplier,
                              mFullscreenManager);
              mReadAloudControllerSupplier.set(controller);
@@ -216,10 +216,10 @@ index baa15964c4608..3a6c4545fc7f5 100644
          if (BuildInfo.getInstance().isAutomotive) {
              mAutomotiveBackButtonToolbarCoordinator =
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index e45eed08515e8..4d6ed6a8189fc 100644
+index 39356580f7e43..6c9789205049b 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -960,8 +960,8 @@ BASE_FEATURE(kEnableXAxisActivityTransition,
+@@ -991,8 +991,8 @@ BASE_FEATURE(kEnableXAxisActivityTransition,
               base::FEATURE_DISABLED_BY_DEFAULT);
  
  BASE_FEATURE(kExperimentsForAgsa,
@@ -231,5 +231,5 @@ index e45eed08515e8..4d6ed6a8189fc 100644
  BASE_FEATURE(kFloatingSnackbar,
               "FloatingSnackbar",
 -- 
-2.34.1
+2.50.0
 
