@@ -1,14 +1,14 @@
-From 8be18b698dd8db1b442593edbab386f986aa7e81 Mon Sep 17 00:00:00 2001
+From cb5539d7655a828482076e9020f4e50e87b43835 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Wed, 16 Apr 2025 16:39:02 +0000
 Subject: Whitelist murena search
 
 ---
- .../settings/AdblockAllowedDomainsFragment.java  | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ .../AdblockAllowedDomainsFragment.java        | 56 +++++++++++++++++++
+ 1 file changed, 56 insertions(+)
 
 diff --git a/chrome/browser/adblock/android/java/src/org/chromium/chrome/browser/adblock/settings/AdblockAllowedDomainsFragment.java b/chrome/browser/adblock/android/java/src/org/chromium/chrome/browser/adblock/settings/AdblockAllowedDomainsFragment.java
-index 35e2366b2cae9..04ab934279b9e 100644
+index 35e2366b2cae9..9863333e4eb41 100644
 --- a/chrome/browser/adblock/android/java/src/org/chromium/chrome/browser/adblock/settings/AdblockAllowedDomainsFragment.java
 +++ b/chrome/browser/adblock/android/java/src/org/chromium/chrome/browser/adblock/settings/AdblockAllowedDomainsFragment.java
 @@ -18,6 +18,8 @@
@@ -20,33 +20,73 @@ index 35e2366b2cae9..04ab934279b9e 100644
  
  import org.chromium.chrome.browser.adblock.R;
  import org.chromium.chrome.browser.profiles.ProfileManager;
-@@ -26,12 +28,26 @@ import org.chromium.components.adblock.AdblockController;
+@@ -26,12 +28,66 @@ import org.chromium.components.adblock.AdblockController;
  import java.util.List;
  
  public class AdblockAllowedDomainsFragment extends AdblockCustomItemFragment<String> {
 +    private static final String PREF_NAME = "adblock_domain_history";
++    private static final String PREF_VERSION_KEY = "domains_version";
++
++    // increment this when we add new domains
++    private static final int DOMAINS_VERSION = 2;
 +
      public AdblockAllowedDomainsFragment() {}
  
++    private void updateAllowedDomains(Context context) {
++        if (context == null) return;
++
++        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
++        int savedVersion = prefs.getInt(PREF_VERSION_KEY, 0);
++        String qwantDomain = "murena.qwant.com";
++        boolean wasAdded = prefs.getBoolean(qwantDomain, false);
++
++        if (savedVersion < DOMAINS_VERSION) {
++            AdblockController controller = AdblockController.getInstance(ProfileManager.getLastUsedRegularProfile());
++            List<String> allowedDomains = controller.getAllowedDomains();
++
++            // apply all missing versions step by step
++            for (int v = savedVersion + 1; v <= DOMAINS_VERSION; v++) {
++                switch (v) {
++                    case 1:
++                        if (!wasAdded) {
++                            addDomains(controller, allowedDomains,
++                                qwantDomain
++                            );
++                            prefs.edit().putBoolean(qwantDomain, true).apply();
++                        }
++                        break;
++
++                    case 2:
++                        addDomains(controller, allowedDomains,
++                            "fdn.qwant.com"
++                        );
++                        break;
++                }
++            }
++
++            // save new version
++            prefs.edit().putInt(PREF_VERSION_KEY, DOMAINS_VERSION).apply();
++        }
++    }
++
++    private void addDomains(AdblockController controller,
++                            List<String> allowedDomains,
++                            String... domains) {
++        for (String domain : domains) {
++            if (allowedDomains == null || !allowedDomains.contains(domain)) {
++                controller.addAllowedDomain(domain);
++            }
++        }
++    }
++
      @Override
      public void onActivityCreated(Bundle savedInstanceState) {
          super.onActivityCreated(savedInstanceState);
          getActivity().setTitle(R.string.fragment_adblock_settings_allowed_domains_title);
-+
-+        String domain = "murena.qwant.com";
-+        if (getContext() != null) {
-+            SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-+            boolean wasAdded = prefs.getBoolean(domain, false);
-+            List<String> allowedDomains = AdblockController.getInstance(ProfileManager.getLastUsedRegularProfile()).getAllowedDomains();
-+
-+            if (!wasAdded && allowedDomains != null && !allowedDomains.contains(domain)) {
-+                AdblockController.getInstance(ProfileManager.getLastUsedRegularProfile()).addAllowedDomain(domain);
-+                prefs.edit().putBoolean(domain, true).apply();
-+            }
-+        }
++        updateAllowedDomains(getContext());
      }
  
      @Override
 -- 
-2.34.1
+2.47.2
 
