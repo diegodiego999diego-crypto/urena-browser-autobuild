@@ -60,7 +60,7 @@ build() {
     build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
 
     echo ">> [$(date)] Building chromium $chromium_version for $1"
-    gn gen "out/$1" --args="$build_args"
+    gn gen "out/$1" --fail-on-unused-args --args="$build_args"
     if [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
         build_targets="trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
     else
