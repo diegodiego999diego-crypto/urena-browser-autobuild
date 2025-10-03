@@ -1,8 +1,9 @@
-From 1eee5ef85d303fd2155d9d64b5c7d4466cc7ac7f Mon Sep 17 00:00:00 2001
+From fe84005c72dc6e5e212f08f7c1530301fa8d70d2 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Tue, 5 Nov 2024 10:08:21 +0530
 Subject: Browser: Enable external intent requests
 
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
 ---
  .../java/res/xml/privacy_preferences.xml      |  3 +-
  .../customtabs/CustomTabDelegateFactory.java  |  4 +--
@@ -31,7 +32,7 @@ index e2fcf5db2f0f9..0241aa8a4a775 100644
          android:key="security_section"
        android:title="@string/security_section_title" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
-index a2617bb046602..2c2f5ce7787c5 100644
+index c74f651e1e883..6c4b4417c3e05 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
 @@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
@@ -40,9 +41,9 @@ index a2617bb046602..2c2f5ce7787c5 100644
  import org.chromium.base.CallbackUtils;
 +import org.chromium.base.ContextUtils;
  import org.chromium.base.metrics.RecordHistogram;
- import org.chromium.base.supplier.Supplier;
  import org.chromium.blink.mojom.DisplayMode;
-@@ -36,7 +37,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+ import org.chromium.blink.mojom.DisplayMode.EnumType;
+@@ -35,7 +36,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
  import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
  import org.chromium.chrome.browser.flags.ActivityType;
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -50,7 +51,7 @@ index a2617bb046602..2c2f5ce7787c5 100644
  import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
  import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
-@@ -129,7 +129,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
+@@ -153,7 +153,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
  
          @Override
          public boolean shouldDisableAllExternalIntents() {
@@ -60,10 +61,10 @@ index a2617bb046602..2c2f5ce7787c5 100644
                      && ChromeFeatureList.sCctAuthTabDisableAllExternalIntents.isEnabled();
          }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
-index 0aaec7e505a12..ae6b9ea74056a 100644
+index c81e823af5f8c..c1ebb5a1b1fe3 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
-@@ -26,7 +26,6 @@ import org.chromium.base.supplier.Supplier;
+@@ -25,7 +25,6 @@ import org.chromium.base.PackageManagerUtils;
  import org.chromium.build.annotations.NullMarked;
  import org.chromium.build.annotations.Nullable;
  import org.chromium.chrome.browser.ChromeTabbedActivity2;
@@ -71,7 +72,7 @@ index 0aaec7e505a12..ae6b9ea74056a 100644
  import org.chromium.chrome.browser.IntentHandler;
  import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
  import org.chromium.chrome.browser.document.ChromeLauncherActivity;
-@@ -56,6 +55,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+@@ -57,6 +56,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
  
      private boolean mIsTabDestroyed;
  
@@ -80,21 +81,21 @@ index 0aaec7e505a12..ae6b9ea74056a 100644
      public ExternalNavigationDelegateImpl(Tab tab) {
          mTab = tab;
          mTabModelSelectorSupplier = TabModelSelectorSupplier.from(tab.getWindowAndroid());
-@@ -118,8 +119,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
- 
+@@ -120,8 +121,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
      @Override
-     public boolean shouldDisableExternalIntentRequestsForUrl(GURL url) {
--        if ("tel".equals(url.getScheme())) return false;
+     public boolean shouldDisableExternalIntentRequestsForUrl(
+             ExternalNavigationParams params, Intent intent) {
+-        if ("tel".equals(params.getUrl().getScheme())) return false;
 -        return !sAllowExternalIntentRequests.getInstance().isEnabled();
 +        return !ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true);
      }
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 55f1756add01d..dc3957bfe4251 100644
+index c0f9c1faf0f9d..c3dbed7a60930 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -170,6 +170,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -171,6 +171,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
      private ChromeSwitchPreference allowCustomTabIntentsPref;
      private ChromeSwitchPreference openExternalLinksPref;
@@ -201,5 +202,5 @@ index c4015ad7de119..0000000000000
 -                "AllowExternalIntentRequests",
 -                base::FEATURE_DISABLED_BY_DEFAULT);
 -- 
-2.50.1
+2.34.1
 
