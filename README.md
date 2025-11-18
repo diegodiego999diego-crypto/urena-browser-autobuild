@@ -35,3 +35,9 @@ Browser is built using the [GitLab's CI/CD](https://docs.gitlab.com/ee/ci/). You
 - A the list of contributors can be viewed on this repository's [contributors graph](https://gitlab.e.foundation/e/os/browser/-/graphs/master).
 
 In case you wish to contribute to the development of this project, feel free to open a [Merge Request](https://gitlab.e.foundation/e/os/browser/-/merge_requests) or an [Issue](https://gitlab.e.foundation/e/backlog/-/issues/) for the same. Contributions are always welcome.
+
+## Cromite patches
+- The Cromite patch set is tracked via the `build/cromite` git submodule (upstream: [uazo/cromite](https://github.com/uazo/cromite)).
+- After cloning this repository, run `git submodule update --init --recursive build/cromite` before building.
+- `./update_cromite_patches.sh` fast-forwards the submodule to the branch or tag defined by `cromite_branch` in `versions.txt`.
+- `build.sh` applies patches directly from `build/cromite/build/patches` using the order defined in `build/cromite_patches_list.txt`, so the submodule must be kept in sync.
