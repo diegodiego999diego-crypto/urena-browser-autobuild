@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 root_dir=$(dirname "$(readlink -f "$0")")
-
 branch=$(grep 'cromite_branch' versions.txt | awk -F'"' '{print $2}')
+cromite_dir="${root_dir}/build/cromite"
 
-cd $root_dir/build
-if [ -d cromite ]; then
-  cd cromite
-  git fetch origin $branch
-  git reset --hard FETCH_HEAD
-  cd ..
-else
-  git clone https://gitlab.e.foundation/e/os/cromite.git -b $branch cromite --depth=1
+if [ ! -d "${cromite_dir}/.git" ]; then
+  echo ">> Cromite submodule not initialized, fetching it now"
+  git -C "${root_dir}" submodule update --init --recursive build/cromite
 fi
 
-rm -rf cromite_patches/*
+cd "${cromite_dir}"
 
-cromite_patches_list=$(cat "cromite_patches_list.txt")
-for file in $cromite_patches_list; do
-  cp cromite/build/patches/$file "cromite_patches/$file"
-done
+if [ -n "$(git status --porcelain)" ]; then
+  echo "!! Cromite submodule has local changes. Please commit or stash them before updating."
+  exit 1
+fi
 
-echo "Copy done"
+echo ">> Fetching cromite branch/tag ${branch}"
+git fetch --tags origin
+git fetch origin "${branch}"
+
+git checkout --detach FETCH_HEAD
+git reset --hard FETCH_HEAD
+
+echo ">> Cromite submodule updated to $(git rev-parse --short HEAD) (${branch})"
