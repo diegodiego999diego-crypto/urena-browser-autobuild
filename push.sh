@@ -32,8 +32,17 @@ if [ "$DO_CLEAR" = true ]; then
   done
 fi
 
-adb install -r apks/arm64/TrichromeLibrary.apk
-adb install -r apks/arm64/TrichromeWebView.apk
-adb install -r apks/arm64/TrichromeChrome.apk
+APK_DIR="apks/arm64"
+
+if [ -f "$APK_DIR/TrichromeLibrary.apk" ] && \
+   [ -f "$APK_DIR/TrichromeWebView.apk" ] && \
+   [ -f "$APK_DIR/TrichromeChrome.apk" ]; then
+  adb install -r $APK_DIR/TrichromeLibrary.apk
+  adb install -r $APK_DIR/TrichromeWebView.apk
+  adb install -r $APK_DIR/TrichromeChrome.apk
+else
+  adb install -r $APK_DIR/ChromePublic.apk
+  adb install -r $APK_DIR/SystemWebView.apk
+fi
 
 echo "Done."
