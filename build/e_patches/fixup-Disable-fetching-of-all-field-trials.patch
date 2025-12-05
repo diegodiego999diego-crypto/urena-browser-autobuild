@@ -1,4 +1,4 @@
-From 390c45a6ce1c92e0330325ed0ae5daa3e4d3cf45 Mon Sep 17 00:00:00 2001
+From fd9304c5ed6847031c76c5dbeeb6c434447c5075 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Wed, 20 Sep 2023 09:48:52 +0530
 Subject: fixup Disable fetching of all field trials
@@ -29,23 +29,23 @@ index ad626ddfe4ef8..d6b55d4be62e4 100644
  
      @Override
 diff --git a/build/android/gyp/proguard.py b/build/android/gyp/proguard.py
-index de84397b813b5..bee4bc9775d98 100755
+index 417c0d1246dac..8305112da0c06 100755
 --- a/build/android/gyp/proguard.py
 +++ b/build/android/gyp/proguard.py
-@@ -50,6 +50,8 @@ _IGNORE_WARNINGS = (
-         r'PaymentRequest[BH]',
-         # This service is defined in Native not Java.
-         r'NativeServiceSandboxedProcessService',
+@@ -44,6 +44,8 @@ _IGNORE_WARNINGS = (
+         r'class \*+ implements',
+         # Ignore rules that opt out of this check.
+         r'!cr_allowunused',
 +        # No fetching of trials
 +        r'org\.chromium\.android_webview\.services\.AwVariationsSeedFetcher',
-     ]) + ')',
-     # We enforce that this class is removed via -checkdiscard.
-     r'FastServiceLoader\.class:.*Could not inline ServiceLoader\.load',
+         # https://crbug.com/1441225
+         r'EditorDialogToolbar',
+         # https://crbug.com/1441226
 diff --git a/components/variations/service/variations_field_trial_creator.cc b/components/variations/service/variations_field_trial_creator.cc
-index efb1fdba913b2..f034897b23a82 100644
+index 2176973b288d5..a6119ebd60a5f 100644
 --- a/components/variations/service/variations_field_trial_creator.cc
 +++ b/components/variations/service/variations_field_trial_creator.cc
-@@ -336,6 +336,8 @@ bool VariationsFieldTrialCreator::SetUpFieldTrials(
+@@ -338,6 +338,8 @@ bool VariationsFieldTrialCreator::SetUpFieldTrials(
  
    platform_field_trials->RegisterFeatureOverrides(feature_list.get());
  
@@ -53,7 +53,7 @@ index efb1fdba913b2..f034897b23a82 100644
 +
    base::FeatureList::SetInstance(std::move(feature_list));
  
-   // For testing Variations Safe Mode, maybe crash here.
+   if (base::FeatureList::IsEnabled(internal::kPurgeVariationsSeedFromMemory)) {
 -- 
-2.34.1
+2.51.2
 
