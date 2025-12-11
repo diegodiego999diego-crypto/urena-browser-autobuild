@@ -110,8 +110,19 @@ patch() {
   echo ">> [$(date)] Applying cromite patches"
 
   cromite_patches_list=$(cat "${root_dir}/build/cromite_patches_list.txt")
+  cromite_patch_dir="${root_dir}/build/cromite/build/patches"
+  if [ ! -d "${cromite_patch_dir}" ]; then
+    echo "Cromite patches directory not found at ${cromite_patch_dir}."
+    echo "Ensure the cromite submodule is initialized (run ./update_cromite_patches.sh)."
+    exit 1
+  fi
   for file in $cromite_patches_list; do
-    git am -C0 -3 --ignore-whitespace "${root_dir}/build/cromite_patches/$file"
+    patch_path="${cromite_patch_dir}/$file"
+    if [ ! -f "${patch_path}" ]; then
+      echo "Patch ${patch_path} missing."
+      exit 1
+    fi
+    git am -C0 -3 --ignore-whitespace "${patch_path}"
   done
 
   echo ">> [$(date)] Applying /e/ patches"
