@@ -23,13 +23,13 @@ if [ -z "$selected_tag" ]; then
   exit 1
 fi
 
-echo "Looking for build-cromite-x64 job in pipeline $pipeline_id..."
+echo "Looking for archive-filter job in pipeline $pipeline_id..."
 
 job_id=$(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/pipelines/${pipeline_id}/jobs" |
-  jq -r '.[] | select(.name=="build-cromite-x64") | .id')
+  jq -r '.[] | select(.name=="archive-filter") | .id')
 
 if [ -z "$job_id" ]; then
-  echo "No job named build-cromite-x64 found in pipeline $pipeline_id"
+  echo "No job named archive-filter found in pipeline $pipeline_id"
   exit 1
 fi
 
