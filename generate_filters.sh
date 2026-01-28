@@ -8,28 +8,21 @@ PROJECT_PATH=$(echo -n "e/os/browser" | jq -sRr @uri)
 for tag in $(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/repository/tags" | jq -r '.[].name'); do
   echo "Checking tag: $tag"
 
-  pipeline_id=$(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/pipelines?ref=${tag}&status=success" |
+  pipeline_id=$(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/pipelines?ref=${tag}" |
     jq -r '.[0].id')
 
-  if [ "$pipeline_id" != "null" ] && [ -n "$pipeline_id" ]; then
-    echo "Found successful pipeline for tag $tag (Pipeline ID: $pipeline_id)"
+  job_id=$(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/pipelines/${pipeline_id}/jobs" |
+    jq -r '.[] | select(.name=="archive-filter" and .status=="success") | .id')
+
+  if [ "$job_id" != "null" ] && [ -n "$job_id" ]; then
+    echo "Found successful archive-filter job for tag $tag (Job ID: $job_id)"
     selected_tag=$tag
     break
   fi
 done
 
 if [ -z "$selected_tag" ]; then
-  echo "No tag with successful pipeline found"
-  exit 1
-fi
-
-echo "Looking for archive-filter job in pipeline $pipeline_id..."
-
-job_id=$(curl -s "${GITLAB_API}/projects/${PROJECT_PATH}/pipelines/${pipeline_id}/jobs" |
-  jq -r '.[] | select(.name=="archive-filter") | .id')
-
-if [ -z "$job_id" ]; then
-  echo "No job named archive-filter found in pipeline $pipeline_id"
+  echo "No tag with successful job found"
   exit 1
 fi
 
