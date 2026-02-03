@@ -94,17 +94,6 @@ build() {
   fi
 }
 
-setup_ccache() {
-  echo ">> [$(date)] Settings up ccache"
-  export USE_CCACHE=1
-  export CCACHE_EXEC=$(command -v ccache)
-  export PATH=$chromium_dir/src/third_party/llvm-build/Release+Asserts/bin:$PATH
-  export CCACHE_CPP2=yes
-  export CCACHE_SLOPPINESS=time_macros
-  export CCACHE_DIR=$chromium_dir/.ccache
-  ccache -M 200G
-}
-
 patch() {
   cd $chromium_dir/src
   echo ">> [$(date)] Applying cromite patches"
@@ -270,6 +259,8 @@ else
 fi
 export PATH="$chromium_dir/depot_tools:$PATH"
 
+source ${root_dir}/init-ccache.sh
+
 chromium_commit_hash=$(git ls-remote --refs $chromium_url refs/tags/$chromium_version | awk '{print $1}')
 
 if [ $clean -eq 1 ]; then
@@ -311,7 +302,6 @@ fi
 
 cd $chromium_dir/src
 . build/android/envsetup.sh
-setup_ccache
 
 if [ ! -z "$arch" ]; then
   build $arch
@@ -321,3 +311,5 @@ else
   build x86
   build x64
 fi
+
+ccache -s
