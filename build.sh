@@ -13,7 +13,6 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
-trichrome=0
 patchonly=0
 arch=""
 
@@ -28,15 +27,13 @@ usage() {
   echo "    -s Sync source"
   echo "    -h Sync without history"
   echo "    -p Apply patches - Only after synced"
-  echo "    -t Build trichrome chromium, webview and library"
   echo
   exit 1
 }
 
 build() {
   echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
-  apks="TrichromeChrome TrichromeLibrary TrichromeWebView TrichromeChrome6432 \
-        TrichromeLibrary6432 TrichromeWebView6432 ChromePublic SystemWebView"
+  apks="ChromePublic SystemWebView"
   build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
   apk_arch=${1}
@@ -59,17 +56,10 @@ build() {
   build_args+=' android_keystore_path="'$keystore_path'"'
   build_args+=' android_keystore_name="platform"'
   build_args+=' android_keystore_password="platform"'
-  build_args+=' trichrome_certdigest="c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8"'
 
   echo ">> [$(date)] Building chromium $chromium_version for $1"
   gn gen "out/$1" --fail-on-unused-args --args="$build_args"
-  if [[ $trichrome -eq 0 ]]; then
-    build_targets="chrome_public_apk system_webview_apk"
-  elif [ $1 '==' "x64" ] || [ $1 '==' "arm64" ]; then
-    build_targets="trichrome_webview_64_32_apk trichrome_chrome_64_32_apk trichrome_library_64_32_apk"
-  else
-    build_targets="trichrome_webview_apk trichrome_chrome_apk trichrome_library_apk"
-  fi
+  build_targets="chrome_public_apk system_webview_apk"
 
   ninja -C out/$1 $build_targets
   mkdir -p "${root_dir}/apks/${apk_arch}"
@@ -225,7 +215,7 @@ init_repo() {
   fi
 }
 
-while getopts ":a:cur:shpt" opt; do
+while getopts ":a:cur:shp" opt; do
   case $opt in
   a) arch="$OPTARG" ;;
   c) clean=1 ;;
@@ -233,7 +223,6 @@ while getopts ":a:cur:shpt" opt; do
   s) gsync=1 ;;
   h) history=0 ;;
   p) patchonly=1 ;;
-  t) trichrome=1 ;;
   :)
     echo "Option -$OPTARG requires an argument"
     echo
