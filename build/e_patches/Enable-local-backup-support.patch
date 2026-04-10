@@ -1,0 +1,115 @@
+From 2075ee8948cf6e53e9beff8a8c505a30051fd8f9 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Fri, 10 Apr 2026 10:35:54 +0530
+Subject: Enable local backup support
+
+---
+ chrome/android/BUILD.gn                       |  2 +
+ chrome/android/java/AndroidManifest.xml       | 14 ++-----
+ .../res_template/xml/chromebackupscheme.xml   | 39 +++++++++++++++++++
+ 3 files changed, 44 insertions(+), 11 deletions(-)
+ create mode 100644 chrome/android/java/res_template/xml/chromebackupscheme.xml
+
+diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index 0c9682392de8..0c7f17b169a1 100644
+--- a/chrome/android/BUILD.gn
++++ b/chrome/android/BUILD.gn
+@@ -1712,6 +1712,7 @@ if (_is_default_toolchain) {
+ 
+   jinja_template_resources("chrome_public_apk_template_resources") {
+     resources = [
++      "java/res_template/xml/chromebackupscheme.xml",
+       "java/res_template/xml/file_paths.xml",
+       "java/res_template/xml/launchershortcuts.xml",
+       "java/res_template/xml/searchable.xml",
+@@ -1723,6 +1724,7 @@ if (_is_default_toolchain) {
+   jinja_template_resources("chrome_test_apk_template_resources") {
+     resource_overlay = true
+     resources = [
++      "java/res_template/xml/chromebackupscheme.xml",
+       "java/res_template/xml/file_paths.xml",
+       "java/res_template/xml/launchershortcuts.xml",
+       "java/res_template/xml/searchable.xml",
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index d20a6a1aff7b..d315d62a410f 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -206,14 +206,12 @@ by a child template that "extends" this file.
+         android:manageSpaceActivity="@string/manage_space_activity"
+         android:supportsRtl="true"
+         android:zygotePreloadName="{{ zygote_preload_class }}"
+-        {% if backup_key is defined %}
+         android:allowBackup="true"
+         android:backupAgent="org.chromium.chrome.browser.backup.ChromeBackupAgent"
+-        android:fullBackupOnly="false"
++        android:fullBackupContent="@xml/chromebackupscheme"
++        android:fullBackupOnly="true"
++
+         android:restoreAnyVersion="true"
+-        {% else %}
+-        android:allowBackup="false"
+-        {% endif %}
+         android:networkSecurityConfig="@xml/network_security_config"
+         android:allowAudioPlaybackCapture="false"
+         android:appComponentFactory="org.chromium.chrome.browser.base.SplitCompatAppComponentFactory"
+@@ -1316,12 +1314,6 @@ by a child template that "extends" this file.
+       <meta-data android:name="com.samsung.android.sdk.multiwindow.penwindow.enable"
+           android:value="true"/>
+ 
+-      {% if backup_key is defined %}
+-      <!-- Backup keys are channel dependent -->
+-      <meta-data android:name="com.google.android.backup.api_key"
+-          android:value="{{ backup_key }}" />
+-      {% endif %}
+-
+       {% if channel in ['dev', 'canary', 'default'] %}
+       <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
+       {% endif %}
+diff --git a/chrome/android/java/res_template/xml/chromebackupscheme.xml b/chrome/android/java/res_template/xml/chromebackupscheme.xml
+new file mode 100644
+index 000000000000..3ed5163a9ee5
+--- /dev/null
++++ b/chrome/android/java/res_template/xml/chromebackupscheme.xml
+@@ -0,0 +1,39 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ~ Copyright (C) 2026 e Foundation
++  ~
++  ~ This program is free software: you can redistribute it and/or modify
++  ~ it under the terms of the GNU General Public License as published by
++  ~ the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ This program is distributed in the hope that it will be useful,
++  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
++  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  ~ GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License
++  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
++-->
++<full-backup-content>
++    <!-- Include all internal storage by default -->
++    <include domain="root" path="."/>
++    <include domain="sharedpref" path="."/>
++
++    <!-- Exclude Caches and transient data -->
++    <exclude domain="root" path="app_chrome/Default/GPUCache"/>
++    <exclude domain="root" path="app_chrome/Default/Local Storage"/>
++    <exclude domain="root" path="app_chrome/Default/Session Storage"/>
++    <exclude domain="root" path="app_chrome/Default/blob_storage"/>
++    <exclude domain="root" path="app_chrome/Default/Offline Pages"/>
++    <exclude domain="root" path="app_chrome/Default/Code Cache"/>
++    <exclude domain="root" path="app_chrome/Default/Service Worker"/>
++
++    <exclude domain="root" path="app_chrome/GPUCache"/>
++    <exclude domain="root" path="app_chrome/GrShaderCache"/>
++    <exclude domain="root" path="app_chrome/ShaderCache"/>
++
++    <exclude domain="root" path="cache"/>
++    <exclude domain="root" path="code_cache"/>
++    <exclude domain="root" path="app_textures"/>
++</full-backup-content>
+-- 
+2.47.3
+
