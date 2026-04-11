@@ -21,7 +21,7 @@ ccache --set-config=max_size=75G \
   --set-config=sloppiness=time_macros
 
 echo ">> [$(date)] Cleaning unused cache files and statistics"
-ccache --evict-older-than 30d
+ccache --evict-older-than 60d
 ccache -z
 
 echo ">> [$(date)] Recompressing existing cache entries"
