@@ -1,4 +1,4 @@
-From ca78b6a432fc1e972d4725abee08248677759177 Mon Sep 17 00:00:00 2001
+From 00a7e636fd9e183e626a47e82bf39e87c0a9f25d Mon Sep 17 00:00:00 2001
 From: Aayush Gupta <theimpulson@e.email>
 Date: Thu, 18 Mar 2021 13:42:44 +0100
 Subject: Browser: Modify default search engines
@@ -13,15 +13,15 @@ Signed-off-by: Saalim Quadri <danascape@gmail.com>
  .../locale/locale_template_url_loader.h       |  1 -
  .../browser/locale/LocaleManagerDelegate.java |  1 -
  .../locale/LocaleTemplateUrlLoader.java       |  8 ----
- .../regional_capabilities_service.cc          |  4 ++
+ .../regional_capabilities_service.cc          |  5 +++
  .../cromite/cromite_prepopulated_engines.json | 32 ++++++++++++++
  .../search_engines/search_engine_type.h       |  4 +-
  .../search_engines/search_engine_utils.cc     | 12 +-----
  .../template_url_prepopulate_data.cc          |  8 ++--
- 9 files changed, 48 insertions(+), 64 deletions(-)
+ 9 files changed, 49 insertions(+), 64 deletions(-)
 
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index 9bc0f2fb1ec93..ba1e2e6e41913 100644
+index 8e6c754e19271..d1f00983a4678 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
 @@ -11,6 +11,7 @@
@@ -151,17 +151,18 @@ index 26c187bbcff33..60a32065acd26 100644
      }
  }
 diff --git a/components/regional_capabilities/regional_capabilities_service.cc b/components/regional_capabilities/regional_capabilities_service.cc
-index 0fd9a6e94d133..37688dffa00f7 100644
+index 445a16834fab5..1daaf2d79d5e2 100644
 --- a/components/regional_capabilities/regional_capabilities_service.cc
 +++ b/components/regional_capabilities/regional_capabilities_service.cc
-@@ -322,6 +322,10 @@ RegionalCapabilitiesService::~RegionalCapabilitiesService() {
- 
- std::vector<const TemplateURLPrepopulateData::PrepopulatedEngine*>
+@@ -375,6 +375,11 @@ std::vector<const PrepopulatedEngine*>
  RegionalCapabilitiesService::GetRegionalPrepopulatedEngines() {
+   std::vector<const PrepopulatedEngine*> engines;
+ 
 +  bool use_default = true;
 +  if (use_default) {
 +    return GetDefaultPrepopulatedEngines();
 +  }
++
    if (HasSearchEngineCountryListOverride()) {
      auto country_override = std::get<SearchEngineCountryListOverride>(
          GetSearchEngineCountryOverride().value());
@@ -209,13 +210,13 @@ index 0d2ebbf08bfc7..9a7616e880b02 100644
              "name": "Google in English",
              "keyword": "googleen",
 diff --git a/components/search_engines/search_engine_type.h b/components/search_engines/search_engine_type.h
-index 599924b6e5528..3234d5872dc74 100644
+index 0ed9a94dcbf4c..daf4f796ff4c5 100644
 --- a/components/search_engines/search_engine_type.h
 +++ b/components/search_engines/search_engine_type.h
-@@ -100,12 +100,14 @@ enum SearchEngineType {
-   SEARCH_ENGINE_STARTER_PACK_AI_MODE = 80,
-   SEARCH_ENGINE_GOOGLE_EN = 81,
-   SEARCH_ENGINE_DUCKDUCKGOLIGHT = 82,
+@@ -101,12 +101,14 @@ enum SearchEngineType {
+   SEARCH_ENGINE_YAHOO_JP = 81,
+   SEARCH_ENGINE_GOOGLE_EN = 82,
+   SEARCH_ENGINE_DUCKDUCKGOLIGHT = 83,
 +  SEARCH_ENGINE_MURENASEARCH = 82,
 +  SEARCH_ENGINE_SPOT = 83,
  
@@ -229,10 +230,10 @@ index 599924b6e5528..3234d5872dc74 100644
  
  // Enum to record the type of search engine a user used in keyword mode. This
 diff --git a/components/search_engines/search_engine_utils.cc b/components/search_engines/search_engine_utils.cc
-index 4b32c2424922b..9808a5e92ff3a 100644
+index 6a6070e916409..99c8461cab5c0 100644
 --- a/components/search_engines/search_engine_utils.cc
 +++ b/components/search_engines/search_engine_utils.cc
-@@ -28,17 +28,7 @@ SearchEngineType GetEngineType(const GURL& url) {
+@@ -45,17 +45,7 @@ SearchEngineType GetEngineType(const GURL& url) {
    DCHECK(url.is_valid());
    if ((true)) return SEARCH_ENGINE_OTHER;
  
@@ -248,14 +249,14 @@ index 4b32c2424922b..9808a5e92ff3a 100644
 -
 -  // Now check the rest of the prepopulate data.
 +  // Check the prepopulate data.
-   for (const auto* engine : TemplateURLPrepopulateData::kAllEngines) {
-     if (SameDomain(url, GURL(engine->search_url))) {
-       return engine->type;
+   const auto& all_engines = regional_capabilities::GetAllPrepopulatedEngines();
+ 
+   auto it = std::ranges::find_if(all_engines, [&](const auto* engine) {
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index ef70b5f994236..31847de29973a 100644
+index 3846c3d8aec64..1687798b8aa62 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -177,7 +177,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+@@ -176,7 +176,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
          regional_prepopulated_engines) {
    std::vector<std::unique_ptr<TemplateURLData>> t_urls =
      GetPrepopulatedEnginesChromium(prefs, regional_prepopulated_engines);
@@ -265,7 +266,7 @@ index ef70b5f994236..31847de29973a 100644
    t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
    return t_urls;
  }
-@@ -207,7 +208,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
+@@ -206,7 +207,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
                              country_id, prefs,
                              regional_capabilities::SearchEngineListType::kTopN),
                          &PrepopulatedEngineToTemplateURLData);
@@ -275,7 +276,7 @@ index ef70b5f994236..31847de29973a 100644
    t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
    return t_urls;
  }
-@@ -274,7 +276,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
+@@ -273,7 +275,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
      const std::vector<const PrepopulatedEngine*>&
          regional_prepopulated_engines) {
    return FindPrepopulatedEngineInternal(prefs, regional_prepopulated_engines,
@@ -285,5 +286,5 @@ index ef70b5f994236..31847de29973a 100644
  }
  
 -- 
-2.52.0
+2.53.0
 
