@@ -1,0 +1,58 @@
+From 145b99ae1c75ae27dc78d34894213920c6c73ebe Mon Sep 17 00:00:00 2001
+From: Nishith Khanna <nishithkhanna@e.email>
+Date: Wed, 20 May 2026 16:50:54 +0000
+Subject: fixup: Disable integration with Gemini
+
+---
+ chrome/browser/sync/sync_service_factory.cc          | 7 ++-----
+ components/browser_sync/common_controller_builder.cc | 3 ++-
+ 2 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/chrome/browser/sync/sync_service_factory.cc b/chrome/browser/sync/sync_service_factory.cc
+index 437d750e626ff..3ac86226b1169 100644
+--- a/chrome/browser/sync/sync_service_factory.cc
++++ b/chrome/browser/sync/sync_service_factory.cc
+@@ -270,13 +270,10 @@ syncer::DataTypeController::TypeVector CreateCommonControllers(
+ #endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
+   builder.SetUserEventService(
+       browser_sync::UserEventServiceFactory::GetForProfile(profile));
++#if !BUILDFLAG(IS_ANDROID)
+   builder.SetSkillsService(
+-#if BUILDFLAG(IS_ANDROID)
+-      nullptr
+-#else   // BUILDFLAG(IS_ANDROID)
+-      skills::SkillsServiceFactory::GetForProfile(profile)
++      skills::SkillsServiceFactory::GetForProfile(profile));
+ #endif  // BUILDFLAG(IS_ANDROID)
+-  );
+ 
+   return builder.Build(/*disabled_types=*/{}, sync_service,
+                        chrome::GetChannel());
+diff --git a/components/browser_sync/common_controller_builder.cc b/components/browser_sync/common_controller_builder.cc
+index a08e83ab6564f..25e5165bd79d5 100644
+--- a/components/browser_sync/common_controller_builder.cc
++++ b/components/browser_sync/common_controller_builder.cc
+@@ -67,7 +67,6 @@
+ #include "components/sharing_message/sharing_message_data_type_controller.h"
+ #include "components/signin/public/base/signin_switches.h"
+ #include "components/skills/features.h"
+-#include "components/skills/public/skills_service.h"
+ #include "components/sync/base/data_type.h"
+ #include "components/sync/base/features.h"
+ #include "components/sync/base/report_unrecoverable_error.h"
+@@ -317,10 +316,12 @@ void CommonControllerBuilder::SetDataTypeStoreService(
+   data_type_store_service_.Set(data_type_store_service);
+ }
+ 
++#if !BUILDFLAG(IS_ANDROID)
+ void CommonControllerBuilder::SetSkillsService(
+     skills::SkillsService* skills_service) {
+   skills_service_.Set(skills_service);
+ }
++#endif  // !BUILDFLAG(IS_ANDROID)
+ 
+ #if !BUILDFLAG(IS_ANDROID)
+ void CommonControllerBuilder::SetPasskeyModel(
+-- 
+2.53.0
+
