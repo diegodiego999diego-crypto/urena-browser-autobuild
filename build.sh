@@ -13,6 +13,7 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
+ccache=1
 arch=""
 
 usage() {
@@ -25,6 +26,7 @@ usage() {
   echo "    -u Show this message"
   echo "    -s Sync source"
   echo "    -h Sync without history"
+  echo "    -C Disable ccache"
   echo
   exit 1
 }
@@ -47,7 +49,9 @@ build() {
     fi
   fi
 
-  build_args+=' cc_wrapper="ccache"'
+  if [ $ccache -eq 1 ]; then
+    build_args+=' cc_wrapper="ccache"'
+  fi
 
   echo ">> [$(date)] Using AOSP test-key for release build"
   keystore_path="${root_dir}/platform.jks"
@@ -122,10 +126,36 @@ init_repo() {
   fi
 }
 
-while getopts ":a:cush" opt; do
+setup_ccache() {
+  echo ">> [$(date)] Setting up ccache config"
+  export PATH=$chromium_dir/src/third_party/llvm-build/Release+Asserts/bin:$PATH
+  export USE_CCACHE=1
+
+  echo ">> [$(date)] Applying ccache configuration"
+  ccache --set-config=max_size=75G \
+    --set-config=compression_level=6 \
+    --set-config=cache_dir="$chromium_dir/.ccache" \
+    --set-config=base_dir="$chromium_dir/src" \
+    --set-config=compiler_check=content \
+    --set-config=hash_dir=false \
+    --set-config=depend_mode=true \
+    --set-config=sloppiness=time_macros
+
+  echo ">> [$(date)] Cleaning unused cache files and statistics"
+  ccache --evict-older-than 60d
+  ccache -z
+
+  echo ">> [$(date)] Recompressing existing cache entries"
+  ccache --recompress 6
+
+  export PATH="/usr/lib/ccache:$PATH"
+}
+
+while getopts ":a:cushC" opt; do
   case $opt in
   a) arch="$OPTARG" ;;
   c) clean=1 ;;
+  C) ccache=0 ;;
   u) usage ;;
   s) gsync=1 ;;
   h) history=0 ;;
@@ -154,7 +184,9 @@ else
 fi
 export PATH="$chromium_dir/depot_tools:$PATH"
 
-source ${root_dir}/init-ccache.sh
+if [ $ccache -eq 1 ]; then
+  setup_ccache
+fi
 
 chromium_commit_hash=$(git ls-remote --refs $chromium_url refs/tags/$chromium_version | awk '{print $1}')
 
@@ -201,4 +233,6 @@ else
   build x64
 fi
 
-ccache -s
+if [ $ccache -eq 1 ]; then
+  ccache -s
+fi
