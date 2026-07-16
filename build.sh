@@ -13,7 +13,6 @@ chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
 history=1
-patchonly=0
 arch=""
 
 usage() {
@@ -26,7 +25,6 @@ usage() {
   echo "    -u Show this message"
   echo "    -s Sync source"
   echo "    -h Sync without history"
-  echo "    -p Apply patches - Only after synced"
   echo
   exit 1
 }
@@ -34,7 +32,7 @@ usage() {
 build() {
   echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
   apks="ChromePublic SystemWebView"
-  build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
+  build_args="$(cat "${root_dir}"/build/vanilla.gn_args) target_cpu=\"${1}\" "
 
   apk_arch=${1}
   build_args+=' android_default_version_name="'$chromium_version'"'
@@ -70,96 +68,6 @@ build() {
       mv "out/${1}/apks/$apk.apk" "${root_dir}/apks/${apk_arch}/$(echo "$apk" | sed 's/[0-9]*//g').apk"
     fi
   done
-
-  if [ $1 '==' "x64" ]; then
-    echo ">> [$(date)] Building chromium subresource_filter_tools"
-    mkdir -p "${root_dir}/bin"
-    build_args=$(cat "${root_dir}"/build/filters.gn_args)
-    build_args+=' cc_wrapper="ccache"'
-    gn gen out/${1} --args="$build_args"
-    autoninja -C out/${1} subresource_filter_tools
-    if [ -f "out/${1}/ruleset_converter" ]; then
-      cp -r out/${1}/ruleset_converter ${root_dir}/bin/ruleset_converter
-    fi
-  fi
-}
-
-patch() {
-  cd $chromium_dir/src
-  echo ">> [$(date)] Applying cromite patches"
-
-  cromite_patches_list=$(cat "${root_dir}/build/cromite_patches_list.txt")
-  cromite_patch_dir="${root_dir}/build/cromite/build/patches"
-  if [ ! -d "${cromite_patch_dir}" ]; then
-    echo "Cromite patches directory not found at ${cromite_patch_dir}."
-    echo "Ensure the cromite submodule is initialized (run ./update_cromite_patches.sh)."
-    exit 1
-  fi
-  for file in $cromite_patches_list; do
-    patch_path="${cromite_patch_dir}/$file"
-    if [ ! -f "${patch_path}" ]; then
-      echo "Patch ${patch_path} missing."
-      exit 1
-    fi
-    git am -C0 -3 --ignore-whitespace "${patch_path}"
-  done
-
-  echo ">> [$(date)] Applying /e/ patches"
-
-  e_patches_list=$(cat "${root_dir}/build/e_patches_list.txt")
-  for file in $e_patches_list; do
-    git am -C0 -3 --ignore-whitespace "${root_dir}/build/e_patches/$file"
-  done
-
-  echo ">> [$(date)] Applying third party patches"
-
-  while read dir patch; do
-    [ -z "$dir" ] && continue # skip empty lines
-    cd $chromium_dir/src/third_party/$dir
-    git am -C0 -3 --ignore-whitespace "${root_dir}/build/third_party/$patch"
-    cd $chromium_dir/src
-  done <"${root_dir}/build/third_party_patches_list.txt"
-
-  # Rename Chrome to Browser
-  rename
-
-  # domain_substitution from ungoogled-chromium
-  domain_substitution
-}
-
-rename() {
-  cd $chromium_dir/src
-
-  replacements=(
-    "Chrome browser=Browser"
-    "Chrome=Browser"
-    "Bromite=Browser"
-    "Cromite=Browser"
-    "Google Password Manager=Password Manager"
-  )
-
-  for replacement in "${replacements[@]}"; do
-    replaced_string=${replacement%%=*}
-    replacement_string=${replacement#*=}
-
-    find . -type f -not -name 'foundation_e.grdp' -name '*.grd*' | while read -r filename; do
-      sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
-    done
-    find . -type f -name '*.xtb' | while read -r filename; do
-      sed -i "s/\b${replaced_string}\b/${replacement_string}/g" "$filename"
-    done
-  done
-
-  git add .
-  git commit -m "Browser: Replace Chrome with Browser"
-}
-
-domain_substitution() {
-  cd "${root_dir}/domain_substitution"
-  python3 domain_substitution.py apply -r domain_regex.list -f domain_substitution.list $chromium_dir/src
-  cd $chromium_dir/src
-  git add .
-  git commit -m "Browser: Automated domain substitution"
 }
 
 sync() {
@@ -182,7 +90,6 @@ sync() {
     gclient sync --no-history -D --nohooks -R --force
   fi
   gclient runhooks
-  patch
 }
 
 gclient_config() {
@@ -215,14 +122,13 @@ init_repo() {
   fi
 }
 
-while getopts ":a:cur:shp" opt; do
+while getopts ":a:cush" opt; do
   case $opt in
   a) arch="$OPTARG" ;;
   c) clean=1 ;;
   u) usage ;;
   s) gsync=1 ;;
   h) history=0 ;;
-  p) patchonly=1 ;;
   :)
     echo "Option -$OPTARG requires an argument"
     echo
@@ -281,12 +187,6 @@ if [ $gsync -eq 1 ]; then
     init_repo
   fi
   sync
-elif [ $patchonly -eq 1 ]; then
-  cd $chromium_dir/src
-  git fetch origin refs/tags/$chromium_version
-  git checkout main
-  git reset --hard FETCH_HEAD
-  patch
 fi
 
 cd $chromium_dir/src
