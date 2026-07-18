@@ -34,7 +34,7 @@ usage() {
 build() {
   echo ">> [$(date)] Head commit: $(git show -s --format=%s)"
   apks="ChromePublic SystemWebView"
-  build_args="$(cat "${root_dir}"/build/vanilla.gn_args) target_cpu=\"${1}\" "
+  build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
   apk_arch=${1}
   build_args+=' android_default_version_name="'$chromium_version'"'
