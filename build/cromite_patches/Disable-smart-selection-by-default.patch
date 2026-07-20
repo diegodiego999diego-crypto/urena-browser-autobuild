@@ -1,0 +1,101 @@
+From 234fd06099435df3182b7a987dc5f7ee78de7d82 Mon Sep 17 00:00:00 2001
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Fri, 24 Jan 2020 19:17:22 +0100
+Subject: Disable smart selection by default
+
+Allow web search in incognito mode; Smart Selection still
+disabled in incognito as per upstream.
+
+Partial revert of da1d809c003749846cb4ade8c11b6d038e44416b to restore
+the ChromeSmartSelection feature flag.
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ .../browser/contextualsearch/SelectionClientManager.java     | 5 +++++
+ chrome/browser/flags/android/chrome_feature_list.cc          | 1 +
+ .../org/chromium/chrome/browser/flags/ChromeFeatureList.java | 1 +
+ .../browser/selection/SelectionPopupControllerImpl.java      | 1 -
+ .../disable-smart-selection-by-default.inc                   | 3 +++
+ .../disable-smart-selection-by-default.inc                   | 1 +
+ 6 files changed, 11 insertions(+), 1 deletion(-)
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/disable-smart-selection-by-default.inc
+ create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/disable-smart-selection-by-default.inc
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
+index 16818dd62aecd..fa21e78aed4c9 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/contextualsearch/SelectionClientManager.java
+@@ -10,6 +10,7 @@ import androidx.annotation.VisibleForTesting;
+ 
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
++import org.chromium.chrome.browser.flags.ChromeFeatureList;
+ import org.chromium.content_public.browser.SelectAroundCaretResult;
+ import org.chromium.content_public.browser.SelectionClient;
+ import org.chromium.content_public.browser.SelectionEventProcessor;
+@@ -51,6 +52,10 @@ public class SelectionClientManager {
+      */
+     SelectionClientManager(WebContents webContents) {
+         assert webContents != null;
++        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.CHROME_SMART_SELECTION)) {
++            mIsSmartSelectionEnabledInChrome = false;
++            return;
++        }
+         mOptionalSelectionClient = SelectionClient.createSmartSelectionClient(webContents);
+         SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
+         controller.setSelectionClient(mOptionalSelectionClient);
+diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
+index 3bca42a7856d5..c25a6f201e812 100644
+--- a/chrome/browser/flags/android/chrome_feature_list.cc
++++ b/chrome/browser/flags/android/chrome_feature_list.cc
+@@ -301,6 +301,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
+     &kCCTFreInSameTask,
+     &kCCTGoogleBottomBar,
+     &kCCTGoogleBottomBarVariantLayouts,
++    &kChromeSmartSelection,
+     &kCCTIncognitoAvailableToThirdParty,
+     &kCCTMinimizedEnabledByDefault,
+     &kCCTNavigationInfoScreenshot,
+diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+index c02111ec3e20d..99e4a29db040e 100644
+--- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
++++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+@@ -629,6 +629,7 @@ public abstract class ChromeFeatureList {
+     public static final String SEARCH_IN_CCT_IF_ENABLED_BY_EMBEDDER =
+             "SearchInCCTIfEnabledByEmbedder";
+     public static final String SEARCH_SETTINGS_UPDATE_V2 = "SearchSettingsUpdateV2";
++    public static final String CHROME_SMART_SELECTION = "ChromeSmartSelection";
+     public static final String SEGMENTATION_PLATFORM_ANDROID_HOME_MODULE_RANKER =
+             "SegmentationPlatformAndroidHomeModuleRanker";
+     public static final String SEGMENTATION_PLATFORM_ANDROID_HOME_MODULE_RANKER_V2 =
+diff --git a/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java b/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
+index 1470bc58e11c3..600ba95da0079 100644
+--- a/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
++++ b/content/public/android/java/src/org/chromium/content/browser/selection/SelectionPopupControllerImpl.java
+@@ -1061,7 +1061,6 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
+     public boolean canWebSearch() {
+         return hasSelection()
+                 && !isFocusedNodeEditable()
+-                && !isIncognito()
+                 && isSelectActionModeAllowed(MENU_ITEM_WEB_SEARCH);
+     }
+ 
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/disable-smart-selection-by-default.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/disable-smart-selection-by-default.inc
+new file mode 100644
+index 0000000000000..60893b4342380
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/disable-smart-selection-by-default.inc
+@@ -0,0 +1,3 @@
++CROMITE_FEATURE(kChromeSmartSelection,
++               "ChromeSmartSelection",
++               base::FEATURE_DISABLED_BY_DEFAULT);
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/disable-smart-selection-by-default.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/disable-smart-selection-by-default.inc
+new file mode 100644
+index 0000000000000..ca7f8f27090cf
+--- /dev/null
++++ b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/disable-smart-selection-by-default.inc
+@@ -0,0 +1 @@
++BASE_DECLARE_FEATURE(kChromeSmartSelection);
+-- 
+2.55.0
+

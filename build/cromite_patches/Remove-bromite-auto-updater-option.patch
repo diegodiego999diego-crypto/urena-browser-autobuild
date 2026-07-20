@@ -1,0 +1,127 @@
+From 519c9319b8152c3c4104ed0536ba521c560b2589 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Wed, 20 Sep 2023 09:59:55 +0530
+Subject: Remove bromite auto updater option
+
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
+---
+ .../firstrun/ToSAndUMAFirstRunFragment.java   | 25 -------------------
+ .../browser/omaha/UpdateStatusProvider.java   |  6 +----
+ 2 files changed, 1 insertion(+), 30 deletions(-)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
+index a1abacea50e7d..8ed76da526f1d 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/ToSAndUMAFirstRunFragment.java
+@@ -63,8 +63,6 @@ public class ToSAndUMAFirstRunFragment
+     private boolean mUserInteractedWithUmaCheckbox;
+ 
+     private Button mAcceptButton;
+-    private CheckBox mAutoUpdaterCheckBox;
+-    private boolean mAutoUpdaterChecked;
+     private TextView mTosAndPrivacy;
+     private View mTitle;
+     private View mProgressSpinner;
+@@ -91,15 +89,10 @@ public class ToSAndUMAFirstRunFragment
+         mProgressSpinner = view.findViewById(R.id.progress_spinner);
+         mProgressSpinner.setVisibility(View.GONE);
+         mAcceptButton = (Button) view.findViewById(R.id.terms_accept);
+-        mAutoUpdaterCheckBox = (CheckBox) view.findViewById(R.id.auto_updater_checkbox);
+         mTosAndPrivacy = (TextView) view.findViewById(R.id.tos_and_privacy);
+ 
+         // Register event listeners.
+         mAcceptButton.setOnClickListener((v) -> onTosButtonClicked());
+-        mAutoUpdaterCheckBox.setOnCheckedChangeListener(
+-                ((compoundButton, isChecked) -> {
+-            mAutoUpdaterChecked = isChecked;
+-        }));
+ 
+         // Make TextView links clickable.
+         mTosAndPrivacy.setMovementMethod(LinkMovementMethod.getInstance());
+@@ -139,11 +132,6 @@ public class ToSAndUMAFirstRunFragment
+         if (!isVisibleToUser) {
+             // Restore original enabled & visibility states, in case the user returns to the page.
+             setSpinnerVisible(false);
+-        } else {
+-            // On certain versions of Android, the checkbox will appear unchecked upon revisiting
+-            // the page.  Force it to the end state of the drawable animation as a work around.
+-            // crbug.com/666258
+-            mAutoUpdaterCheckBox.jumpDrawablesToCurrentState();
+         }
+     }
+ 
+@@ -170,7 +158,6 @@ public class ToSAndUMAFirstRunFragment
+         assert !isWaitingForNativeAndPolicyInit();
+ 
+         setSpinnerVisible(false);
+-        mAutoUpdaterCheckBox.setChecked(false);
+     }
+ 
+     private void updateView() {
+@@ -180,8 +167,6 @@ public class ToSAndUMAFirstRunFragment
+         }
+ 
+         updateTosText();
+-
+-        updateReportCheckbox();
+     }
+ 
+     private SpanInfo buildPrivacyPolicyLink(String suffix, int url) {
+@@ -210,10 +195,6 @@ public class ToSAndUMAFirstRunFragment
+         mTosAndPrivacy.setText(SpanApplier.applySpans(tosString, spans.toArray(new SpanInfo[0])));
+     }
+ 
+-    private void updateReportCheckbox() {
+-        mAutoUpdaterCheckBox.setChecked(false);
+-    }
+-
+     private void onPolicyServiceInitialized(boolean onDevicePolicyFound) {
+         assert !mPolicyServiceInitialized;
+ 
+@@ -239,11 +220,6 @@ public class ToSAndUMAFirstRunFragment
+         mTosButtonClicked = true;
+         mTosAcceptedTime = SystemClock.elapsedRealtime();
+ 
+-        // save updater configuration only on button click
+-        SharedPreferences.Editor sharedPreferenceEditor = OmahaPrefUtils.getSharedPreferences().edit();
+-        sharedPreferenceEditor.putBoolean(OmahaPrefUtils.PREF_ALLOW_INLINE_UPDATE, mAutoUpdaterChecked);
+-        sharedPreferenceEditor.apply();
+-
+         tryMarkTermsAccepted(true);
+     }
+ 
+@@ -295,7 +271,6 @@ public class ToSAndUMAFirstRunFragment
+ 
+         mAcceptButton.setVisibility(visibility);
+         mTosAndPrivacy.setVisibility(visibility);
+-        mAutoUpdaterCheckBox.setVisibility(visibility);
+     }
+ 
+     protected View getToSAndPrivacyText() {
+diff --git a/chrome/browser/omaha/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java b/chrome/browser/omaha/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
+index 6d273b9b186de..d9f920811f6bd 100644
+--- a/chrome/browser/omaha/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
++++ b/chrome/browser/omaha/android/java/src/org/chromium/chrome/browser/omaha/UpdateStatusProvider.java
+@@ -16,8 +16,6 @@ import android.text.TextUtils;
+ 
+ import androidx.annotation.IntDef;
+ 
+-import com.google.android.gms.common.GooglePlayServicesUtil;
+-
+ import org.chromium.base.ApkInfo;
+ import org.chromium.base.Callback;
+ import org.chromium.base.DeviceInfo;
+@@ -299,9 +297,7 @@ public class UpdateStatusProvider {
+                 boolean allowedToUpdate =
+                         checkForSufficientStorage()
+                                 // Disable the version update check for automotive. See b/297925838.
+-                                && !DeviceInfo.isAutomotive()
+-                                && PackageUtils.isPackageInstalled(
+-                                        GooglePlayServicesUtil.GOOGLE_PLAY_STORE_PACKAGE);
++                                && !DeviceInfo.isAutomotive();
+                 status.updateState =
+                         allowedToUpdate ? UpdateState.UPDATE_AVAILABLE : UpdateState.NONE;
+ 
+-- 
+2.55.0
+

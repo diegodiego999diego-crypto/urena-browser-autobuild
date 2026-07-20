@@ -1,0 +1,91 @@
+From 30a7cfc442616c328b890a93b633aad2cf8e9201 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Tue, 10 Sep 2024 12:17:23 +0530
+Subject: Browser: Change adblock url to ours
+
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
+---
+ chrome/android/java/res/values/values.xml            |  2 +-
+ .../chrome/browser/settings/AdBlockEditor.java       |  8 ++++++++
+ chrome/browser/browser_process_impl.cc               | 12 ++++++------
+ chrome/browser/net/system_network_context_manager.cc |  2 +-
+ 4 files changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/chrome/android/java/res/values/values.xml b/chrome/android/java/res/values/values.xml
+index a2e5576e8bbb3..612a0bfd45b0e 100644
+--- a/chrome/android/java/res/values/values.xml
++++ b/chrome/android/java/res/values/values.xml
+@@ -24,7 +24,7 @@ found in the LICENSE file.
+ 
+     <string name="adblock_on">Autoupdate enabled</string>
+     <string name="adblock_off">Autoupdate disabled</string>
+-    <string name="adblock_help_url">https://github.com/uazo/cromite/blob/master/docs/BROMITE_LEGACY_ADBLOCK.md</string>
++    <string name="adblock_help_url">https://doc.e.foundation/browser-custom-filters</string>
+ 
+     <string name="proxy_title">Proxy configuration</string>
+     <string name="proxy_url">chrome://proxy</string>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
+index ef6d1652c97f0..24cd56084827d 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
+@@ -37,6 +37,14 @@ public class AdBlockEditor extends Fragment implements TextWatcher {
+         View scrollView = v.findViewById(R.id.scroll_view);
+         scrollView.getViewTreeObserver().addOnScrollChangedListener(
+                 SettingsUtils.getShowShadowOnScrollListener(v, v.findViewById(R.id.shadow)));
++
++        String defaultBromiteURL = "https://www.bromite.org/filters/filters.dat";
++        if (defaultBromiteURL.equals(AdBlockNativeGateway.getAdBlockFiltersURL())) {
++            String newFiltersURL = "https://images.ecloud.global/apps/browser/filters.dat";
++            AdBlockNativeGateway.setAdBlockFiltersURL(
++                    UrlFormatter.fixupUrl(newFiltersURL).getSpec());
++        }
++
+         mAdBlockFiltersUrlEdit = (EditText) v.findViewById(R.id.adblock_url_edit);
+         mAdBlockFiltersUrlEdit.setText(AdBlockNativeGateway.getAdBlockFiltersURL());
+         mAdBlockFiltersUrlEdit.addTextChangedListener(this);
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+index 530093336a87c..40eb9101e5a38 100644
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -1452,11 +1452,11 @@ BrowserProcessImpl::adblock_updater() {
+   std::unique_ptr<component_updater::UpdateScheduler> scheduler =
+       std::make_unique<component_updater::TimerUpdateScheduler>();
+ 
+-  auto adblock_updater_url =
+-    local_state()->GetString(prefs::kAdBlockFiltersURL);
+-  if (base::StartsWith(adblock_updater_url,
+-        "https://www.bromite.org", base::CompareCase::INSENSITIVE_ASCII)) {
+-    local_state()->SetString(prefs::kAdBlockFiltersURL, "about:blank");
++  std::string filters_url = local_state()->GetString(prefs::kAdBlockFiltersURL);
++
++  // Check if the current URL is Bromite filters URL. If so, use the new URL
++  if (!filters_url.empty() && filters_url == "https://www.bromite.org/filters/filters.dat") {
++    filters_url = "https://images.ecloud.global/apps/browser/filters.dat";
+   }
+ 
+   adblock_updater_ = std::make_unique<adblock_updater::AdBlockUpdaterService>(
+@@ -1464,7 +1464,7 @@ BrowserProcessImpl::adblock_updater() {
+           std::move(scheduler),
+           g_browser_process->subresource_filter_ruleset_service(),
+           local_state()->GetBoolean(prefs::kAdBlockEnabled),
+-          local_state()->GetString(prefs::kAdBlockFiltersURL));
++          filters_url);
+ 
+   return adblock_updater_.get();
+ }
+diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
+index 5e640a06110a3..7b14c2d7e77b5 100644
+--- a/chrome/browser/net/system_network_context_manager.cc
++++ b/chrome/browser/net/system_network_context_manager.cc
+@@ -722,7 +722,7 @@ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
+ 
+   registry->RegisterBooleanPref(prefs::kAdBlockEnabled, false);
+   registry->RegisterStringPref(prefs::kAdBlockFiltersURL,
+-    "about:blank");
++    "https://images.ecloud.global/apps/browser/filters.dat");
+ 
+   // Static auth params
+   registry->RegisterStringPref(prefs::kAuthSchemes,
+-- 
+2.55.0
+

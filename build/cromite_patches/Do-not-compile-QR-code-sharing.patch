@@ -1,0 +1,283 @@
+From 483b9901427d41d547b6eb4499d63e368db2c033 Mon Sep 17 00:00:00 2001
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Thu, 27 Feb 2020 23:23:59 +0100
+Subject: Do not compile QR code sharing
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/android/BUILD.gn                       |  1 -
+ .../chrome/browser/ChromeTabbedActivity.java  |  8 -------
+ .../ChromeContextMenuPopulator.java           | 16 -------------
+ .../chrome/browser/ui/RootUiCoordinator.java  |  5 ----
+ chrome/browser/prefs/browser_prefs.cc         |  2 +-
+ chrome/browser/share/BUILD.gn                 |  1 -
+ ...omeProvidedSharingOptionsProviderBase.java | 23 -------------------
+ chrome/browser/share/android/java_sources.gni | 11 ---------
+ .../sharing_hub/sharing_hub_features.cc       |  2 +-
+ .../browser/ui/browser_command_controller.cc  |  6 ++---
+ chrome/browser/ui/browser_commands.cc         |  1 +
+ .../qrcode_generator_bubble_controller.cc     |  1 +
+ 12 files changed, 7 insertions(+), 70 deletions(-)
+
+diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index 02a2432ffee0d..4578c85f5d89c 100644
+--- a/chrome/android/BUILD.gn
++++ b/chrome/android/BUILD.gn
+@@ -2954,7 +2954,6 @@ if (_is_default_toolchain) {
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/link_to_text/LinkToTextBridge.java",
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabService.java",
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabServiceFactory.java",
+-      "../browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QRCodeGenerator.java",
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/EditorScreenshotTask.java",
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/send_tab_to_self/NotificationManager.java",
+       "../browser/share/android/java/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfAndroidBridge.java",
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+index 965ed0d1fc9f9..55ee5710e9b02 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -249,7 +249,6 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
+ import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
+ import org.chromium.chrome.browser.share.ShareDelegate;
+ import org.chromium.chrome.browser.share.ShareHelper;
+-import org.chromium.chrome.browser.share.qrcode.QrCodeCoordinator;
+ import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfGestureDetector;
+ import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfMetricsRecorder;
+ import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
+@@ -4276,13 +4275,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+                 return true;
+             }
+             return false;
+-        } else if (id == R.id.qr_code_menu_id) {
+-            assert currentTab != null;
+-            QrCodeCoordinator qrCodeCoordinator =
+-                    new QrCodeCoordinator(this, currentTab.getUrl().getSpec(), getWindowAndroid());
+-            qrCodeCoordinator.show();
+-            RecordUserAction.record("MobileMenuQRCode");
+-            return true;
+         } else if (id == R.id.name_window_menu_id) {
+             assert mMultiInstanceManager != null;
+             mMultiInstanceManager.showNameWindowDialog(NameWindowDialogSource.APP_MENU);
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
+index 32751fe481e5f..2177ec2c080fd 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
+@@ -15,7 +15,6 @@ import static org.chromium.ui.listmenu.ListMenuItemProperties.MENU_ITEM_ID;
+ import static org.chromium.ui.listmenu.ListMenuItemProperties.TEXT_APPEARANCE_ID;
+ import static org.chromium.ui.listmenu.ListMenuItemProperties.TITLE;
+ 
+-import android.app.Activity;
+ import android.app.ActivityOptions;
+ import android.app.PendingIntent;
+ import android.content.ContentResolver;
+@@ -74,7 +73,6 @@ import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
+ import org.chromium.chrome.browser.share.ShareHelper;
+ import org.chromium.chrome.browser.share.ShareUtils;
+ import org.chromium.chrome.browser.share.link_to_text.LinkToTextHelper;
+-import org.chromium.chrome.browser.share.qrcode.QrCodeCoordinator;
+ import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
+ import org.chromium.chrome.browser.tab.Tab;
+ import org.chromium.chrome.browser.tab.TabContextMenuItemDelegate;
+@@ -582,9 +580,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+                 if (sendTabToSelfDisplayReason != null) {
+                     shareGroup.add(createListItem(Item.SEND_TAB_TO_SELF));
+                 }
+-                if (!isEmptyUrl(mParams.getPageUrl())) {
+-                    shareGroup.add(createListItem(Item.CREATE_QR_CODE));
+-                }
+                 groupedItems.add(shareGroup);
+             }
+             if (mMode != ContextMenuMode.THIN_WEB_VIEW && shouldShowTranslateItem()) {
+@@ -1207,17 +1202,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+             if (tab != null) {
+                 TranslateBridge.translateTabWhenReady(tab);
+             }
+-        } else if (itemId == R.id.contextmenu_create_qr_code) {
+-            recordContextMenuSelection(ContextMenuUma.Action.CREATE_QR_CODE);
+-            WindowAndroid window = getWindow();
+-            if (window != null) {
+-                Activity activity = window.getActivity().get();
+-                if (activity != null) {
+-                    QrCodeCoordinator qrCodeCoordinator =
+-                            new QrCodeCoordinator(activity, mParams.getPageUrl().getSpec(), window);
+-                    qrCodeCoordinator.show();
+-                }
+-            }
+         } else if (itemId == R.id.contextmenu_share_link) {
+             recordContextMenuSelection(ContextMenuUma.Action.SHARE_LINK);
+             // TODO(crbug.com/40549331): Migrate ShareParams to GURL.
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
+index c93a19b63a642..3dde88b575ca0 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
+@@ -151,7 +151,6 @@ import org.chromium.chrome.browser.recent_tabs.RestoreTabsFeatureHelper;
+ import org.chromium.chrome.browser.searchwidget.SearchActivityUtils;
+ import org.chromium.chrome.browser.share.ShareDelegate;
+ import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
+-import org.chromium.chrome.browser.share.qrcode.QrCodeDialog;
+ import org.chromium.chrome.browser.share.scroll_capture.ScrollCaptureManager;
+ import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
+ import org.chromium.chrome.browser.signin.WebSigninRedirectCoordinator;
+@@ -904,10 +903,6 @@ public class RootUiCoordinator
+     }
+ 
+     public void onAttachFragment(Fragment fragment) {
+-        if (fragment instanceof QrCodeDialog) {
+-            QrCodeDialog qrCodeDialog = (QrCodeDialog) fragment;
+-            qrCodeDialog.setWindowAndroid(mWindowAndroid);
+-        }
+     }
+ 
+     /**
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 8b501b179cc9e..ba9a7f7ba43f7 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1710,7 +1710,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+   registry->RegisterBooleanPref(prefs::kChromeForTestingAllowed, true);
+ #endif
+ 
+-  registry->RegisterBooleanPref(prefs::kQRCodeGeneratorEnabled, true);
++  registry->RegisterBooleanPref(prefs::kQRCodeGeneratorEnabled, false);
+ 
+   registry->RegisterIntegerPref(prefs::kChromeDataRegionSetting, 0);
+ 
+diff --git a/chrome/browser/share/BUILD.gn b/chrome/browser/share/BUILD.gn
+index eb9e6cde264d8..283ccde54c8ba 100644
+--- a/chrome/browser/share/BUILD.gn
++++ b/chrome/browser/share/BUILD.gn
+@@ -67,7 +67,6 @@ source_set("impl") {
+       "default_ranking_android.cc",
+       "editor_screenshot_task.cc",
+       "link_to_text_bridge.cc",
+-      "qr_code_generator_android.cc",
+       "share_history.cc",
+       "share_ranking.cc",
+     ]
+diff --git a/chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/ChromeProvidedSharingOptionsProviderBase.java b/chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/ChromeProvidedSharingOptionsProviderBase.java
+index 7b870276ed614..dbc8b7355c7de 100644
+--- a/chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/ChromeProvidedSharingOptionsProviderBase.java
++++ b/chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/ChromeProvidedSharingOptionsProviderBase.java
+@@ -24,7 +24,6 @@ import org.chromium.chrome.browser.screenshot_protection.ScreenshotProtectionCon
+ import org.chromium.chrome.browser.share.ChromeShareExtras.DetailedContentType;
+ import org.chromium.chrome.browser.share.ShareContentTypeHelper.ContentType;
+ import org.chromium.chrome.browser.share.ShareMetricsUtils.ShareCustomAction;
+-import org.chromium.chrome.browser.share.qrcode.QrCodeCoordinator;
+ import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
+ import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
+ import org.chromium.chrome.browser.share.send_tab_to_self.ShareEntryPoint;
+@@ -329,9 +328,6 @@ public abstract class ChromeProvidedSharingOptionsProviderBase {
+     }
+ 
+     private void maybeAddQrCodeFirstPartyOption() {
+-        if (!mIsIncognito && !TextUtils.isEmpty(mUrl)) {
+-            mOrderedFirstPartyOptions.add(createQrCodeFirstPartyOption());
+-        }
+     }
+ 
+     private void maybeAddLongScreenshotFirstPartyOption() {
+@@ -471,25 +467,6 @@ public abstract class ChromeProvidedSharingOptionsProviderBase {
+                 .build();
+     }
+ 
+-    private FirstPartyOption createQrCodeFirstPartyOption() {
+-        return new FirstPartyOptionBuilder(
+-                        ContentType.LINK_PAGE_VISIBLE,
+-                        ContentType.LINK_PAGE_NOT_VISIBLE,
+-                        ContentType.IMAGE)
+-                .setDetailedContentTypesToDisableFor(DetailedContentType.SCREENSHOT)
+-                .setIcon(R.drawable.qr_code, R.string.qr_code_share_icon_label)
+-                .setShareActionType(ShareCustomAction.QR_CODE)
+-                .setFeatureNameForMetrics(USER_ACTION_QR_CODE_SELECTED)
+-                .setOnClickCallback(
+-                        (view) -> {
+-                            QrCodeCoordinator qrCodeCoordinator =
+-                                    new QrCodeCoordinator(
+-                                            mActivity, mUrl, mShareParams.getWindow());
+-                            qrCodeCoordinator.show();
+-                        })
+-                .build();
+-    }
+-
+     private FirstPartyOption createPrintingFirstPartyOption() {
+         return new FirstPartyOptionBuilder(ContentType.LINK_PAGE_VISIBLE)
+                 .setIcon(R.drawable.sharing_print, R.string.print_share_activity_title)
+diff --git a/chrome/browser/share/android/java_sources.gni b/chrome/browser/share/android/java_sources.gni
+index ac0c8fb7a75f4..04552228653aa 100644
+--- a/chrome/browser/share/android/java_sources.gni
++++ b/chrome/browser/share/android/java_sources.gni
+@@ -31,17 +31,6 @@ share_java_sources = [
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabService.java",
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/LongScreenshotsTabServiceFactory.java",
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/long_screenshots/bitmap_generation/ScreenshotBoundsManager.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QRCodeGenerator.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QrCodeCoordinator.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QrCodeDialog.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QrCodeDialogTab.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/QrCodePageAdapter.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/TabLayoutPageListener.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/share_tab/QrCodeShareCoordinator.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/share_tab/QrCodeShareMediator.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/share_tab/QrCodeShareView.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/share_tab/QrCodeShareViewBinder.java",
+-  "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/qrcode/share_tab/QrCodeShareViewProperties.java",
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/EditorScreenshotSource.java",
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/EditorScreenshotTask.java",
+   "//chrome/browser/share/android/java/src/org/chromium/chrome/browser/share/screenshot/ScreenshotCoordinator.java",
+diff --git a/chrome/browser/sharing_hub/sharing_hub_features.cc b/chrome/browser/sharing_hub/sharing_hub_features.cc
+index 4ae3f73a0b9cd..7d6f4ee03401e 100644
+--- a/chrome/browser/sharing_hub/sharing_hub_features.cc
++++ b/chrome/browser/sharing_hub/sharing_hub_features.cc
+@@ -70,7 +70,7 @@ BASE_FEATURE(kDesktopScreenshots, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterBooleanPref(prefs::kDesktopSharingHubEnabled, true);
++  registry->RegisterBooleanPref(prefs::kDesktopSharingHubEnabled, false);
+ }
+ #endif
+ 
+diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
+index 2d86241e3519e..d58eb0a8c3b78 100644
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -2389,10 +2389,10 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
+   command_updater_->UpdateCommandEnabled(IDC_CHROME_WHATS_NEW, show_main_ui);
+ #endif
+   command_updater_->UpdateCommandEnabled(IDC_CONTENT_CONTEXT_SHARING_SUBMENU,
+-                                         show_main_ui);
+-  command_updater_->UpdateCommandEnabled(IDC_SHARING_HUB, show_main_ui);
++                                         false);
++  command_updater_->UpdateCommandEnabled(IDC_SHARING_HUB, false);
+   command_updater_->UpdateCommandEnabled(IDC_SHARING_HUB_SCREENSHOT,
+-                                         show_main_ui);
++                                         false);
+   command_updater_->UpdateCommandEnabled(IDC_SHOW_APP_MENU, show_main_ui);
+   command_updater_->UpdateCommandEnabled(IDC_SHOW_MANAGEMENT_PAGE, true);
+ 
+diff --git a/chrome/browser/ui/browser_commands.cc b/chrome/browser/ui/browser_commands.cc
+index 294487f786479..aa832ea440e70 100644
+--- a/chrome/browser/ui/browser_commands.cc
++++ b/chrome/browser/ui/browser_commands.cc
+@@ -2232,6 +2232,7 @@ void SendTabToSelf(BrowserWindowInterface* browser) {
+ }
+ 
+ bool CanGenerateQrCode(BrowserWindowInterface* browser) {
++  if ((true)) return false;
+   return !sharing_hub::SharingIsDisabledByPolicy(browser->GetProfile()) &&
+          qrcode_generator::QRCodeGeneratorBubbleController::
+              IsGeneratorAvailable(browser->GetTabStripModel()
+diff --git a/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc b/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
+index ccfc9c792b4c2..995d0dc4a958d 100644
+--- a/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
++++ b/chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.cc
+@@ -38,6 +38,7 @@ QRCodeGeneratorBubbleController::~QRCodeGeneratorBubbleController() {
+ 
+ // static
+ bool QRCodeGeneratorBubbleController::IsGeneratorAvailable(const GURL& url) {
++  if ((true)) return false;
+   if (!url.SchemeIsHTTPOrHTTPS()) {
+     return false;
+   }
+-- 
+2.55.0
+

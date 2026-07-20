@@ -1,0 +1,111 @@
+From 375d8381e93351ef0449a61e645559657a36376e Mon Sep 17 00:00:00 2001
+From: Nishith Khanna <nishith.khanna@gmail.com>
+Date: Fri, 28 Aug 2026 00:35:04 +0530
+Subject: TEMP: point eyeo filter lists at the canonical ABP host
+
+Not for shipping. This exists so the eyeo integration can be exercised
+end to end while the e Foundation mirror is being set up.
+
+cromite.org is unreachable (502s reported in uazo/cromite#2611 and
+uazo/cromite#1845, and it is down again today), so every subscription
+URL in the series currently resolves to nothing and no filter list can
+be downloaded at all.
+
+Base URL is now https://easylist-downloads.adblockplus.org/, which also
+means the preloaded easylist/exceptionrules/anticv flatbuffers finally
+match the subscription URLs, so filtering works on first launch before
+anything is downloaded, and MaybeSplitCombinedAdblockList() now applies
+because the host matches AdblockBaseFilterListUrl().
+
+Default subscriptions changed while here:
+
+ - removed badmojr/1Hosts: upstream retired the "Pro" tier (only Lite
+   and Xtra remain), so the URL is dead wherever it is hosted, and a
+   DNS blocklist is the wrong instrument for a browser content filter
+ - removed Celenity/BadBlock Lite: written in uBO/AdGuard syntax, and
+   UrlFilterOptions::FromString() discards an entire rule on an unknown
+   option, so the ~40% of it that uses $important never loads
+ - removed Cromite experimental filters: privileged, so it can run
+   JavaScript in pages via snippet filters, hosted in a personal repo,
+   and mostly a copy of abp-filters-anti-cv
+ - EasyPrivacy now subscribes at first run. It was off, which meant a
+   de-Googled browser shipped ad blocking without tracker blocking
+ - Fanboy's Notifications Blocking List now subscribes at first run
+
+Leaves four first-run lists (EasyList, EasyPrivacy, ABP filters,
+Fanboy's Notifications) plus the 25 locale-matched regional lists,
+all from one maintained publisher in native ABP syntax. ABP filters
+stays privileged; nothing else does except the local user filters.
+
+Before shipping: repoint GetHost() at the e Foundation mirror, and
+decide whether the anti-circumvention list keeps privileged status.
+---
+ .../core/subscription/subscription_config.cc  | 28 ++++---------------
+ 1 file changed, 6 insertions(+), 22 deletions(-)
+
+diff --git a/components/adblock/core/subscription/subscription_config.cc b/components/adblock/core/subscription/subscription_config.cc
+index 2a0b3af40c483..45ff6c553d6a6 100644
+--- a/components/adblock/core/subscription/subscription_config.cc
++++ b/components/adblock/core/subscription/subscription_config.cc
+@@ -31,7 +31,10 @@ namespace {
+ int g_port_for_testing = 0;
+ 
+ std::string GetHost() {
+-  GURL url("https://www.cromite.org/filters/");
++  // TEMPORARY: canonical eyeo/ABP host, so the integration can be tested.
++  // Replace with the e Foundation mirror before shipping - every device
++  // polling this host daily hands ABP a census of our users.
++  GURL url("https://easylist-downloads.adblockplus.org/");
+   if (!g_port_for_testing) {
+     return url.spec();
+   }
+@@ -113,18 +116,6 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
+             SubscriptionUiVisibility::Visible,
+             SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+             SubscriptionPrivilegedFilterStatus::Forbidden},
+-           {GURL(GetHost() + "badblock_lite.txt"),
+-            "Celenity/BadBlock Lite",
+-            {"en"},
+-            SubscriptionUiVisibility::Visible,
+-            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+-            SubscriptionPrivilegedFilterStatus::Forbidden},
+-           {GURL(GetHost() + "badmojr-1Hosts-master-Pro-adblock.txt"),
+-            "badmojr/1Hosts",
+-            {"en"},
+-            SubscriptionUiVisibility::Visible,
+-            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+-            SubscriptionPrivilegedFilterStatus::Forbidden},
+            {GURL(GetHost() + "abpindo.txt"),
+             "ABPindo",
+             {"id", "ms"},
+@@ -288,25 +279,18 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
+             SubscriptionUiVisibility::Visible,
+             SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+             SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
+-           {GURL("https://raw.githubusercontent.com/uazo/cromite/master/tools/"
+-                 "filters/experimental-cromite-filters.txt"),
+-            "Cromite experimental filters",
+-            {},
+-            SubscriptionUiVisibility::Visible,
+-            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+-            SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
+            {GURL(GetHost() + ""
+                              "fanboy-notifications.txt"),
+             "Fanboy's Notifications Blocking List",
+             {},
+             SubscriptionUiVisibility::Visible,
+-            SubscriptionFirstRunBehavior::Ignore,
++            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+             SubscriptionPrivilegedFilterStatus::Forbidden},
+            {GURL(GetHost() + "easyprivacy.txt"),
+             "EasyPrivacy",
+             {},
+             SubscriptionUiVisibility::Visible,
+-            SubscriptionFirstRunBehavior::Ignore,
++            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+             SubscriptionPrivilegedFilterStatus::Forbidden},
+            {GURL(GetHost() + "fanboy-social.txt"),
+             "Fanboy's Social Blocking List",
+-- 
+2.55.0
+

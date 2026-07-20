@@ -1,0 +1,130 @@
+From ea65e894fa36415383d177d940b4586781faa59b Mon Sep 17 00:00:00 2001
+From: Wen-Yu Chung <w.chung@eyeo.com>
+Date: Thu, 27 Aug 2026 18:32:10 +0200
+Subject: Fix flaky tab-restore wait in AdblockMultipleTabsBrowserTest
+
+RestoreTabs() waited for a "READY" DOM message from every WebContents
+created during session restore. Unrelated WebContents (side panels,
+preloads) never send it, so the test hung until timeout.
+
+Wait on the restored tab strip instead: pick the tabs whose URL matches
+the test page, force a load for tabs restored unloaded, and wait for
+load stop.
+---
+ .../test/adblock_multiple_tabs_browsertest.cc | 52 +++++++------------
+ 1 file changed, 19 insertions(+), 33 deletions(-)
+
+diff --git a/chrome/browser/adblock/test/adblock_multiple_tabs_browsertest.cc b/chrome/browser/adblock/test/adblock_multiple_tabs_browsertest.cc
+index 3a5e1028ac6e3..d3aba28c457cf 100644
+--- a/chrome/browser/adblock/test/adblock_multiple_tabs_browsertest.cc
++++ b/chrome/browser/adblock/test/adblock_multiple_tabs_browsertest.cc
+@@ -15,7 +15,6 @@
+  * along with eyeo Chromium SDK.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include "base/test/bind.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -30,6 +29,8 @@
+ #include "components/adblock/core/common/adblock_constants.h"
+ #include "components/adblock/core/subscription/subscription_service.h"
+ #include "components/sessions/content/session_tab_helper.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/web_contents.h"
+ #include "content/public/test/browser_test.h"
+ #include "content/public/test/browser_test_utils.h"
+ #include "net/dns/mock_host_resolver.h"
+@@ -69,14 +70,6 @@ class AdblockMultipleTabsBrowserTest
+   }
+ 
+   void RestoreTabs(Browser* browser) {
+-    // Set up DOMMessageQueues before restoration to capture messages
+-    std::vector<std::unique_ptr<content::DOMMessageQueue>> queues;
+-    auto subscription = content::RegisterWebContentsCreationCallback(
+-        base::BindLambdaForTesting([&](content::WebContents* contents) {
+-          queues.emplace_back(
+-              std::make_unique<content::DOMMessageQueue>(contents));
+-        }));
+-
+     RecentTabsSubMenuModel menu(nullptr, browser);
+     menu.ExecuteCommand(menu.GetFirstRecentTabsCommandId(), 0);
+ 
+@@ -93,27 +86,22 @@ class AdblockMultipleTabsBrowserTest
+       restored_browser = browser;
+     }
+ 
++    // Wait on the restored tab strip rather than on DOM messages from every
++    // WebContents created during restore: unrelated WebContents (side panels,
++    // preloads) never send "READY" and would block until the test times out.
++    // Restored tabs may also start out unloaded, hence LoadIfNecessary().
+     TabStripModel* tab_strip_model = restored_browser->tab_strip_model();
+-    LOG(INFO) << "Browser has " << tab_strip_model->count() << " tabs, created "
+-              << queues.size() << " queues";
+-
+-    // Wait for messages from queues (for newly created tabs)
+-    for (size_t i = 0; i < queues.size(); ++i) {
+-      std::string message;
+-      EXPECT_TRUE(queues[i]->WaitForMessage(&message));
+-      EXPECT_EQ("\"READY\"", message);
+-    }
+-
+-    // Also wait for any tabs that weren't newly created (reused existing tabs)
+-    int remaining = kTabsCount - static_cast<int>(queues.size());
+-    if (remaining > 0) {
+-      content::DOMMessageQueue fallback_queue;
+-      for (int i = 0; i < remaining; ++i) {
+-        std::string message;
+-        EXPECT_TRUE(fallback_queue.WaitForMessage(&message));
+-        EXPECT_EQ("\"READY\"", message);
++    int restored_tabs = 0;
++    for (int i = 0; i < tab_strip_model->count(); ++i) {
++      content::WebContents* contents = tab_strip_model->GetWebContentsAt(i);
++      if (contents->GetVisibleURL().path() != kTestPagePath) {
++        continue;
+       }
++      contents->GetController().LoadIfNecessary();
++      ASSERT_TRUE(content::WaitForLoadStop(contents));
++      ++restored_tabs;
+     }
++    ASSERT_EQ(kTabsCount, restored_tabs);
+   }
+ 
+   // ResourceClassificationRunner::Observer:
+@@ -152,6 +140,7 @@ class AdblockMultipleTabsBrowserTest
+  protected:
+   const int kTabsCount = 4;
+   const char* kTestDomain = "example.com";
++  const char* kTestPagePath = "/tab-restore.html";
+   std::set<int> tabs_with_blocked_resource_;
+   std::set<int> tabs_with_allowed_resource_;
+ };
+@@ -159,13 +148,11 @@ class AdblockMultipleTabsBrowserTest
+ IN_PROC_BROWSER_TEST_F(AdblockMultipleTabsBrowserTest, PRE_OpenManyTabs) {
+   // Load page in already opened tab
+   ASSERT_TRUE(ui_test_utils::NavigateToURL(
+-      browser(),
+-      embedded_test_server()->GetURL(kTestDomain, "/tab-restore.html")));
++      browser(), embedded_test_server()->GetURL(kTestDomain, kTestPagePath)));
+   // Open more tabs
+   for (int i = 0; i < kTabsCount - 1; ++i) {
+     ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+-        browser(),
+-        embedded_test_server()->GetURL(kTestDomain, "/tab-restore.html"),
++        browser(), embedded_test_server()->GetURL(kTestDomain, kTestPagePath),
+         WindowOpenDisposition::NEW_FOREGROUND_TAB,
+         ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+   }
+@@ -203,8 +190,7 @@ IN_PROC_BROWSER_TEST_F(AdblockMultipleTabsBrowserTest, MAYBE_OpenManyTabs) {
+   ASSERT_EQ(0u, tabs_with_blocked_resource_.size());
+   ASSERT_EQ(0u, tabs_with_allowed_resource_.size());
+ 
+-  GURL target_page =
+-      embedded_test_server()->GetURL(kTestDomain, "/tab-restore.html");
++  GURL target_page = embedded_test_server()->GetURL(kTestDomain, kTestPagePath);
+ 
+   // Open kTabsCount tabs manually
+   for (int i = 0; i < kTabsCount; ++i) {
+-- 
+2.55.0
+

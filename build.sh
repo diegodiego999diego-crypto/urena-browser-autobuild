@@ -74,6 +74,22 @@ build() {
   done
 }
 
+patch() {
+  cd $chromium_dir/src
+  echo ">> [$(date)] Applying cromite patches"
+
+  cromite_patches_list=$(cat "${root_dir}/build/cromite_patches_list.txt")
+  cromite_patch_dir="${root_dir}/build/cromite_patches"
+  for file in $cromite_patches_list; do
+    patch_path="${cromite_patch_dir}/$file"
+    if [ ! -f "${patch_path}" ]; then
+      echo "Patch ${patch_path} missing."
+      exit 1
+    fi
+    git am -C1 -3 --ignore-whitespace "${patch_path}"
+  done
+}
+
 sync() {
   echo ">> [$(date)] Syncing chromium $chromium_version"
   cd $chromium_dir
@@ -94,6 +110,7 @@ sync() {
     gclient sync --no-history -D --nohooks -R --force
   fi
   gclient runhooks
+  patch
 }
 
 gclient_config() {

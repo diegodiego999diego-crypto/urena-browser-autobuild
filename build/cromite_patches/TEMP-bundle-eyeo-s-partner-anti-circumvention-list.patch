@@ -1,0 +1,196 @@
+From b83b8039bd1a7b8efdf249dc2cc6a5119d425e0f Mon Sep 17 00:00:00 2001
+From: Nishith Khanna <nishith.khanna@gmail.com>
+Date: Fri, 28 Aug 2026 14:55:20 +0530
+Subject: TEMP: bundle eyeo's partner anti-circumvention list
+
+Not for shipping. This makes YouTube ad blocking testable without
+depending on a filter list server we do not have yet.
+
+The public abp-filters-anti-cv.txt carries ~300 snippet filters and none
+of them target YouTube. Those live in a separate set of per-product
+overlays in eyeo's anti-cv repository, under distribution/:
+
+  abp-filters-core.txt      "Filters to be used by core products"
+  abp-filters-AB.txt        "Filters to be used by Adblock"
+  abp-filters-partners.txt  "Filters to be used by distribution partners"
+
+We are a browser vendor shipping the SDK, so partners is the one that
+applies to us. It is also what Cromite's experimental-cromite-filters.txt
+was derived from, except that copy is a stale 20-line snapshot while
+upstream is 72 lines and maintained.
+
+Uses the mechanism eyeo documents in docs/integration-how-to.md:
+
+ - abp_filters_partners.txt.gz added next to the other bundled lists
+ - make_abp_partners converts it to a flatbuffer at build time
+ - IDR_ADBLOCK_FLATBUFFER_ABP_PARTNERS packs it into the pak
+ - GetPreloadedSubscriptionConfiguration() serves it while the list is
+   subscribed but not yet downloaded, so blocking works on first launch
+   with no network at all
+ - subscribed at first run with AllowedAndChecked, which is what eyeo
+   documents as the requirement for snippet filters to load
+
+kAllowPrivilegedFilters now defaults to true. This is not optional here:
+converter_main.cc converts bundled lists with allow_privileged=true, so
+the bundled copy keeps its snippets either way, but the preloaded copy
+is dropped as soon as the real list downloads. With the pref off, that
+downloaded copy has its snippets stripped by FlatbufferSerializer and
+YouTube ads would return after the first successful update.
+
+18 of the 23 snippet rules survive Cromite's kAllowedSnippets allowlist.
+The 5 that do not use simulate-mouse-event (which uazo marked
+"unsupported", consistent with him removing trusted events), plus
+event-override and map-override, which the bundled snippet library 2.15.0
+does not implement either. Those are the rules that click the Skip Ad
+button; the json-prune and override-property-read rules that strip ad
+placements out of the player response are unaffected.
+
+Before shipping: mirror this on an e Foundation host rather than
+fetching from gitlab.com, and confirm we are entitled to redistribute a
+list eyeo labels for distribution partners.
+---
+ components/adblock/core/common/adblock_prefs.cc  |   5 ++++-
+ components/adblock/core/resources/BUILD.gn       |   7 +++++++
+ .../core/resources/abp_filters_partners.txt.gz   | Bin 0 -> 2215 bytes
+ .../adblock/core/resources/adblock_resources.grd |   1 +
+ .../core/subscription/subscription_config.cc     |   8 ++++++++
+ 5 files changed, 20 insertions(+), 1 deletion(-)
+ create mode 100644 components/adblock/core/resources/abp_filters_partners.txt.gz
+
+diff --git a/components/adblock/core/common/adblock_prefs.cc b/components/adblock/core/common/adblock_prefs.cc
+index f51419974b24e..1176eecc4cb17 100644
+--- a/components/adblock/core/common/adblock_prefs.cc
++++ b/components/adblock/core/common/adblock_prefs.cc
+@@ -101,7 +101,10 @@ void RegisterDeprecatedPrefs(PrefRegistrySimple* registry) {
+ }
+ 
+ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterBooleanPref(kAllowPrivilegedFilters, false);
++  // Snippet filters are stripped at conversion time when this is off, so a
++  // fresh profile would have no YouTube/anti-circumvention blocking until the
++  // user found the switch in settings.
++  registry->RegisterBooleanPref(kAllowPrivilegedFilters, true);
+   registry->RegisterBooleanPref(kEnableAdblockLegacy, true);
+   registry->RegisterBooleanPref(kEnableAcceptableAdsLegacy, false);
+   registry->RegisterBooleanPref(kAdblockMoreOptionsEnabled, true);
+diff --git a/components/adblock/core/resources/BUILD.gn b/components/adblock/core/resources/BUILD.gn
+index 9b3cafc34670f..b6536d19cb537 100644
+--- a/components/adblock/core/resources/BUILD.gn
++++ b/components/adblock/core/resources/BUILD.gn
+@@ -52,6 +52,12 @@ make_preloaded_subscription("make_anticv") {
+   output = "${target_gen_dir}/anticv.fb"
+ }
+ 
++make_preloaded_subscription("make_abp_partners") {
++  input = "//components/adblock/core/resources/abp_filters_partners.txt.gz"
++  url = "https://gitlab.com/eyeo/anti-cv/abp-filters-anti-cv/-/raw/master/distribution/abp-filters-partners.txt"
++  output = "${target_gen_dir}/abp_filters_partners.fb"
++}
++
+ action("prepare_snippets") {
+   script = "//components/adblock/core/resources/snippets_deps.py"
+   if (true) {
+@@ -87,6 +93,7 @@ grit("adblock_resources") {
+   ]
+   deps = [
+     ":make_anticv",
++    ":make_abp_partners",
+     ":make_easylist",
+     ":make_exceptionrules",
+     ":prepare_snippets",
+diff --git a/components/adblock/core/resources/abp_filters_partners.txt.gz b/components/adblock/core/resources/abp_filters_partners.txt.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d534dd3acd5098b2813afaf4bcc3874f9d81d3a
+GIT binary patch
+literal 2215
+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
+C-CV{1
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/adblock/core/resources/adblock_resources.grd b/components/adblock/core/resources/adblock_resources.grd
+index 5f509a5dfb792..69a63868acc4b 100644
+--- a/components/adblock/core/resources/adblock_resources.grd
++++ b/components/adblock/core/resources/adblock_resources.grd
+@@ -28,6 +28,7 @@
+       <include name="IDR_ADBLOCK_FLATBUFFER_EASYLIST" file="${root_gen_dir}/components/adblock/core/resources/easylist.fb" use_base_dir="false" type="BINDATA" compress="gzip" />
+       <include name="IDR_ADBLOCK_FLATBUFFER_EXCEPTIONRULES" file="${root_gen_dir}/components/adblock/core/resources/exceptionrules.fb" use_base_dir="false" type="BINDATA" compress="gzip" />
+       <include name="IDR_ADBLOCK_FLATBUFFER_ANTICV" file="${root_gen_dir}/components/adblock/core/resources/anticv.fb" use_base_dir="false" type="BINDATA" compress="gzip" />
++      <include name="IDR_ADBLOCK_FLATBUFFER_ABP_PARTNERS" file="${root_gen_dir}/components/adblock/core/resources/abp_filters_partners.fb" use_base_dir="false" type="BINDATA" compress="gzip" />
+       <include name="IDR_ADBLOCK_ELEMHIDE_JS" file="elemhide.js" type="BINDATA" />
+       <include name="IDR_ADBLOCK_ELEMHIDE_FOR_SELECTOR_JS" file="elemhide_for_selector.jst" type="BINDATA" />
+       <include name="IDR_ADBLOCK_ELEMHIDE_EMU_JS" file="elemhideemu.jst" type="BINDATA" />
+diff --git a/components/adblock/core/subscription/subscription_config.cc b/components/adblock/core/subscription/subscription_config.cc
+index 45ff6c553d6a6..9201d82b1bbce 100644
+--- a/components/adblock/core/subscription/subscription_config.cc
++++ b/components/adblock/core/subscription/subscription_config.cc
+@@ -279,6 +279,13 @@ const std::vector<KnownSubscriptionInfo>& config::GetKnownSubscriptions() {
+             SubscriptionUiVisibility::Visible,
+             SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
+             SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
++           {GURL("https://gitlab.com/eyeo/anti-cv/abp-filters-anti-cv/-/raw/"
++                 "master/distribution/abp-filters-partners.txt"),
++            "ABP filters (distribution partners)",
++            {},
++            SubscriptionUiVisibility::Visible,
++            SubscriptionFirstRunBehavior::SubscribeAtFirstRun,
++            SubscriptionPrivilegedFilterStatus::AllowedAndChecked},
+            {GURL(GetHost() + ""
+                              "fanboy-notifications.txt"),
+             "Fanboy's Notifications Blocking List",
+@@ -339,6 +346,7 @@ config::GetPreloadedSubscriptionConfiguration() {
+           {"*easylist.txt", IDR_ADBLOCK_FLATBUFFER_EASYLIST},
+           {"*exceptionrules.txt", IDR_ADBLOCK_FLATBUFFER_EXCEPTIONRULES},
+           {"*abp-filters-anti-cv.txt", IDR_ADBLOCK_FLATBUFFER_ANTICV},
++          {"*abp-filters-partners.txt", IDR_ADBLOCK_FLATBUFFER_ABP_PARTNERS},
+       });
+   return *preloaded_subscriptions;
+ }
+-- 
+2.55.0
+
