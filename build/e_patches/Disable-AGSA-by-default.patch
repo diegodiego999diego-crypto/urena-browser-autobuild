@@ -1,6 +1,6 @@
-From 188120d6c0ab90f062c034725cde24cd05404537 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 26 Sep 2021 11:17:53 +0200
+From d2f588131485e7244fe1b2dcda843ef9d177c7c8 Mon Sep 17 00:00:00 2001
 Subject: Disable AGSA by default
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
@@ -8,19 +8,19 @@ Signed-off-by: Saalim Quadri <danascape@gmail.com>
 ---
  chrome/android/BUILD.gn                         |  1 -
  .../chromium/chrome/browser/IntentHandler.java  |  8 --------
- .../contextmenu/ChromeContextMenuPopulator.java |  7 -------
  ...CustomTabActivityClientConnectionKeeper.java | 16 ++++------------
  .../SafeBrowsingReferringAppBridge.java         |  2 --
  .../chrome/browser/share/LensUtils.java         | 17 ++---------------
  .../chrome/browser/ui/RootUiCoordinator.java    | 16 ----------------
  .../flags/android/chrome_feature_list.cc        |  2 +-
- 8 files changed, 7 insertions(+), 62 deletions(-)
+ .../browser/lens/LensSupportStatusHelper.java   |  1 +
+ 8 files changed, 8 insertions(+), 55 deletions(-)
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 2da92931fff66..79c462cd71f33 100644
+index b402310b31d99..21926ac2067a7 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -419,7 +419,6 @@ if (_is_default_toolchain) {
+@@ -453,7 +453,6 @@ if (_is_default_toolchain) {
        "//chrome/browser/flags:java",
        "//chrome/browser/fullscreen/android:java",
        "//chrome/browser/gesturenav/android:java",
@@ -29,7 +29,7 @@ index 2da92931fff66..79c462cd71f33 100644
        "//chrome/browser/history_clusters:java",
        "//chrome/browser/hub:factory_java",
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
-index 107b8545f3947..b063a58705268 100644
+index 5dc551d3193d1..83c9a14bca02d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java
 @@ -52,7 +52,6 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -40,7 +40,7 @@ index 107b8545f3947..b063a58705268 100644
  import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
  import org.chromium.chrome.browser.pdf.PdfUtils;
  import org.chromium.chrome.browser.profiles.Profile;
-@@ -321,9 +320,6 @@ public class IntentHandler {
+@@ -347,9 +346,6 @@ public class IntentHandler {
      public static final String EXTRA_TIPS_NOTIFICATION_FEATURE_TYPE =
              "org.chromium.chrome.browser.tips_notification_feature_type";
  
@@ -50,7 +50,7 @@ index 107b8545f3947..b063a58705268 100644
      /** Action to launch the Chrome Item Picker UI, e.g.: tabs. */
      public static final String EXTRA_OPEN_CHROME_ITEM_PICKER =
              "org.chromium.chrome.browser.actions.open_chrome_item_picker";
-@@ -379,7 +375,6 @@ public class IntentHandler {
+@@ -405,7 +401,6 @@ public class IntentHandler {
          ExternalAppId.NEWS,
          ExternalAppId.LINE,
          ExternalAppId.WHATSAPP,
@@ -58,7 +58,7 @@ index 107b8545f3947..b063a58705268 100644
          ExternalAppId.WEBAPK,
          ExternalAppId.YAHOO_MAIL,
          ExternalAppId.VIBER,
-@@ -403,7 +398,6 @@ public class IntentHandler {
+@@ -429,7 +424,6 @@ public class IntentHandler {
          int NEWS = 8;
          int LINE = 9;
          int WHATSAPP = 10;
@@ -66,7 +66,7 @@ index 107b8545f3947..b063a58705268 100644
          int WEBAPK = 12;
          int YAHOO_MAIL = 13;
          int VIBER = 14;
-@@ -584,8 +578,6 @@ public class IntentHandler {
+@@ -632,8 +626,6 @@ public class IntentHandler {
              return ExternalAppId.LINE;
          } else if (PACKAGE_WHATSAPP.equals(packageName)) {
              return ExternalAppId.WHATSAPP;
@@ -75,31 +75,6 @@ index 107b8545f3947..b063a58705268 100644
          } else if (ContextUtils.getApplicationContext().getPackageName().equals(packageName)) {
              return ExternalAppId.CHROME;
          } else if (assumeNonNull(packageName).startsWith(WEBAPK_PACKAGE_PREFIX)) {
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-index 991292be0f5cd..9e62d563353ca 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-@@ -55,7 +55,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
- import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
- import org.chromium.chrome.browser.firstrun.FirstRunStatus;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
--import org.chromium.chrome.browser.gsa.GSAUtils;
- import org.chromium.chrome.browser.lens.LensController;
- import org.chromium.chrome.browser.lens.LensEntryPoint;
- import org.chromium.chrome.browser.lens.LensIntentParams;
-@@ -1424,12 +1423,6 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
-                     LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE);
-             return false;
-         }
--        if (GSAUtils.isAgsaVersionBelowMinimum(
--                versionName, LensUtils.getMinimumAgsaVersionForLensSupport())) {
--            LensMetrics.recordLensSupportStatus(
--                    LENS_SUPPORT_STATUS_HISTOGRAM_NAME, LensMetrics.LensSupportStatus.OUT_OF_DATE);
--            return false;
--        }
- 
-         if (!LensUtils.isValidAgsaPackage()) {
-             LensMetrics.recordLensSupportStatus(
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
 index 1f50c0859066e..df5ae91471110 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabActivityClientConnectionKeeper.java
@@ -147,18 +122,18 @@ index 3030918df047c..538a24ed39445 100644
                  return "webapk";
              case ExternalAppId.YAHOO_MAIL:
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
-index fdc425a2ff1b0..a405c667be8dc 100644
+index bb2915b0aac68..030ff095e0184 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/share/LensUtils.java
-@@ -10,7 +10,6 @@ import org.chromium.base.ResettersForTesting;
+@@ -9,7 +9,6 @@ import android.content.Context;
+ import org.chromium.base.ResettersForTesting;
  import org.chromium.build.annotations.NullMarked;
  import org.chromium.chrome.browser.IntentHandler;
- import org.chromium.chrome.browser.flags.ChromeFeatureList;
 -import org.chromium.chrome.browser.gsa.GSAUtils;
  import org.chromium.components.externalauth.ExternalAuthUtils;
  
  /** This class provides utilities for intenting into Google Lens. */
-@@ -46,15 +45,7 @@ public class LensUtils {
+@@ -43,15 +42,7 @@ public class LensUtils {
          if (sFakePassableLensEnvironmentForTesting) {
              return MIN_AGSA_VERSION_NAME_FOR_LENS_POSTCAPTURE;
          } else {
@@ -175,7 +150,7 @@ index fdc425a2ff1b0..a405c667be8dc 100644
          }
      }
  
-@@ -77,11 +68,7 @@ public class LensUtils {
+@@ -74,11 +65,7 @@ public class LensUtils {
       * @return Whether the package is valid.
       */
      public static boolean isValidAgsaPackage() {
@@ -189,12 +164,12 @@ index fdc425a2ff1b0..a405c667be8dc 100644
  
      public static boolean isGoogleLensFeatureEnabled(boolean isIncognito) {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-index 82f17116d579a..07ba3c79afc74 100644
+index b0b63069bdffa..e41f948dec90d 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java
-@@ -1206,22 +1206,6 @@ public class RootUiCoordinator
-                         mLayoutStateProviderOneShotSupplier,
-                         mFullscreenManager);
+@@ -1394,22 +1394,6 @@ public class RootUiCoordinator
+                         mFullscreenManager,
+                         getSideUiStateProviderSupplier());
          mReadAloudControllerSupplier.set(controller);
 -        mReadAloudContextualSearchObserver =
 -                new ContextualSearchObserver() {
@@ -212,22 +187,34 @@ index 82f17116d579a..07ba3c79afc74 100644
 -        if (contextualSearchManager != null) {
 -            contextualSearchManager.addObserver(mReadAloudContextualSearchObserver);
 -        }
-         if (DomDistillerFeatures.sReaderModeDistillInApp.isEnabled()) {
-             mReaderModeBottomSheetManager =
-                     new ReaderModeBottomSheetManager(
+         if (!ChromeFeatureList.sAndroidStartupImprovements.isEnabled()) {
+             initReaderModeBottomSheetManager();
+         } else {
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index bace89f09bf15..1e3975c2f13eb 100644
+index 2f4905c6192aa..477a5b865ba0f 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -725,7 +725,7 @@ BASE_FEATURE(kEnableToolbarSwipeOnNonDesktopLff, base::FEATURE_ENABLED_BY_DEFAUL
+@@ -801,7 +801,7 @@ BASE_FEATURE(kEnableToolbarPositioningInResizeMode, base::FEATURE_ENABLED_BY_DEF
  BASE_FEATURE(kEnableXAxisActivityTransition, base::FEATURE_DISABLED_BY_DEFAULT);
  BASE_FEATURE(kEnforceIncognitoIsolation, base::FEATURE_DISABLED_BY_DEFAULT);
  BASE_FEATURE(kEscCancelDrag, base::FEATURE_ENABLED_BY_DEFAULT);
 -BASE_FEATURE(kExperimentsForAgsa, base::FEATURE_ENABLED_BY_DEFAULT);
 +BASE_FEATURE(kExperimentsForAgsa, base::FEATURE_DISABLED_BY_DEFAULT); // disabled by default in Bromite
+ BASE_FEATURE(kFaviconDisableHostFallback, base::FEATURE_ENABLED_BY_DEFAULT);
+ BASE_FEATURE(kFlyoutInBookmarksBar, base::FEATURE_DISABLED_BY_DEFAULT);
  BASE_FEATURE(kForceTranslucentNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
- BASE_FEATURE(kFullscreenInsetsApiMigration, base::FEATURE_DISABLED_BY_DEFAULT);
- BASE_FEATURE(kFullscreenInsetsApiMigrationOnAutomotive, base::FEATURE_ENABLED_BY_DEFAULT);
+diff --git a/chrome/browser/lens/java/src/org/chromium/chrome/browser/lens/LensSupportStatusHelper.java b/chrome/browser/lens/java/src/org/chromium/chrome/browser/lens/LensSupportStatusHelper.java
+index 887dc4583050a..b166f24d774c1 100644
+--- a/chrome/browser/lens/java/src/org/chromium/chrome/browser/lens/LensSupportStatusHelper.java
++++ b/chrome/browser/lens/java/src/org/chromium/chrome/browser/lens/LensSupportStatusHelper.java
+@@ -59,6 +59,7 @@ public class LensSupportStatusHelper {
+         }
+ 
+         if (needToCheckAgsa) {
++            if ((true)) return LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE;
+             String versionName = GSAUtils.getAgsaVersionName();
+             if (TextUtils.isEmpty(versionName)) {
+                 return LensMetrics.LensSupportStatus.ACTIVITY_NOT_ACCESSIBLE;
 -- 
-2.53.0
+2.55.0
 
