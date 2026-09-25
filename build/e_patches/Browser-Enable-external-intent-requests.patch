@@ -1,4 +1,4 @@
-From 6173f27141cd5bbc1ccac05903669c0e51b130c2 Mon Sep 17 00:00:00 2001
+From b4409a83b031724fb9c957c64f7840ce57f295c6 Mon Sep 17 00:00:00 2001
 From: althafvly <althafvly@gmail.com>
 Date: Tue, 5 Nov 2024 10:08:21 +0530
 Subject: Browser: Enable external intent requests
@@ -18,10 +18,10 @@ Signed-off-by: Saalim Quadri <danascape@gmail.com>
  delete mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
-index 9ec549920e682..1f97210ee1e10 100644
+index b99d0e42438f5..bdc4b1c6c3e7f 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -70,8 +70,7 @@ found in the LICENSE file.
+@@ -66,8 +66,7 @@ found in the LICENSE file.
          android:key="allow_external_intent_requests"
          android:title="@string/allow_external_intent_requests_title"
          android:summary="@string/allow_external_intent_requests_summary"
@@ -32,18 +32,18 @@ index 9ec549920e682..1f97210ee1e10 100644
          android:key="security_section"
        android:title="@string/security_section_title" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
-index 396ce183736ff..87b10fc69e501 100644
+index 73df41f29b3b3..54a0f8ba558e6 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
-@@ -17,6 +17,7 @@ import androidx.annotation.VisibleForTesting;
- 
- import org.chromium.base.ApiCompatibilityUtils;
- import org.chromium.base.CallbackUtils;
+@@ -11,6 +11,7 @@ import android.app.Activity;
+ import android.content.ActivityNotFoundException;
+ import android.content.ComponentName;
+ import android.content.Intent;
 +import org.chromium.base.ContextUtils;
- import org.chromium.base.metrics.RecordHistogram;
- import org.chromium.base.supplier.SupplierUtils;
- import org.chromium.blink.mojom.DisplayMode;
-@@ -39,7 +40,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+ import android.content.pm.ResolveInfo;
+ import android.graphics.Rect;
+ import android.text.TextUtils;
+@@ -42,7 +43,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
  import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
  import org.chromium.chrome.browser.flags.ActivityType;
  import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -51,17 +51,17 @@ index 396ce183736ff..87b10fc69e501 100644
  import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
  import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
-@@ -168,7 +168,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
+@@ -172,7 +172,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
  
          @Override
          public boolean shouldDisableAllExternalIntents() {
 -            if (!sAllowExternalIntentRequests.getInstance().isEnabled()) return true;
 +            if (!ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true)) return true;
-             return mActivityType == ActivityType.AUTH_TAB
-                     && ChromeFeatureList.sCctAuthTabDisableAllExternalIntents.isEnabled();
+             return false;
          }
+ 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
-index 8bee086058f2d..593f8b99de7a0 100644
+index 9061cc4659952..31cbd42c4accc 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
 @@ -27,7 +27,6 @@ import org.chromium.base.ResettersForTesting;
@@ -70,9 +70,9 @@ index 8bee086058f2d..593f8b99de7a0 100644
  import org.chromium.chrome.browser.ChromeTabbedActivity2;
 -import org.chromium.chrome.browser.flags.cromite.sAllowExternalIntentRequests;
  import org.chromium.chrome.browser.IntentHandler;
+ import org.chromium.chrome.browser.actor.ActorKeyedServiceFactory;
  import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
- import org.chromium.chrome.browser.document.ChromeLauncherActivity;
-@@ -68,6 +67,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+@@ -71,6 +70,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
  
      private static @Nullable Predicate<Intent> sWillChromeHandleIntentHookForTesting;
  
@@ -81,7 +81,7 @@ index 8bee086058f2d..593f8b99de7a0 100644
      public ExternalNavigationDelegateImpl(Tab tab) {
          mTab = tab;
          mTabModelSelectorSupplier = TabModelSelectorSupplier.from(tab.getWindowAndroid());
-@@ -140,8 +141,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+@@ -143,8 +144,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
      @Override
      public boolean shouldDisableExternalIntentRequestsForUrl(
              ExternalNavigationParams params, Intent intent) {
@@ -92,10 +92,10 @@ index 8bee086058f2d..593f8b99de7a0 100644
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 60081ef702ed9..ab18b5324bc9a 100644
+index 1f2c65174f4ff..e70f6c31d0524 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -181,6 +181,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -175,6 +175,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
      private ChromeSwitchPreference allowCustomTabIntentsPref;
      private ChromeSwitchPreference openExternalLinksPref;
@@ -103,7 +103,7 @@ index 60081ef702ed9..ab18b5324bc9a 100644
  
      private static final String PREF_HISTORY_EXPIRE_DAYS_THRESHOLD = "history_expire_days_threshold";
  
-@@ -481,6 +482,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -432,6 +433,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
  
      public static final String PREF_ALLOW_CUSTOM_TAB_INTENTS = "allow_custom_tab_intents";
      public static final String PREF_OPEN_EXTERNAL_LINKS_INCOGNITO = "open_external_links_incognito";
@@ -111,7 +111,7 @@ index 60081ef702ed9..ab18b5324bc9a 100644
  
      @Override
      public boolean onPreferenceChange(Preference preference, Object newValue) {
-@@ -527,6 +529,10 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -478,6 +480,10 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
              SharedPreferences.Editor sharedPreferencesEditor = ContextUtils.getAppSharedPreferences().edit();
              sharedPreferencesEditor.putBoolean(PREF_OPEN_EXTERNAL_LINKS_INCOGNITO, (boolean)newValue);
              sharedPreferencesEditor.apply();
@@ -122,7 +122,7 @@ index 60081ef702ed9..ab18b5324bc9a 100644
          }
          return true;
      }
-@@ -569,6 +575,11 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -520,6 +526,11 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          openExternalLinksPref.setOnPreferenceChangeListener(this);
          openExternalLinksPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
  
@@ -202,5 +202,5 @@ index c4015ad7de119..0000000000000
 -                "AllowExternalIntentRequests",
 -                base::FEATURE_DISABLED_BY_DEFAULT);
 -- 
-2.53.0
+2.55.0
 
