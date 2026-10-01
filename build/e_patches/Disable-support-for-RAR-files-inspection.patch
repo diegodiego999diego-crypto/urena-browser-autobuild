@@ -1,0 +1,72 @@
+From f5cd2599c87662138dc4432622b1ddbaddfe2e19 Mon Sep 17 00:00:00 2001
+From: Michael Gilbert <mgilbert@debian.org>
+Date: Wed, 21 Nov 2018 02:37:35 +0000
+Subject: Disable support for RAR files inspection
+
+- Already disabled with flag safe_browsing_use_unrar=false
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
+---
+ .../download_protection/file_analyzer.cc        |  2 +-
+ .../services/file_util/safe_archive_analyzer.cc | 17 ++---------------
+ .../utility/safe_browsing/archive_analyzer.cc   |  2 +-
+ 3 files changed, 4 insertions(+), 17 deletions(-)
+
+diff --git a/chrome/browser/safe_browsing/download_protection/file_analyzer.cc b/chrome/browser/safe_browsing/download_protection/file_analyzer.cc
+index 573c531f96abb..7c4d6cfe3f75b 100644
+--- a/chrome/browser/safe_browsing/download_protection/file_analyzer.cc
++++ b/chrome/browser/safe_browsing/download_protection/file_analyzer.cc
+@@ -85,7 +85,7 @@ void FileAnalyzer::Start(const base::FilePath& target_file_name,
+   }
+ 
+   if (inspection_type == DownloadFileType::RAR) {
+-    StartExtractRarFeatures();
++    LOG(WARNING) << "Safebrowser inspection of rar files is disabled in this build";
+     return;
+   }
+ 
+diff --git a/chrome/services/file_util/safe_archive_analyzer.cc b/chrome/services/file_util/safe_archive_analyzer.cc
+index 1e4b57253df49..33089d510f214 100644
+--- a/chrome/services/file_util/safe_archive_analyzer.cc
++++ b/chrome/services/file_util/safe_archive_analyzer.cc
+@@ -87,21 +87,8 @@ void SafeArchiveAnalyzer::AnalyzeRarFile(
+   DCHECK(rar_file.IsValid());
+   temp_file_getter_.Bind(std::move(temp_file_getter));
+   callback_ = std::move(callback);
+-  AnalysisFinishedCallback analysis_finished_callback =
+-      base::BindOnce(&SafeArchiveAnalyzer::AnalysisFinished,
+-                     weak_factory_.GetWeakPtr(), base::FilePath());
+-  base::RepeatingCallback<void(GetTempFileCallback callback)>
+-      temp_file_getter_callback =
+-          base::BindRepeating(&SafeArchiveAnalyzer::RequestTemporaryFile,
+-                              weak_factory_.GetWeakPtr());
+-  timeout_timer_.Start(FROM_HERE, kArchiveAnalysisTimeout, this,
+-                       &SafeArchiveAnalyzer::Timeout);
+-  rar_analyzer_.SetAnalysisDelegate(
+-      std::make_unique<safe_browsing::RegularArchiveAnalysisDelegate>());
+-  rar_analyzer_.Analyze(std::move(rar_file), base::FilePath(),
+-                        /*password=*/password,
+-                        std::move(analysis_finished_callback),
+-                        std::move(temp_file_getter_callback), &results_);
++  Timeout();
++  LOG(FATAL) << "AnalyzeRarFile is disabled in this build";
+ #else
+   std::move(callback).Run(safe_browsing::ArchiveAnalyzerResults());
+ #endif
+diff --git a/chrome/utility/safe_browsing/archive_analyzer.cc b/chrome/utility/safe_browsing/archive_analyzer.cc
+index 49e7ae814be13..a670153350d95 100644
+--- a/chrome/utility/safe_browsing/archive_analyzer.cc
++++ b/chrome/utility/safe_browsing/archive_analyzer.cc
+@@ -40,7 +40,7 @@ std::unique_ptr<ArchiveAnalyzer> ArchiveAnalyzer::CreateForArchiveType(
+ 
+ #if USE_UNRAR
+   if (file_type == DownloadFileType::RAR) {
+-    return std::make_unique<RarAnalyzer>();
++    return nullptr;
+   }
+ #endif
+ 
+-- 
+2.55.0
+
