@@ -1,4 +1,4 @@
-From 5c76156b7e7d7a17c5eaac606d444c298feabe55 Mon Sep 17 00:00:00 2001
+From f7f4c3d7526e8ecd9a1bd9e9407ea04a8c4d380e Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Sun, 25 Mar 2018 21:49:37 +0200
 Subject: AudioBuffer, AnalyserNode: fp mitigations
@@ -91,7 +91,7 @@ index 4bbf70b4398c4..6c3638c9c624a 100644
    bool CreatedSuccessfully(unsigned desired_number_of_channels) const;
  
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_context.cc b/third_party/blink/renderer/modules/webaudio/audio_context.cc
-index 61cc6314ce06c..ec3abc8342ffd 100644
+index 9136c6e6c1151..b77b8dbf2b559 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/audio_context.cc
 @@ -24,6 +24,7 @@
@@ -102,9 +102,9 @@ index 61cc6314ce06c..ec3abc8342ffd 100644
  #include "third_party/blink/public/platform/modules/webrtc/webrtc_logging.h"
  #include "third_party/blink/public/platform/web_audio_latency_hint.h"
  #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-@@ -1270,7 +1271,9 @@ double AudioContext::baseLatency() const {
+@@ -1242,7 +1243,9 @@ double AudioContext::baseLatency() const {
    DCHECK_CALLED_ON_VALID_SEQUENCE(main_thread_sequence_checker_);
-   DCHECK(destination());
+   DCHECK(destinationNode());
  
 -  return base_latency_;
 +  // remove precision past two decimal digits
@@ -114,7 +114,7 @@ index 61cc6314ce06c..ec3abc8342ffd 100644
  
  double AudioContext::outputLatency() const {
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
-index 9706af3d58cfd..85d6c41a6daa7 100644
+index 107783a84f128..c62478a7f198a 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
 @@ -26,8 +26,10 @@
@@ -128,7 +128,7 @@ index 9706af3d58cfd..85d6c41a6daa7 100644
  #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
  #include "third_party/blink/public/mojom/frame/lifecycle.mojom-shared.h"
  #include "third_party/blink/public/platform/platform.h"
-@@ -772,6 +774,17 @@ LocalDOMWindow* BaseAudioContext::GetWindow() const {
+@@ -773,6 +775,17 @@ LocalDOMWindow* BaseAudioContext::GetWindow() const {
    return To<LocalDOMWindow>(GetExecutionContext());
  }
  
@@ -147,12 +147,12 @@ index 9706af3d58cfd..85d6c41a6daa7 100644
    DCHECK(IsMainThread());
    DeferredTaskHandler::GraphAutoLocker locker(GetDeferredTaskHandler());
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-index 8f0e99ecc4508..ca8f926165223 100644
+index 6c309d56b831b..a46a62c804932 100644
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-@@ -321,6 +321,8 @@ class MODULES_EXPORT BaseAudioContext
-   // if the execution context does not exist.
-   bool CheckExecutionContextAndThrowIfNecessary(ExceptionState&);
+@@ -330,6 +330,8 @@ class MODULES_EXPORT BaseAudioContext
+     return pending_promise_resolvers_.size();
+   }
  
 +  static float ShuffleAudioData(float data, unsigned index);
 +
@@ -160,10 +160,10 @@ index 8f0e99ecc4508..ca8f926165223 100644
    enum class ContextType { kRealtimeContext, kOfflineContext };
  
 diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
-index aed92e0ec46ad..a344261e816ee 100644
+index 4604be68adba4..56800f55986dd 100644
 --- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
 +++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
-@@ -431,6 +431,7 @@ void OfflineAudioContext::FireCompletionEvent() {
+@@ -436,6 +436,7 @@ void OfflineAudioContext::FireCompletionEvent() {
      if (!rendered_buffer) {
        return;
      }
@@ -172,7 +172,7 @@ index aed92e0ec46ad..a344261e816ee 100644
      // Call the offline rendering completion event listener and resolve the
      // promise too.
 diff --git a/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc b/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
-index d0b1bd640131d..058854ee26d47 100644
+index 74b3068ba203f..1641af8b9732c 100644
 --- a/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
 +++ b/third_party/blink/renderer/modules/webaudio/realtime_analyser.cc
 @@ -33,6 +33,7 @@

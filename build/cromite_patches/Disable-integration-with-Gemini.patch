@@ -1,4 +1,4 @@
-From e067b8d566d62656c3a1ed246d5533f8483c38d7 Mon Sep 17 00:00:00 2001
+From c66110a109ad1c659b41b5db4e0f251af910d12c Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Fri, 21 Apr 2023 13:10:20 +0000
 Subject: Disable integration with Gemini
@@ -9,7 +9,7 @@ This patch fixes build errors.
 License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 ---
  .../android/java/res/xml/main_preferences.xml |  5 --
- .../chrome/browser/SnackbarActivity.java      | 10 ----
+ .../chrome/browser/SnackbarActivity.java      | 13 -----
  .../chrome/browser/ntp/NewTabPage.java        |  3 --
  .../browser/settings/SettingsActivity.java    |  5 --
  .../search/SearchIndexProviderRegistry.java   |  2 -
@@ -40,7 +40,7 @@ License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
  chrome/common/features.gni                    |  2 +
  chrome/test/BUILD.gn                          | 14 +++---
  components/browser_sync/BUILD.gn              |  2 +-
- 32 files changed, 42 insertions(+), 169 deletions(-)
+ 32 files changed, 42 insertions(+), 172 deletions(-)
 
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
 index 4878246aec92c..ed52e17b48900 100644
@@ -59,38 +59,41 @@ index 4878246aec92c..ed52e17b48900 100644
          android:fragment="org.chromium.components.browser_ui.accessibility.AccessibilitySettings"
          android:key="accessibility"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/SnackbarActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/SnackbarActivity.java
-index f7ed305a623e5..9fa156fd81195 100644
+index 195d0c9d86729..9fa156fd81195 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/SnackbarActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/SnackbarActivity.java
-@@ -12,8 +12,6 @@ import androidx.annotation.CallSuper;
+@@ -12,9 +12,6 @@ import androidx.annotation.CallSuper;
  
  import org.chromium.build.annotations.NullMarked;
  import org.chromium.build.annotations.Nullable;
 -import org.chromium.chrome.browser.flags.ChromeFeatureList;
 -import org.chromium.chrome.browser.glic.GlicHelper;
+-import org.chromium.chrome.browser.profiles.Profile;
  import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
  import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.ParentOverrideSlot;
  import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
-@@ -43,14 +41,6 @@ public abstract class SnackbarActivity extends SynchronousInitializationActivity
+@@ -44,16 +41,6 @@ public abstract class SnackbarActivity extends SynchronousInitializationActivity
      @Override
      protected void onStart() {
          super.onStart();
 -        if (ChromeFeatureList.sGlicShowTaskInProgressSnackbar.getValue()) {
 -            getProfileSupplier()
 -                    .runSyncOrOnAvailable(
--                            (profile) -> {
--                                GlicHelper.maybeShowGlicTaskInProgressSnackbar(
--                                        this, profile, this, GlicHelper.Caller.SNACKBAR_ACTIVITY);
--                            });
+-                            (Profile profile) ->
+-                                    GlicHelper.maybeShowGlicTaskInProgressSnackbar(
+-                                            this,
+-                                            profile,
+-                                            this,
+-                                            GlicHelper.Caller.SNACKBAR_ACTIVITY));
 -        }
      }
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPage.java b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPage.java
-index cfb585cc1ecec..26b5cc6b7ef79 100644
+index 31121e7ceb746..b647f58bcb2c5 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPage.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPage.java
-@@ -57,7 +57,6 @@ import org.chromium.chrome.browser.feed.FeedSurfaceProvider;
+@@ -58,7 +58,6 @@ import org.chromium.chrome.browser.feed.FeedSurfaceProvider;
  import org.chromium.chrome.browser.feed.FeedSwipeRefreshLayout;
  import org.chromium.chrome.browser.feed.NtpFeedSurfaceLifecycleManager;
  import org.chromium.chrome.browser.feed.componentinterfaces.SurfaceCoordinator;
@@ -98,7 +101,7 @@ index cfb585cc1ecec..26b5cc6b7ef79 100644
  import org.chromium.chrome.browser.layouts.LayoutType;
  import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
  import org.chromium.chrome.browser.lifecycle.LifecycleObserver;
-@@ -1014,8 +1013,6 @@ public class NewTabPage
+@@ -1056,8 +1055,6 @@ public class NewTabPage
          mLastShownTimeNs = System.nanoTime();
          RecordUserAction.record("MobileNTPShown");
          SuggestionsMetrics.recordSurfaceVisible();
@@ -108,7 +111,7 @@ index cfb585cc1ecec..26b5cc6b7ef79 100644
  
      /** Records UMA for the NTP being hidden and the time spent on it. */
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
-index 16f69b977c02e..2e75f92654316 100644
+index f97a57f1b1771..9ce6cf144db00 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
 @@ -60,7 +60,6 @@ import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsV
@@ -119,7 +122,7 @@ index 16f69b977c02e..2e75f92654316 100644
  import org.chromium.chrome.browser.init.ActivityLifecycleDispatcherImpl;
  import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
  import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
-@@ -661,10 +660,6 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
+@@ -656,10 +655,6 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
      @Override
      protected void onStart() {
          super.onStart();
@@ -131,7 +134,7 @@ index 16f69b977c02e..2e75f92654316 100644
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java
-index 5d553ba3d5c64..37de258214527 100644
+index 48f4ac9cc142f..794c34737bb63 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java
 @@ -26,7 +26,6 @@ import org.chromium.chrome.browser.browsing_data.ClearBrowsingDataFragment;
@@ -142,7 +145,7 @@ index 5d553ba3d5c64..37de258214527 100644
  import org.chromium.chrome.browser.homepage.settings.HomepageSettings;
  import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsSettings;
  import org.chromium.chrome.browser.language.settings.LanguageSettings;
-@@ -97,7 +96,6 @@ public final class SearchIndexProviderRegistry {
+@@ -87,7 +86,6 @@ public final class SearchIndexProviderRegistry {
                      AdaptiveToolbarSettingsFragment.SEARCH_INDEX_DATA_PROVIDER,
                      AutofillOptionsFragment.SEARCH_INDEX_DATA_PROVIDER,
                      ContextualSearchSettingsFragment.SEARCH_INDEX_DATA_PROVIDER,
@@ -151,10 +154,10 @@ index 5d553ba3d5c64..37de258214527 100644
                      HomepageSettings.SEARCH_INDEX_DATA_PROVIDER,
                      LegalInformationSettings.SEARCH_INDEX_DATA_PROVIDER,
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-index a636780498e3d..4b44a53cac635 100644
+index 5bb95b57d5d9b..5415bee749dd8 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-@@ -1705,15 +1705,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+@@ -1707,15 +1707,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
              }
          }
  
@@ -173,7 +176,7 @@ index a636780498e3d..4b44a53cac635 100644
  
      /**
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index bab0386a9fa0b..685f2e77a767b 100644
+index 721fde7a9e849..965c7d7fe7db0 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
 @@ -936,7 +936,7 @@ source_set("core") {
@@ -184,8 +187,8 @@ index bab0386a9fa0b..685f2e77a767b 100644
 +    # "//chrome/browser/ai",
      "//chrome/browser/app_mode",
      "//chrome/browser/autocomplete:aim_eligibility_service",
-     "//chrome/browser/battery",
-@@ -2074,8 +2074,8 @@ source_set("browser") {
+     "//chrome/browser/background",
+@@ -2042,8 +2042,8 @@ source_set("browser") {
      "//chrome/browser/accessibility_annotator:impl",
      "//chrome/browser/account_settings",
      "//chrome/browser/affiliations",
@@ -193,14 +196,14 @@ index bab0386a9fa0b..685f2e77a767b 100644
 -    "//chrome/browser/ai:impl",
 +    # "//chrome/browser/ai",
 +    # "//chrome/browser/ai:impl",
-     "//chrome/browser/app_mode",
      "//chrome/browser/autocomplete",
-     "//chrome/browser/autocomplete:aim_eligibility_service",
+     "//chrome/browser/autocomplete:impl",
+     "//chrome/browser/autofill",
 diff --git a/chrome/browser/actor/BUILD.gn b/chrome/browser/actor/BUILD.gn
-index b8e9f305bd1ef..eab465e9b3d42 100644
+index 708d1a48f8b21..2be160db49492 100644
 --- a/chrome/browser/actor/BUILD.gn
 +++ b/chrome/browser/actor/BUILD.gn
-@@ -436,9 +436,6 @@ source_set("browser_tests") {
+@@ -451,9 +451,6 @@ source_set("browser_tests") {
      "//chrome/browser:chrome_content_browser_client",
      "//chrome/browser/affiliations",
      "//chrome/browser/autofill/actor",
@@ -211,10 +214,10 @@ index b8e9f305bd1ef..eab465e9b3d42 100644
      "//chrome/browser/optimization_guide",
      "//chrome/browser/optimization_guide:test_support",
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index bf58dc631e815..5fb97b6f99b36 100644
+index 898e5fe9628cc..3361fe40fb1db 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -823,8 +823,6 @@ using web_app::ChromeContentBrowserClientIsolatedWebAppsPart;
+@@ -831,8 +831,6 @@ using web_app::ChromeContentBrowserClientIsolatedWebAppsPart;
  
  namespace {
  
@@ -223,7 +226,7 @@ index bf58dc631e815..5fb97b6f99b36 100644
  #if BUILDFLAG(IS_MAC)
  constexpr char kSecurePaymentConfirmationKeychainAccessGroup[] =
      MAC_TEAM_IDENTIFIER_STRING "." MAC_BUNDLE_IDENTIFIER_STRING
-@@ -9134,6 +9132,7 @@ void ChromeContentBrowserClient::BindAIManager(
+@@ -9200,6 +9198,7 @@ void ChromeContentBrowserClient::BindAIManager(
      base::SupportsUserData* context_user_data,
      content::RenderFrameHost* rfh,
      mojo::PendingReceiver<blink::mojom::AIManager> receiver) {
@@ -231,7 +234,7 @@ index bf58dc631e815..5fb97b6f99b36 100644
    if (!context_user_data->GetUserData(kAIManagerUserDataKey)) {
      context_user_data->SetUserData(
          kAIManagerUserDataKey,
-@@ -9143,6 +9142,7 @@ void ChromeContentBrowserClient::BindAIManager(
+@@ -9209,6 +9208,7 @@ void ChromeContentBrowserClient::BindAIManager(
    AIManager* ai_manager = static_cast<AIManager*>(
        context_user_data->GetUserData(kAIManagerUserDataKey));
    ai_manager->AddReceiver(std::move(receiver));
@@ -240,7 +243,7 @@ index bf58dc631e815..5fb97b6f99b36 100644
  
  #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 diff --git a/chrome/browser/component_updater/BUILD.gn b/chrome/browser/component_updater/BUILD.gn
-index 8aedb41475b5a..0e47aaa602fe9 100644
+index 19b64707562d8..c891bb628346b 100644
 --- a/chrome/browser/component_updater/BUILD.gn
 +++ b/chrome/browser/component_updater/BUILD.gn
 @@ -141,7 +141,7 @@ source_set("impl") {
@@ -252,7 +255,7 @@ index 8aedb41475b5a..0e47aaa602fe9 100644
      "//chrome/browser/history_embeddings",
      "//chrome/browser/media",
      "//chrome/browser/net",
-@@ -331,7 +331,7 @@ source_set("unit_tests") {
+@@ -333,7 +333,7 @@ source_set("unit_tests") {
      ":test_support",
      "//base",
      "//base/test:test_support",
@@ -278,7 +281,7 @@ index 8a90b7978043b..962503f69a29f 100644
  
    base::FilePath GetRelativeInstallDir() const override {
 diff --git a/chrome/browser/extensions/api/BUILD.gn b/chrome/browser/extensions/api/BUILD.gn
-index f093f645595ef..53c0cf6d9a43a 100644
+index eb06749790352..963ff85120abe 100644
 --- a/chrome/browser/extensions/api/BUILD.gn
 +++ b/chrome/browser/extensions/api/BUILD.gn
 @@ -221,7 +221,7 @@ function_registration("api_registration") {
@@ -304,10 +307,10 @@ index 982c0bed89bd1..e312f3bff0414 100644
      "//chrome/browser/ui",
      "//components/actor/core:journal",
 diff --git a/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc b/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc
-index 8d025a3829a03..e8686a2eceee8 100644
+index b32923167be54..b6ae431d1e7a2 100644
 --- a/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc
 +++ b/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc
-@@ -137,17 +137,10 @@ ExperimentalActorApiFunction::ExperimentalActorApiFunction() = default;
+@@ -116,17 +116,10 @@ ExperimentalActorApiFunction::ExperimentalActorApiFunction() = default;
  ExperimentalActorApiFunction::~ExperimentalActorApiFunction() = default;
  
  bool ExperimentalActorApiFunction::PreRunValidation(std::string* error) {
@@ -506,10 +509,10 @@ index 7efe557a8ad68..f1f7b2605928b 100644
  
  }  // namespace extensions
 diff --git a/chrome/browser/glic/public/glic_enabling.cc b/chrome/browser/glic/public/glic_enabling.cc
-index b28936b4aad4f..22f2f2522bb1a 100644
+index 4b4c67b1d2544..3c7fe53bc32e7 100644
 --- a/chrome/browser/glic/public/glic_enabling.cc
 +++ b/chrome/browser/glic/public/glic_enabling.cc
-@@ -763,6 +763,7 @@ bool GlicGlobalEnabling::IsOsVersionSupported() {
+@@ -770,6 +770,7 @@ bool GlicGlobalEnabling::IsOsVersionSupported() {
  }
  
  bool GlicGlobalEnabling::IsEnabledByGlobalCriteria() const {
@@ -518,7 +521,7 @@ index b28936b4aad4f..22f2f2522bb1a 100644
      return true;
    }
 diff --git a/chrome/browser/pdf/BUILD.gn b/chrome/browser/pdf/BUILD.gn
-index c8a0cd74081d6..c29b72598264a 100644
+index e1de032ece695..fec62b03475a1 100644
 --- a/chrome/browser/pdf/BUILD.gn
 +++ b/chrome/browser/pdf/BUILD.gn
 @@ -34,7 +34,6 @@ source_set("pdf") {
@@ -530,10 +533,10 @@ index c8a0cd74081d6..c29b72598264a 100644
      "//chrome/browser/profiles:profile",
      "//chrome/browser/resources/pdf:resources",
 diff --git a/chrome/browser/profiles/BUILD.gn b/chrome/browser/profiles/BUILD.gn
-index 7261b2cc26b5f..f7878f1bf01ee 100644
+index f01dcbb6ab110..69b39fe31ea75 100644
 --- a/chrome/browser/profiles/BUILD.gn
 +++ b/chrome/browser/profiles/BUILD.gn
-@@ -617,7 +617,7 @@ source_set("profiles_extra_parts_impl") {
+@@ -718,7 +718,7 @@ source_set("profiles_extra_parts_impl") {
      "//chrome/browser/accessibility_annotator",
      "//chrome/browser/account_settings",
      "//chrome/browser/affiliations",
@@ -543,10 +546,10 @@ index 7261b2cc26b5f..f7878f1bf01ee 100644
      "//chrome/browser/autocomplete:aim_eligibility_service",
      "//chrome/browser/autofill",
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-index 83d3536221f6a..c07b5384fdee9 100644
+index d8f6f5871b7bc..5bae3219f853c 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -762,7 +762,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -760,7 +760,7 @@ void ChromeBrowserMainExtraPartsProfiles::
    AffiliationServiceFactory::GetInstance();
    actor_login::ActorLoginPermissionCleaningServiceFactory::GetInstance();
    actor_login::ActorLoginPermissionServiceFactory::GetInstance();
@@ -556,19 +559,19 @@ index 83d3536221f6a..c07b5384fdee9 100644
    AimEligibilityServiceFactory::GetInstance();
  #if BUILDFLAG(IS_ANDROID)
 diff --git a/chrome/browser/sync/BUILD.gn b/chrome/browser/sync/BUILD.gn
-index cfbcacd35c260..d3ac4d47c855b 100644
+index 334fe8e92ac2f..533f4f30e5f50 100644
 --- a/chrome/browser/sync/BUILD.gn
 +++ b/chrome/browser/sync/BUILD.gn
-@@ -112,7 +112,7 @@ source_set("sync") {
+@@ -110,7 +110,7 @@ source_set("sync") {
+     "//chrome/browser/notebooks",
      "//chrome/browser/password_manager/factories",
-     "//chrome/browser/plus_addresses",
      "//chrome/browser/signin",
 -    "//chrome/browser/skills",
 +    #"//chrome/browser/skills",
      "//chrome/browser/subscription_eligibility",
      "//chrome/browser/supervised_user",
      "//chrome/browser/ui/navigator",
-@@ -162,7 +162,7 @@ source_set("sync") {
+@@ -158,7 +158,7 @@ source_set("sync") {
      "//components/saved_tab_groups/public",
      "//components/send_tab_to_self",
      "//components/sharing_message",
@@ -578,10 +581,10 @@ index cfbcacd35c260..d3ac4d47c855b 100644
      "//components/spellcheck/browser",
      "//components/strings:components_strings_grit",
 diff --git a/chrome/browser/sync/test/integration/BUILD.gn b/chrome/browser/sync/test/integration/BUILD.gn
-index 7dd8b3d0b306a..06c5e7520ebb8 100644
+index f081b7f227dc3..1a38557868c8e 100644
 --- a/chrome/browser/sync/test/integration/BUILD.gn
 +++ b/chrome/browser/sync/test/integration/BUILD.gn
-@@ -272,7 +272,7 @@ source_set("sync_integration_tests_impl") {
+@@ -266,7 +266,7 @@ source_set("sync_integration_tests_impl") {
        "//chrome/browser/send_tab_to_self",
        "//chrome/browser/send_tab_to_self:impl",
        "//chrome/browser/sharing",
@@ -591,10 +594,10 @@ index 7dd8b3d0b306a..06c5e7520ebb8 100644
        "//chrome/browser/ui:ui_features",
        "//chrome/browser/ui/send_tab_to_self",
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index d1562c4fb0b2d..c270d9fd42d39 100644
+index 5ba75018a1625..59bfe58d387fe 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -508,7 +508,7 @@ static_library("ui") {
+@@ -595,7 +595,7 @@ static_library("ui") {
      "//chrome/browser:renderer_preferences_util",
      "//chrome/browser:resources_util",
      "//chrome/browser/affiliations",
@@ -636,22 +639,22 @@ index 6a5dce6d052cf..7030c889371df 100644
  
  }  // namespace
 diff --git a/chrome/common/BUILD.gn b/chrome/common/BUILD.gn
-index 47711806474fe..f8a7ac5b5a27d 100644
+index dcf82dcdf8613..375b52a665659 100644
 --- a/chrome/common/BUILD.gn
 +++ b/chrome/common/BUILD.gn
-@@ -55,6 +55,7 @@ buildflag_header("buildflags") {
+@@ -60,6 +60,7 @@ buildflag_header("buildflags") {
      "ENABLE_BACKGROUND_CONTENTS=$enable_background_contents",
      "ENABLE_CHROME_NOTIFICATIONS=$enable_chrome_notifications",
      "ENABLE_DOWNGRADE_PROCESSING=$enable_downgrade_processing",
 +    "ENABLE_GLIC=$enable_glic",
      "ENABLE_HANGOUT_SERVICES_EXTENSION=$enable_hangout_services_extension",
      "ENABLE_PDF_SAVE_TO_DRIVE=$enable_pdf_save_to_drive",
-     "ENABLE_SERVICE_DISCOVERY=$enable_service_discovery",
+     "ENABLE_SEPARATE_RENDERER_BINARY=$enable_separate_renderer_binary",
 diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
-index 011990d6fa34e..3b571b1f9c650 100644
+index bd39f36fcdf45..565c2e50138b0 100644
 --- a/chrome/common/chrome_features.cc
 +++ b/chrome/common/chrome_features.cc
-@@ -574,6 +574,7 @@ BASE_FEATURE(kGlic,
+@@ -585,6 +585,7 @@ BASE_FEATURE(kGlic,
               base::FEATURE_DISABLED_BY_DEFAULT
  #endif
  );
@@ -673,19 +676,19 @@ index 7c9f12727c07f..3dca1234b7a25 100644
    # will eventually be removed once migration is done. Adding this flag likely
    # means the code needs to be adapted for Android. Once adapted, the final code
 diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
-index b90730114e2bd..c2d0bdbdff183 100644
+index 316a97bd02fcd..bcb8f0b152ef6 100644
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -1475,7 +1475,7 @@ if (is_android) {
+@@ -1372,7 +1372,7 @@ if (is_android) {
        "//chrome/browser/enterprise/signals:android_browsertests",
        "//chrome/browser/feed",
        "//chrome/browser/flags:flags_android",
 -      "//chrome/browser/glic:browser_tests",
 +      #"//chrome/browser/glic:browser_tests",
+       "//chrome/browser/glic/android:test_support_java",
        "//chrome/browser/history",
        "//chrome/browser/keyboard_accessory/android",
-       "//chrome/browser/lifetime",
-@@ -2021,8 +2021,8 @@ if (!is_android) {
+@@ -1927,8 +1927,8 @@ if (!is_android) {
        "//chrome/browser/actor:test_support",
        "//chrome/browser/actor/ui:browser_tests",
        "//chrome/browser/affiliations",
@@ -696,7 +699,7 @@ index b90730114e2bd..c2d0bdbdff183 100644
        "//chrome/browser/apps/app_service",
        "//chrome/browser/apps/app_service:app_registry_cache_waiter",
        "//chrome/browser/apps/app_service:test_support",
-@@ -5220,8 +5220,8 @@ test("unit_tests") {
+@@ -5154,8 +5154,8 @@ test("unit_tests") {
      "//chrome/browser/actor:test_support",
      "//chrome/browser/actor:unit_tests",
      "//chrome/browser/actor/ui:unit_tests",
@@ -707,7 +710,7 @@ index b90730114e2bd..c2d0bdbdff183 100644
      "//chrome/browser/apps:unit_tests",
      "//chrome/browser/autocomplete",
      "//chrome/browser/autocomplete:unit_tests",
-@@ -5903,7 +5903,7 @@ test("unit_tests") {
+@@ -5836,7 +5836,7 @@ test("unit_tests") {
    # CfT bypasses On Device model installation throttling breaking most of the
    # tests below. See https://crbug.com/514435730.
    if (!is_chrome_for_testing) {
@@ -716,7 +719,7 @@ index b90730114e2bd..c2d0bdbdff183 100644
    }
  
    # TODO(crbug.com/437811373): Remove this dependency when
-@@ -8573,7 +8573,7 @@ if (!is_android && !is_chromeos_device) {
+@@ -8513,7 +8513,7 @@ if (!is_android && !is_chromeos_device) {
        "//chrome/browser/actor:test_support",
        "//chrome/browser/actor/ui:interactive_ui_tests",
        "//chrome/browser/actor/ui/task_list_bubble:interactive_ui_tests",
@@ -726,10 +729,10 @@ index b90730114e2bd..c2d0bdbdff183 100644
        "//chrome/browser/apps/app_service:app_registry_cache_waiter",
        "//chrome/browser/apps/app_service/app_icon",
 diff --git a/components/browser_sync/BUILD.gn b/components/browser_sync/BUILD.gn
-index fc4b060de9228..d59c0f66d4c89 100644
+index c0116ea28c3bd..2d7980a77fdb3 100644
 --- a/components/browser_sync/BUILD.gn
 +++ b/components/browser_sync/BUILD.gn
-@@ -52,7 +52,7 @@ static_library("browser_sync") {
+@@ -49,7 +49,7 @@ static_library("browser_sync") {
      "//components/send_tab_to_self",
      "//components/sharing_message",
      "//components/skills:features",

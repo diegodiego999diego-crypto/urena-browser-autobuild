@@ -1,4 +1,4 @@
-From 4fc21530dbbb685688395774adbcaba827d7c1e4 Mon Sep 17 00:00:00 2001
+From 5028dfaafc608ad6afb0fff835674c900b428861 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 25 Apr 2018 10:23:51 +0200
 Subject: Disable various metrics
@@ -16,19 +16,18 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../browser/chrome_content_browser_client.cc  |  1 -
  ...ent_browser_client_navigation_throttles.cc | 24 -------------------
  .../chrome_metrics_services_manager_client.cc |  4 ++++
- .../browser/ui/search/ntp_user_data_logger.cc |  4 ----
  components/ntp_tiles/BUILD.gn                 |  3 ---
  .../ntp_tiles/custom_links_manager_impl.cc    |  1 -
  components/ntp_tiles/most_visited_sites.cc    |  4 ----
  .../site_data/leveldb_site_data_store.cc      |  2 +-
  services/metrics/public/cpp/ukm_recorder.cc   |  1 +
- 12 files changed, 8 insertions(+), 57 deletions(-)
+ 11 files changed, 8 insertions(+), 53 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
-index 056ac61407751..2ed1ff95626c8 100644
+index 67e7965583f2b..2736ae6be37cc 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivityBase.java
-@@ -56,7 +56,7 @@ public abstract class FirstRunActivityBase extends FullscreenSigninAndHistorySyn
+@@ -59,7 +59,7 @@ public abstract class FirstRunActivityBase extends FullscreenSigninAndHistorySyn
      static final String SHOW_SEARCH_ENGINE_PAGE = "ShowSearchEnginePage";
      static final String SHOW_HISTORY_SYNC_PAGE = "ShowHistorySync";
  
@@ -36,7 +35,7 @@ index 056ac61407751..2ed1ff95626c8 100644
 +    public static final boolean DEFAULT_METRICS_AND_CRASH_REPORTING = false;
  
      private boolean mNativeInitialized;
-     private @Nullable BasicAppHeaderStateProvider mAppHeaderStateProvider;
+     private @Nullable AppHeaderStateProvider mAppHeaderStateProvider;
 diff --git a/chrome/browser/android/ntp/most_visited_sites_bridge.cc b/chrome/browser/android/ntp/most_visited_sites_bridge.cc
 index 22c74cb1ce33b..d40c0d9a556ed 100644
 --- a/chrome/browser/android/ntp/most_visited_sites_bridge.cc
@@ -107,10 +106,10 @@ index 078ecaeb8d488..c917d239fbc6c 100644
    registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingEnabled, false);
  
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index d835e45da5b3b..e341fdf433ca4 100644
+index 03f882612fb5e..c625d5b580bf2 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -1543,7 +1543,6 @@ ChromeContentBrowserClient::ChromeContentBrowserClient() {
+@@ -1567,7 +1567,6 @@ ChromeContentBrowserClient::ChromeContentBrowserClient() {
    extra_parts_.push_back(
        std::make_unique<android::ChromeContentBrowserClientGuestViewPart>());
  #endif
@@ -119,7 +118,7 @@ index d835e45da5b3b..e341fdf433ca4 100644
    extra_parts_.push_back(
        std::make_unique<ChromeContentBrowserClientIsolatedWebAppsPart>());
 diff --git a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
-index 22274150ce606..5787f1f99940b 100644
+index 2da8fedb28870..88de93b7d8064 100644
 --- a/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
 +++ b/chrome/browser/chrome_content_browser_client_navigation_throttles.cc
 @@ -19,7 +19,6 @@
@@ -130,7 +129,7 @@ index 22274150ce606..5787f1f99940b 100644
  #include "chrome/browser/omnibox/geolocation_navigation_throttle.h"
  #include "chrome/browser/plugins/pdf_iframe_navigation_throttle.h"
  #include "chrome/browser/policy/chrome_policy_blocklist_service_factory.h"
-@@ -279,27 +278,6 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
+@@ -284,27 +283,6 @@ void MaybeCreateAndAddVisitedLinkNavigationThrottle(
  void CreateAndAddChromeThrottlesForNavigation(
      content::NavigationThrottleRegistry& registry) {
    content::NavigationHandle& handle = registry.GetNavigationHandle();
@@ -157,8 +156,8 @@ index 22274150ce606..5787f1f99940b 100644
 -  }
  
    DSEPrewarmNavigationThrottle::MaybeCreateAndAdd(registry);
- 
-@@ -397,8 +375,6 @@ void CreateAndAddChromeThrottlesForNavigation(
+   if (!features::IsDsePreload2Enabled()) {
+@@ -405,8 +383,6 @@ void CreateAndAddChromeThrottlesForNavigation(
      throttle_manager->MaybeCreateAndAddNavigationThrottles(registry);
    }
  
@@ -182,35 +181,11 @@ index e8560c50fa0c2..8d46bdbbc6997 100644
  }  // namespace internal
  }  // namespace metrics
  
-diff --git a/chrome/browser/ui/search/ntp_user_data_logger.cc b/chrome/browser/ui/search/ntp_user_data_logger.cc
-index b28c0ad7dd87b..294d7a608087b 100644
---- a/chrome/browser/ui/search/ntp_user_data_logger.cc
-+++ b/chrome/browser/ui/search/ntp_user_data_logger.cc
-@@ -384,8 +384,6 @@ void NTPUserDataLogger::LogMostVisitedImpression(
- 
- void NTPUserDataLogger::LogMostVisitedNavigation(
-     const ntp_tiles::NTPTileImpression& impression) {
--  ntp_tiles::metrics::RecordTileClick(impression);
--
-   // Records the action. This will be available as a time-stamped stream
-   // server-side and can be used to compute time-to-long-dwell.
-   base::RecordAction(base::UserMetricsAction("MostVisited_Clicked"));
-@@ -417,10 +415,8 @@ void NTPUserDataLogger::EmitNtpStatistics(base::TimeDelta load_time,
-     if (!impression.has_value()) {
-       break;
-     }
--    ntp_tiles::metrics::RecordTileImpression(*impression);
-     ++tiles_count;
-   }
--  ntp_tiles::metrics::RecordPageImpression(tiles_count);
- 
-   DVLOG(1) << "Emitting NTP load time: " << load_time << ", "
-            << "number of tiles: " << tiles_count;
 diff --git a/components/ntp_tiles/BUILD.gn b/components/ntp_tiles/BUILD.gn
-index b4c7ecb5134d9..8ff53c8f1b79f 100644
+index 9aa7822fea6c7..adec5dbfb861e 100644
 --- a/components/ntp_tiles/BUILD.gn
 +++ b/components/ntp_tiles/BUILD.gn
-@@ -33,8 +33,6 @@ static_library("ntp_tiles") {
+@@ -36,8 +36,6 @@ static_library("ntp_tiles") {
      "icon_cacher.h",
      "icon_cacher_impl.cc",
      "icon_cacher_impl.h",
@@ -219,7 +194,7 @@ index b4c7ecb5134d9..8ff53c8f1b79f 100644
      "most_visited_sites.cc",
      "most_visited_sites.h",
      "ntp_tile.cc",
-@@ -126,7 +124,6 @@ source_set("unit_tests") {
+@@ -129,7 +127,6 @@ source_set("unit_tests") {
      "custom_links_manager_impl_unittest.cc",
      "custom_links_store_unittest.cc",
      "icon_cacher_impl_unittest.cc",
@@ -240,10 +215,10 @@ index 1a5ffdeb343ab..7bcc6ef0b7472 100644
      }
    }
 diff --git a/components/ntp_tiles/most_visited_sites.cc b/components/ntp_tiles/most_visited_sites.cc
-index 2b5095b71df60..4dd0f5465714a 100644
+index f9e10a279a93a..be4466d02ad04 100644
 --- a/components/ntp_tiles/most_visited_sites.cc
 +++ b/components/ntp_tiles/most_visited_sites.cc
-@@ -967,10 +967,6 @@ void MostVisitedSites::SaveTilesAndNotify(
+@@ -956,10 +956,6 @@ void MostVisitedSites::SaveTilesAndNotify(
                                     ? RemoveInvalidPreinstallApps(new_tiles)
                                     : new_tiles;
  

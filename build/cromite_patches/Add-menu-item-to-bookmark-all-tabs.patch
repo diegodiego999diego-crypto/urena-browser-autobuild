@@ -1,4 +1,4 @@
-From 6ca69f320276777af2648a744a4ad6db1c6e6793 Mon Sep 17 00:00:00 2001
+From 44b0dec6e3b452606a20c9adedfd234d1168bfc4 Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Thu, 18 Feb 2021 21:22:52 +0100
 Subject: Add menu item to bookmark all tabs
@@ -35,19 +35,19 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  27 files changed, 261 insertions(+), 14 deletions(-)
 
 diff --git a/chrome/android/java/res/values/ids.xml b/chrome/android/java/res/values/ids.xml
-index 4e6aeac0c26cc..5a86a3442dc7c 100644
+index fbb6f8da94b63..ba8b5dfe788d0 100644
 --- a/chrome/android/java/res/values/ids.xml
 +++ b/chrome/android/java/res/values/ids.xml
-@@ -259,6 +259,7 @@ found in the LICENSE file.
-     <item type="id" name="send_to_your_device_menu_id" />
-     <item type="id" name="toggle_tab_layout_menu_id" />
-     <item type="id" name="send_feedback_about_tab_strip_menu_id" />
+@@ -180,6 +180,7 @@ found in the LICENSE file.
+     <item type="id" name="auto_dark_web_contents_check_id" />
+     <item type="id" name="auto_dark_web_contents_id" />
+     <item type="id" name="back_menu_id" />
 +    <item type="id" name="bookmark_all_tabs_menu_id" />
- 
-     <!-- Custom Tabs -->
-     <item type="id" name="view_id_tag_key" />
+     <item type="id" name="bookmark_bar_parent_menu_id" />
+     <item type="id" name="bookmark_bar_state_always_hide_menu_id" />
+     <item type="id" name="bookmark_bar_state_always_show_menu_id" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-index 74c3845043bf3..dd73fecfd1e53 100644
+index db9e61e64058d..d14286bcbd5b4 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 @@ -118,6 +118,7 @@ import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
@@ -58,7 +58,7 @@ index 74c3845043bf3..dd73fecfd1e53 100644
  import org.chromium.chrome.browser.compositor.layouts.Layout;
  import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChrome;
  import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChromePhone;
-@@ -352,6 +353,9 @@ import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskFeatureKey
+@@ -354,6 +355,9 @@ import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskFeatureKey
  import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
  import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
  import org.chromium.chrome.browser.ui.edge_to_edge.TransitiveTopInsetProvider;
@@ -68,7 +68,7 @@ index 74c3845043bf3..dd73fecfd1e53 100644
  import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityClient;
  import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.IntentOrigin;
  import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.ResolutionType;
-@@ -373,6 +377,7 @@ import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
+@@ -376,6 +380,7 @@ import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
  import org.chromium.chrome.browser.util.DefaultBrowserInfo;
  import org.chromium.chrome.browser.xr.scenecore.XrModule;
  import org.chromium.components.bookmarks.BookmarkId;
@@ -76,7 +76,7 @@ index 74c3845043bf3..dd73fecfd1e53 100644
  import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
  import org.chromium.components.browser_ui.share.ShareParams;
  import org.chromium.components.browser_ui.util.BrowserControlsVisibilityDelegate;
-@@ -4547,6 +4552,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+@@ -4555,6 +4560,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
              CloseAllTabsDialog.show(
                      this, getModalDialogManagerSupplier(), tabModelSelector, closeAllTabsRunnable);
              RecordUserAction.record("MobileMenuCloseAllTabs");
@@ -85,7 +85,7 @@ index 74c3845043bf3..dd73fecfd1e53 100644
          } else if (id == R.id.close_all_incognito_tabs_menu_id) {
              boolean allowUndo = TabClosureParamsUtils.shouldAllowUndo(triggeringMotion);
  
-@@ -4798,6 +4805,41 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+@@ -4801,6 +4808,41 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
          getTabModalLifetimeHandler().onOmniboxFocusChanged(hasFocus);
      }
  
@@ -128,10 +128,10 @@ index 74c3845043bf3..dd73fecfd1e53 100644
          if (isIncognito) {
              RecordUserAction.record("Android.LauncherShortcut.NewIncognitoTab");
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-index 63b3a31ed71f3..aa1a3196a2c25 100644
+index 34f379f9b8b54..f33c9c244a819 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-@@ -434,6 +434,19 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+@@ -436,6 +436,19 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
          // Bookmarks
          modelList.add(mBookmarksItemBuilder.buildBookmarksItem(shouldShowIconBeforeItem));
  
@@ -151,7 +151,7 @@ index 63b3a31ed71f3..aa1a3196a2c25 100644
          // Recent Tabs
          if (mHistoryItemBuilder.shouldShowRecentTabsItem()) {
              modelList.add(mHistoryItemBuilder.buildRecentTabsItem(shouldShowIconBeforeItem));
-@@ -826,6 +839,18 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+@@ -828,6 +841,18 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
          modelList.add(mTabGroupItemBuilder.buildNewTabGroupItemWithoutTab());
          modelList.add(buildCloseAllTabsItem());
          if (shouldShowSelectTabsItem()) modelList.add(buildSelectTabsItem());
@@ -171,7 +171,7 @@ index 63b3a31ed71f3..aa1a3196a2c25 100644
          modelList.add(buildSettingsItem());
      }
 diff --git a/chrome/browser/bookmarks/android/bookmark_bridge.cc b/chrome/browser/bookmarks/android/bookmark_bridge.cc
-index f3889ea3d411b..725932742a533 100644
+index ef095c2f1ad3e..a0333d1563e96 100644
 --- a/chrome/browser/bookmarks/android/bookmark_bridge.cc
 +++ b/chrome/browser/bookmarks/android/bookmark_bridge.cc
 @@ -333,6 +333,33 @@ bool BookmarkBridge::AreAccountBookmarkFoldersActive(JNIEnv* env) {
@@ -216,7 +216,7 @@ index f3889ea3d411b..725932742a533 100644
        bookmark_model_->bookmark_bar_node(),
        bookmark_model_->other_node(),
    };
-@@ -551,6 +579,9 @@ std::vector<const BookmarkNode*> BookmarkBridge::GetTopLevelFolderIdsImpl(
+@@ -553,6 +581,9 @@ std::vector<const BookmarkNode*> BookmarkBridge::GetTopLevelFolderIdsImpl(
      top_level_folders.push_back(other_node);
    }
  
@@ -226,7 +226,7 @@ index f3889ea3d411b..725932742a533 100644
    const BookmarkNode* reading_list_node =
        local_or_syncable_reading_list_manager_->GetRoot();
    if (IsPermanentFolderVisible(
-@@ -1227,6 +1258,17 @@ void BookmarkBridge::GetBookmarksOfType(
+@@ -1229,6 +1260,17 @@ void BookmarkBridge::GetBookmarksOfType(
    AddBookmarkNodesToBookmarkIdList(env, j_list, results);
  }
  
@@ -271,7 +271,7 @@ index 0adac2b86dfb6..aedfdd663a60e 100644
        JNIEnv* env,
        const base::android::JavaRef<jobject>& j_parent_id_obj,
 diff --git a/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java b/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
-index 4dfa792da32b9..f061eb8d9875d 100644
+index e04e107ad5328..a2a74b2394482 100644
 --- a/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
 +++ b/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkBridge.java
 @@ -16,6 +16,7 @@ import org.jni_zero.JniType;
@@ -282,7 +282,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
  import org.chromium.base.ObserverList;
  import org.chromium.base.ThreadUtils;
  import org.chromium.base.metrics.RecordUserAction;
-@@ -26,6 +27,7 @@ import org.chromium.chrome.browser.partnerbookmarks.PartnerBookmarksShim;
+@@ -27,6 +28,7 @@ import org.chromium.chrome.browser.partnerbookmarks.PartnerBookmarksShim;
  import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
  import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
  import org.chromium.chrome.browser.profiles.Profile;
@@ -290,7 +290,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
  import org.chromium.components.bookmarks.BookmarkId;
  import org.chromium.components.bookmarks.BookmarkItem;
  import org.chromium.components.bookmarks.BookmarkType;
-@@ -47,6 +49,7 @@ import java.util.function.BiConsumer;
+@@ -48,6 +50,7 @@ import java.util.function.BiConsumer;
  class BookmarkBridge {
      private static final OneshotSupplierImpl<BookmarkModel.PartnerBookmarkIteratorProvider>
              sPartnerBookmarkIteratorSupplier = new OneshotSupplierImpl<>();
@@ -298,7 +298,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
  
      private final ObserverList<BookmarkModelObserver> mObservers = new ObserverList<>();
      private final Profile mProfile;
-@@ -385,6 +388,16 @@ class BookmarkBridge {
+@@ -387,6 +390,16 @@ class BookmarkBridge {
          return mMobileFolderId;
      }
  
@@ -315,7 +315,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
      /** Returns Id representing the special "other" folder from bookmark model. */
      public @Nullable BookmarkId getOtherFolderId() {
          ThreadUtils.assertOnUiThread();
-@@ -882,6 +895,29 @@ class BookmarkBridge {
+@@ -884,6 +897,29 @@ class BookmarkBridge {
                  .addToReadingList(mNativeBookmarkBridge, parentId, title, url);
      }
  
@@ -345,7 +345,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
      /**
       * Helper method to mark an item as read.
       *
-@@ -1099,6 +1135,9 @@ class BookmarkBridge {
+@@ -1101,6 +1137,9 @@ class BookmarkBridge {
          BookmarkId getMostRecentlyAddedUserBookmarkIdForUrl(
                  long nativeBookmarkBridge, @JniType("GURL") GURL url);
  
@@ -355,7 +355,7 @@ index 4dfa792da32b9..f061eb8d9875d 100644
          BookmarkItem getBookmarkById(long nativeBookmarkBridge, long id, int type);
  
          void getTopLevelFolderIds(
-@@ -1120,6 +1159,8 @@ class BookmarkBridge {
+@@ -1122,6 +1161,8 @@ class BookmarkBridge {
  
          BookmarkId getRootFolderId(long nativeBookmarkBridge);
  
@@ -478,10 +478,10 @@ index febf6cd01f558..1454781393cfc 100644
      }
  
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 44085ba1ecd68..23403463d92e0 100644
+index f3d522ebc9381..da02c28ec3288 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -4688,6 +4688,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
+@@ -4668,6 +4668,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
        <message name="IDS_MENU_SELECT_TABS" desc="Menu item for bulk editing tabs. [CHAR_LIMIT=27]">
          Select tabs
        </message>
@@ -491,7 +491,7 @@ index 44085ba1ecd68..23403463d92e0 100644
        <message name="IDS_MENU_GET_IMAGE_DESCRIPTIONS" desc="Menu item to start getting alt text accessibility image labels/descriptions [CHAR_LIMIT=27]">
          Get image descriptions
        </message>
-@@ -4721,9 +4724,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
+@@ -4701,9 +4704,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
        <message name="IDS_MENU_REOPEN_CLOSED_GROUP" desc="Menu item for reopening the last closed tab group.">
          Reopen closed group
        </message>
@@ -502,10 +502,10 @@ index 44085ba1ecd68..23403463d92e0 100644
          About Chrome
        </message>
 diff --git a/chrome/browser/ui/bookmarks/bookmark_ui_operations_helper.cc b/chrome/browser/ui/bookmarks/bookmark_ui_operations_helper.cc
-index 3bfb03592392a..f2fb858d7065b 100644
+index 589f740e20cb2..977bb776ec9e5 100644
 --- a/chrome/browser/ui/bookmarks/bookmark_ui_operations_helper.cc
 +++ b/chrome/browser/ui/bookmarks/bookmark_ui_operations_helper.cc
-@@ -114,6 +114,8 @@ ui::mojom::DragOperation BookmarkUIOperationsHelper::DropBookmarks(
+@@ -143,6 +143,8 @@ ui::mojom::DragOperation BookmarkUIOperationsHelper::DropBookmarks(
    if (is_reorder) {
      base::UmaHistogramEnumeration("Bookmarks.ReorderDropTarget", target);
      switch (target_parent()->GetType()) {

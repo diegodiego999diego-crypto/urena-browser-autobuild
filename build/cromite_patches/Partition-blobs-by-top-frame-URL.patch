@@ -1,4 +1,4 @@
-From b955f848e22eb6b55983f33533e9739f122c4bd8 Mon Sep 17 00:00:00 2001
+From de9fa1e68d58871641ff68fb070288246b233969 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Tue, 20 Sep 2022 07:20:01 +0000
 Subject: Partition blobs by top frame URL
@@ -54,15 +54,15 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  storage/browser/blob/blob_url_store_impl.h    | 15 ++++-
  storage/browser/blob/features.cc              |  1 +
  .../public/mojom/blob/blob_url_store.mojom    | 13 ++++-
- .../core/fileapi/public_url_manager.cc        | 57 +++++++++++++++++-
- 9 files changed, 174 insertions(+), 15 deletions(-)
+ .../core/fileapi/public_url_manager.cc        | 58 ++++++++++++++++++-
+ 9 files changed, 175 insertions(+), 15 deletions(-)
  create mode 100644 cromite_flags/third_party/blink/common/features_cc/Partition-blobs-by-top-frame-URL.inc
 
 diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
-index 6932031eb9c29..70dd43e9e395c 100644
+index 5f0654a69eefc..2bfc2921423be 100644
 --- a/content/browser/renderer_host/render_frame_host_impl.cc
 +++ b/content/browser/renderer_host/render_frame_host_impl.cc
-@@ -13526,6 +13526,8 @@ void RenderFrameHostImpl::ReportBlockingCrossPartitionBlobURL(
+@@ -13682,6 +13682,8 @@ void RenderFrameHostImpl::ReportBlockingCrossPartitionBlobURL(
  }
  
  bool RenderFrameHostImpl::IsFullCookieAccessAllowed() {
@@ -411,21 +411,21 @@ index 7698bf3f49ac0..5f1be2f5b5555 100644
  
  // A token representing a Blob URL. The browser process can use this to look up
 diff --git a/third_party/blink/renderer/core/fileapi/public_url_manager.cc b/third_party/blink/renderer/core/fileapi/public_url_manager.cc
-index 85f178d7c1bd8..45be09544c682 100644
+index 306d9bf2ce2dd..4927079e42988 100644
 --- a/third_party/blink/renderer/core/fileapi/public_url_manager.cc
 +++ b/third_party/blink/renderer/core/fileapi/public_url_manager.cc
-@@ -39,8 +39,10 @@
- #include "third_party/blink/renderer/core/execution_context/execution_context.h"
- #include "third_party/blink/renderer/core/fileapi/url_registry.h"
- #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+@@ -37,8 +37,10 @@
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/html/media/media_source_attachment.h"
+ #include "third_party/blink/renderer/core/html/media/media_source_registry.h"
 +#include "third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h"
  #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
  #include "third_party/blink/renderer/core/workers/worklet_global_scope.h"
 +#include "third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h"
- #include "third_party/blink/renderer/platform/blob/blob_data.h"
  #include "third_party/blink/renderer/platform/blob/blob_url.h"
  #include "third_party/blink/renderer/platform/blob/blob_url_null_origin_map.h"
-@@ -61,6 +63,49 @@ static void RemoveFromNullOriginMapIfNecessary(const KURL& blob_url) {
+ #include "third_party/blink/renderer/platform/scheduler/main_thread/task_type_names.h"
+@@ -56,6 +58,49 @@ void RemoveFromNullOriginMapIfNecessary(const KURL& blob_url) {
      BlobURLNullOriginMap::GetInstance()->Remove(blob_url);
  }
  
@@ -475,18 +475,19 @@ index 85f178d7c1bd8..45be09544c682 100644
  }  // namespace
  
  PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
-@@ -158,7 +203,9 @@ String PublicURLManager::RegisterURL(URLRegistrable* registrable) {
-     mojo::PendingReceiver<mojom::blink::Blob> blob_receiver =
-         blob_remote.InitWithNewPipeAndPassReceiver();
+@@ -169,7 +214,10 @@ String PublicURLManager::RegisterUrl(Blob* blob) {
+   mojo::PendingReceiver<mojom::blink::Blob> blob_receiver =
+       blob_remote.InitWithNewPipeAndPassReceiver();
  
--    GetBlobURLStore().Register(std::move(blob_remote), url);
-+    GetBlobURLStore().Register(std::move(blob_remote), url,
-+      GetExecutionContext()->GetAgentClusterID(),
-+      GetInsecureTopLevelSite(GetExecutionContext()));
+-  GetBlobURLStore().Register(std::move(blob_remote), url);
++  GetBlobURLStore().Register(std::move(blob_remote), url,
++    GetExecutionContext()->GetAgentClusterID(),
++    GetInsecureTopLevelSite(GetExecutionContext()));
++
  
-     mojo_urls_.insert(url_string);
-     registrable->CloneMojoBlob(std::move(blob_receiver));
-@@ -208,7 +255,9 @@ void PublicURLManager::Resolve(
+   mojo_urls_.insert(url_string);
+   blob->CloneMojoBlob(std::move(blob_receiver));
+@@ -224,7 +272,9 @@ void PublicURLManager::Resolve(
  
    DCHECK(url.ProtocolIs("blob"));
  
@@ -497,7 +498,7 @@ index 85f178d7c1bd8..45be09544c682 100644
  }
  
  void PublicURLManager::ResolveAsBlobURLToken(
-@@ -221,7 +270,9 @@ void PublicURLManager::ResolveAsBlobURLToken(
+@@ -237,7 +287,9 @@ void PublicURLManager::ResolveAsBlobURLToken(
    DCHECK(url.ProtocolIs("blob"));
  
    GetBlobURLStore().ResolveAsBlobURLToken(url, std::move(token_receiver),

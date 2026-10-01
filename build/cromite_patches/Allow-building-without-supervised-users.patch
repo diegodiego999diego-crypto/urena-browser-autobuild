@@ -1,4 +1,4 @@
-From 4a8a35022b43ed717f4c935b2418f4682a14cebc Mon Sep 17 00:00:00 2001
+From 4dc876d676a57fc0125d4f33a0c709615331127b Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Mon, 21 Feb 2022 01:24:11 +0100
 Subject: Allow building without supervised users
@@ -16,18 +16,18 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  chrome/browser/ui/webui/managed_ui_handler.cc              | 4 ----
  .../browser/ui/webui/management/management_ui_handler.cc   | 4 ----
  .../browser/android/content_filters_observer_bridge.cc     | 2 +-
+ .../supervised_user/core/browser/child_account_service.cc  | 5 +++++
  .../core/browser/supervised_user_pref_store.cc             | 1 +
  .../core/browser/supervised_user_preferences.cc            | 6 +++++-
- .../core/browser/supervised_user_service.cc                | 1 +
  components/supervised_user/core/common/features.cc         | 1 +
  extensions/browser/api/management/management_api.cc        | 1 +
- 16 files changed, 13 insertions(+), 32 deletions(-)
+ 16 files changed, 17 insertions(+), 32 deletions(-)
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 68538b89a757e..2e53897517c90 100644
+index 27a96c59239d4..31d62edd0df8a 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -864,7 +864,6 @@ if (_is_default_toolchain) {
+@@ -878,7 +878,6 @@ if (_is_default_toolchain) {
        "//components/offline_pages/core:offline_page_model_enums_java",
        "//components/sharing_message:sharing_dialog_type_generated_enum",
        "//components/sharing_message:sharing_send_message_result_generated_enum",
@@ -98,10 +98,10 @@ index 4a121a3cc398b..a789e9a9b947d 100644
  
  bool ProfileAttributesEntry::IsEphemeral() const {
 diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
-index 8d2db7ab2285c..bbfd39b334d08 100644
+index dfa7756ecf419..4cdd443980d3e 100644
 --- a/chrome/browser/profiles/profile_impl.cc
 +++ b/chrome/browser/profiles/profile_impl.cc
-@@ -743,10 +743,6 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
+@@ -745,10 +745,6 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
      prefs->SetTime(prefs::kProfileCreationTime, path_creation_time_);
  
    pref_change_registrar_.Init(prefs);
@@ -112,7 +112,7 @@ index 8d2db7ab2285c..bbfd39b334d08 100644
  
    // Changes in the profile avatar.
    pref_change_registrar_.Add(
-@@ -1716,6 +1712,7 @@ GURL ProfileImpl::GetHomePage() {
+@@ -1718,6 +1714,7 @@ GURL ProfileImpl::GetHomePage() {
  }
  
  void ProfileImpl::UpdateSupervisedUserIdInStorage() {
@@ -173,10 +173,10 @@ index 370a9c0f54d75..b1608a4671722 100644
  
  void ManagedUIHandler::RemoveObservers() {
 diff --git a/chrome/browser/ui/webui/management/management_ui_handler.cc b/chrome/browser/ui/webui/management/management_ui_handler.cc
-index 3633b0af6a52c..961b48614a125 100644
+index dfc351ca772f2..4da6c1d9635f5 100644
 --- a/chrome/browser/ui/webui/management/management_ui_handler.cc
 +++ b/chrome/browser/ui/webui/management/management_ui_handler.cc
-@@ -655,10 +655,6 @@ bool ManagementUIHandler::managed() const {
+@@ -660,10 +660,6 @@ bool ManagementUIHandler::managed() const {
  
  void ManagementUIHandler::RegisterPrefChange(
      PrefChangeRegistrar& pref_registrar) {
@@ -200,11 +200,29 @@ index c930b9faecabb..5611c7c8a0cc8 100644
    NotifyObservers();
  }
  
+diff --git a/components/supervised_user/core/browser/child_account_service.cc b/components/supervised_user/core/browser/child_account_service.cc
+index 1e4fff585cae0..9d2f0d310d865 100644
+--- a/components/supervised_user/core/browser/child_account_service.cc
++++ b/components/supervised_user/core/browser/child_account_service.cc
+@@ -155,8 +155,13 @@ void ChildAccountService::SetSupervisionStatusAndNotifyObservers(
+ }
+ 
+ void ChildAccountService::OnSupervisionStatusChanged() {
++  if ((true)) {
++    family_link_settings_service_->SetActive(false);
++    return;
++  }
+   family_link_settings_service_->SetActive(
+       IsSubjectToParentalControls(user_prefs_.get()));
++
+ }
+ 
+ void ChildAccountService::OnPrimaryAccountChanged(
 diff --git a/components/supervised_user/core/browser/supervised_user_pref_store.cc b/components/supervised_user/core/browser/supervised_user_pref_store.cc
-index 0ef98fe196a59..a068589368d81 100644
+index 1b914613d0d21..aeffe9a0936dd 100644
 --- a/components/supervised_user/core/browser/supervised_user_pref_store.cc
 +++ b/components/supervised_user/core/browser/supervised_user_pref_store.cc
-@@ -188,6 +188,7 @@ void SupervisedUserPrefStore::RecreatePreferences() {
+@@ -181,6 +181,7 @@ void SupervisedUserPrefStore::RecreatePreferences() {
      return;
    }
  
@@ -236,20 +254,8 @@ index 779615c453ac0..1c490a7fcbf96 100644
  }
  
  bool IsGoogleSafeSearchEnforced(const PrefService& pref_service) {
-diff --git a/components/supervised_user/core/browser/supervised_user_service.cc b/components/supervised_user/core/browser/supervised_user_service.cc
-index b90cea74d5a57..8b6dcf32c4652 100644
---- a/components/supervised_user/core/browser/supervised_user_service.cc
-+++ b/components/supervised_user/core/browser/supervised_user_service.cc
-@@ -159,6 +159,7 @@ SupervisedUserService::SupervisedUserService(
- }
- 
- void SupervisedUserService::SetSettingsServiceActive(bool active) {
-+  active = false;
-   settings_service_->SetActive(active);
- 
-   // Trigger a sync reconfig to enable/disable the right SU data types.
 diff --git a/components/supervised_user/core/common/features.cc b/components/supervised_user/core/common/features.cc
-index b0a11ce3b3eb2..2d38492617cc6 100644
+index 580eaa105480b..d12baf45b5778 100644
 --- a/components/supervised_user/core/common/features.cc
 +++ b/components/supervised_user/core/common/features.cc
 @@ -19,6 +19,7 @@ namespace supervised_user {

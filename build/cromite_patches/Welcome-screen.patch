@@ -1,4 +1,4 @@
-From 793c66e05af3998c69bfda206d7ddbf8d1f3a2d3 Mon Sep 17 00:00:00 2001
+From d832dd9d63200faf8a5c55261dbf089baff17c1c Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Fri, 29 Apr 2022 00:31:49 +0200
 Subject: Welcome screen
@@ -31,10 +31,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 chrome/browser/ui/android/strings/cromite_android_chrome_strings_grd/Welcome-screen.grdp
 
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index 4bd619353d700..f9b4b74df0fad 100644
+index 36aa38fa27462..a13f2d6036ff9 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -524,6 +524,7 @@ chrome_java_resources = [
+@@ -538,6 +538,7 @@ chrome_java_resources = [
    "java/res/layout/finds_opt_in_bottom_sheet_content.xml",
    "java/res/layout/finds_promo_view_history_page.xml",
    "java/res/layout/fre_tos_privacy_disclaimer.xml",
@@ -43,10 +43,10 @@ index 4bd619353d700..f9b4b74df0fad 100644
    "java/res/layout/google_wallet_widget.xml",
    "java/res/layout/hats_survey_container.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index c2e50cbaa9ada..7ea8b251e2bfa 100644
+index 1d260a0199452..5fcfc3e1cc99f 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -698,6 +698,8 @@ chrome_java_sources = [
+@@ -702,6 +702,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/firstrun/SafetyPromoFirstRunView.java",
    "java/src/org/chromium/chrome/browser/firstrun/SkipTosDialogPolicyListener.java",
    "java/src/org/chromium/chrome/browser/firstrun/TosDialogBehaviorSharedPrefInvalidator.java",
@@ -222,10 +222,10 @@ index 0000000000000..d29d5146f94a5
 +
 +</org.chromium.chrome.browser.firstrun.TosAndUmaFragmentView>
 diff --git a/chrome/android/java/res/values/dimens.xml b/chrome/android/java/res/values/dimens.xml
-index 7ad80910f106d..ecfcf47e45d55 100644
+index 6f3877293ade8..34fba0090527c 100644
 --- a/chrome/android/java/res/values/dimens.xml
 +++ b/chrome/android/java/res/values/dimens.xml
-@@ -144,6 +144,17 @@ found in the LICENSE file.
+@@ -147,6 +147,17 @@ found in the LICENSE file.
      <dimen name="fre_illustration_to_content_margin">48dp</dimen>
      <dimen name="fre_subtitle_top_padding">8dp</dimen>
      <dimen name="fre_landscape_margin">55dp</dimen>
@@ -241,10 +241,10 @@ index 7ad80910f106d..ecfcf47e45d55 100644
 +    <dimen name="fre_landscape_top_padding">72dp</dimen>
 +    <dimen name="fre_button_vertical_margin_small">16dp</dimen>
  
-     <!-- Account Signin dimensions -->
-     <!-- The Account Signin page appears in the First Run Experience (amongst other places), so uses
+     <!-- Safety FRE Promo Card dimensions -->
+     <dimen name="safety_fre_card_height">88dp</dimen>
 diff --git a/chrome/android/java/res/values/styles.xml b/chrome/android/java/res/values/styles.xml
-index e3c5b23e3be8f..a1a37cb48fc20 100644
+index 46ba1b855ccee..ade4fa10d3d12 100644
 --- a/chrome/android/java/res/values/styles.xml
 +++ b/chrome/android/java/res/values/styles.xml
 @@ -364,6 +364,30 @@ found in the LICENSE file.
@@ -299,18 +299,18 @@ index fcf07ea375fcb..ce756dafac99b 100644
          return rootView;
      }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
-index c050eff42e0ba..dbbdeb4315038 100644
+index 7a2613ccd5a97..f1561245860c1 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunActivity.java
-@@ -23,6 +23,7 @@ import androidx.annotation.CallSuper;
- import androidx.annotation.ColorInt;
+@@ -24,6 +24,7 @@ import androidx.annotation.ColorInt;
+ import androidx.annotation.RequiresApi;
  import androidx.annotation.StringRes;
  import androidx.annotation.VisibleForTesting;
 +import androidx.fragment.app.Fragment;
  import androidx.viewpager2.widget.ViewPager2;
  
  import org.chromium.base.ActivityState;
-@@ -47,8 +48,7 @@ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
+@@ -50,8 +51,7 @@ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
  import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
  import org.chromium.chrome.browser.profiles.Profile;
  import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
@@ -318,9 +318,9 @@ index c050eff42e0ba..dbbdeb4315038 100644
 -import org.chromium.chrome.browser.signin.SigninFirstRunFragment;
 +import org.chromium.chrome.browser.firstrun.ToSAndUMAFirstRunFragment;
  import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
+ import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderCoordinator;
  import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
- import org.chromium.chrome.browser.ui.signin.DialogWhenLargeContentLayout;
-@@ -283,7 +283,7 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -294,7 +294,7 @@ public class FirstRunActivity extends FirstRunActivityBase
      /** Creates first page and sets up adapter. Should result UI being shown on the screen. */
      private void createFirstPage() {
          BooleanSupplier showWelcomePage = () -> !FirstRunStatus.shouldSkipWelcomePage();
@@ -329,7 +329,7 @@ index c050eff42e0ba..dbbdeb4315038 100644
          mFreProgressStates.add(MobileFreProgress.WELCOME_SHOWN);
          mPagerAdapter = new FirstRunPagerAdapter(FirstRunActivity.this, mPages);
          mPager.setAdapter(mPagerAdapter);
-@@ -308,9 +308,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -319,9 +319,6 @@ public class FirstRunActivity extends FirstRunActivityBase
          //
          // TODO(b/245912657): explicitly sign in supervised users in {@link
          // FullscreenSigninMediator#handleContinueWithNative} rather than relying on SigninChecker.
@@ -339,7 +339,7 @@ index c050eff42e0ba..dbbdeb4315038 100644
  
          assumeNonNull(mFreProperties);
          mFirstRunFlowSequencer.updateFirstRunProperties(mFreProperties);
-@@ -326,24 +323,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -337,24 +334,6 @@ public class FirstRunActivity extends FirstRunActivityBase
              mFreProgressStates.add(MobileFreProgress.DEFAULT_SEARCH_ENGINE_SHOWN);
          }
  
@@ -364,7 +364,7 @@ index c050eff42e0ba..dbbdeb4315038 100644
          if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_FRE)) {
              int promoIndex = mPages.size();
              BooleanSupplier showDefaultBrowserPromo =
-@@ -613,6 +592,21 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -620,6 +599,21 @@ public class FirstRunActivity extends FirstRunActivityBase
          return true;
      }
  
@@ -386,7 +386,7 @@ index c050eff42e0ba..dbbdeb4315038 100644
      // Activity:
      @Override
      public void onRestoreInstanceState(@Nullable Bundle state) {
-@@ -768,11 +762,6 @@ public class FirstRunActivity extends FirstRunActivityBase implements FirstRunPa
+@@ -774,11 +768,6 @@ public class FirstRunActivity extends FirstRunActivityBase
      public void acceptTermsOfService(boolean allowMetricsAndCrashUploading) {
          assert mNativeInitializationPromise.isFulfilled();
  
@@ -399,7 +399,7 @@ index c050eff42e0ba..dbbdeb4315038 100644
          FirstRunStatus.setSkipWelcomePage(true);
          flushPersistentData();
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
-index 8379ab43af587..9ff8114b8da88 100644
+index 675fe57d5cfb5..7176b6e7e64fb 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunFlowSequencer.java
 @@ -35,13 +35,9 @@ import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomiza
@@ -504,7 +504,7 @@ index 8379ab43af587..9ff8114b8da88 100644
      }
  
      /**
-@@ -338,13 +293,17 @@ public abstract class FirstRunFlowSequencer {
+@@ -336,13 +291,17 @@ public abstract class FirstRunFlowSequencer {
              if (!(caller instanceof Activity)) {
                  freIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
              }
@@ -539,10 +539,10 @@ index 1edea8a302f65..e024748d9f7ba 100644
       * @see androidx.fragment.app.Fragment#getActivity().
       */
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java
-index 52b8c2e65b3a0..39ff640f5540b 100644
+index eedc98e35837c..d7a64d20ec799 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java
-@@ -64,6 +64,7 @@ public class FirstRunUtils {
+@@ -87,6 +87,7 @@ public class FirstRunUtils {
       *     collect stats.
       */
      static void acceptTermsOfService(boolean allowMetricsAndCrashUploading) {

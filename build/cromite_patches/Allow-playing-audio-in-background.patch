@@ -1,4 +1,4 @@
-From 40a351d1e070c99d5a11e7c0f9df5e0a1667693c Mon Sep 17 00:00:00 2001
+From 1511abbf745843affe4893e2e9e3eba36083950e Mon Sep 17 00:00:00 2001
 From: AlexeyBarabash <alexey@brave.com>
 Date: Thu, 2 Nov 2017 18:21:16 +0200
 Subject: Allow playing audio in background
@@ -23,11 +23,11 @@ index 5074b48ec9d15..307b12497b1e5 100644
    // For Android devices, do not suspend background media for devices with large
    // displays. Exception is for Webview.
 diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.cc b/third_party/blink/renderer/platform/media/web_media_player_impl.cc
-index aeca590a1b66d..4ad2644877843 100644
+index 839bcbcfe76c3..c82fd8f7883f3 100644
 --- a/third_party/blink/renderer/platform/media/web_media_player_impl.cc
 +++ b/third_party/blink/renderer/platform/media/web_media_player_impl.cc
-@@ -1345,6 +1345,12 @@ bool WebMediaPlayerImpl::HasAudio() const {
-   return pipeline_metadata_.has_audio;
+@@ -1351,6 +1351,12 @@ bool WebMediaPlayerImpl::IsHDR() const {
+   return pipeline_metadata_.video_decoder_config.color_space_info().IsHDR();
  }
  
 +bool WebMediaPlayerImpl::HasVideoNonEmptySize() const {
@@ -39,9 +39,9 @@ index aeca590a1b66d..4ad2644877843 100644
  void WebMediaPlayerImpl::EnabledAudioTracksChanged(
      std::optional<WebMediaPlayer::TrackId> enabled_track_id) {
    DCHECK(main_task_runner_->BelongsToCurrentThread());
-@@ -3765,7 +3771,10 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
+@@ -3774,7 +3780,10 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
+       audio_source_provider_->IsAudioBeingCaptured();
  
-   const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
    // Audio only stream is allowed to play when in background.
 -  if (!HasVideo() && preserve_audio)
 +  //pipeline_metadata_.has_video is true for MediaPlayerRenderer,
@@ -52,11 +52,11 @@ index aeca590a1b66d..4ad2644877843 100644
  
    // Video PiP is the only exception when background video playback is disabled.
 diff --git a/third_party/blink/renderer/platform/media/web_media_player_impl.h b/third_party/blink/renderer/platform/media/web_media_player_impl.h
-index 431d4eebdfbec..8ab052239fe87 100644
+index a7b5e4a39bb59..8bd477a8aa8ae 100644
 --- a/third_party/blink/renderer/platform/media/web_media_player_impl.h
 +++ b/third_party/blink/renderer/platform/media/web_media_player_impl.h
-@@ -213,6 +213,9 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
-   bool HasAudio() const override;
+@@ -214,6 +214,9 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
+   bool IsHDR() const override;
    bool IsVideoBeingCaptured() const override;
  
 +  // True is has video and it's frame size is not zero

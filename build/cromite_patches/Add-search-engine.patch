@@ -1,4 +1,4 @@
-From 7e8151fe5d33371273515e195c03034efb0d63e9 Mon Sep 17 00:00:00 2001
+From 4eb1efbfb8ea9343ad151cbf993b7ab567228acd Mon Sep 17 00:00:00 2001
 From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Mon, 11 Dec 2017 22:42:11 +0100
 Subject: Add search engine
@@ -18,10 +18,10 @@ License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
  .../template_url_prepopulate_data.cc          |  21 +++++++++-
  .../template_url_prepopulate_data.h           |   9 -----
  tools/json_to_struct/json_to_struct.gni       |   9 +++++
- tools/json_to_struct/json_to_struct.py        |  26 ++++++++----
- tools/json_to_struct/struct_generator.py      |  10 +++--
- tools/variations/fieldtrial_to_struct.py      |   4 +-
- 12 files changed, 113 insertions(+), 33 deletions(-)
+ tools/json_to_struct/json_to_struct.py        |  29 ++++++++++----
+ tools/json_to_struct/struct_generator.py      |  11 ++++--
+ tools/variations/fieldtrial_to_struct.py      |   3 ++
+ 12 files changed, 119 insertions(+), 30 deletions(-)
  create mode 100644 components/resources/default_100_percent/search_engine_choice/default_favicon.png
  create mode 100644 components/search_engines/cromite/BUILD.gn
  create mode 100644 components/search_engines/cromite/cromite_prepopulated_engines.json
@@ -144,7 +144,7 @@ index 0000000000000..0d2ebbf08bfc7
 +    }
 +}
 diff --git a/components/search_engines/search_engine_choice/search_engine_choice_utils.cc b/components/search_engines/search_engine_choice/search_engine_choice_utils.cc
-index 6e4fbd49194ab..075c11fc498a1 100644
+index ef47772275c38..1334ff90508fa 100644
 --- a/components/search_engines/search_engine_choice/search_engine_choice_utils.cc
 +++ b/components/search_engines/search_engine_choice/search_engine_choice_utils.cc
 @@ -202,15 +202,7 @@ void RecordChoiceScreenDefaultSearchProviderType(
@@ -186,10 +186,10 @@ index e1c169b82b4dc..0ed9a94dcbf4c 100644
  // should be kept aligned with the `OmniboxBuiltinEngineType` enum in enums.xml.
  // Entries should not be renumbered and numeric values should never be reused.
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index ac35ec257779f..d1e4715d2b713 100644
+index fbc685a198ab8..3c94e7d0c172d 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -29,6 +29,8 @@
+@@ -30,6 +30,8 @@
  #include "components/search_engines/template_url_data_util.h"
  #include "third_party/search_engines_data/resources/definitions/prepopulated_engines.h"
  
@@ -198,7 +198,7 @@ index ac35ec257779f..d1e4715d2b713 100644
  namespace TemplateURLPrepopulateData {
  
  // Helpers --------------------------------------------------------------------
-@@ -173,7 +175,7 @@ int GetDataVersion(PrefService* prefs) {
+@@ -174,7 +176,7 @@ int GetDataVersion(PrefService* prefs) {
    return kCurrentDataVersion;
  }
  
@@ -207,7 +207,7 @@ index ac35ec257779f..d1e4715d2b713 100644
      PrefService& prefs,
      const std::vector<raw_ptr<const PrepopulatedEngine>>&
          regional_prepopulated_engines) {
-@@ -189,6 +191,17 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+@@ -190,6 +192,17 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
                          &PrepopulatedEngineToTemplateURLData);
  }
  
@@ -225,7 +225,7 @@ index ac35ec257779f..d1e4715d2b713 100644
  std::unique_ptr<TemplateURLData> GetPrepopulatedEngine(
      PrefService& prefs,
      const std::vector<raw_ptr<const PrepopulatedEngine>>&
-@@ -210,10 +223,14 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
+@@ -211,10 +224,14 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
      return std::vector<std::unique_ptr<TemplateURLData>>();
    }
  
@@ -242,7 +242,7 @@ index ac35ec257779f..d1e4715d2b713 100644
  
  #endif
 diff --git a/components/search_engines/template_url_prepopulate_data.h b/components/search_engines/template_url_prepopulate_data.h
-index 094b4802d52ab..e38672ce511cd 100644
+index 251414cfe27c0..a326c2f18eb5a 100644
 --- a/components/search_engines/template_url_prepopulate_data.h
 +++ b/components/search_engines/template_url_prepopulate_data.h
 @@ -27,15 +27,6 @@ struct PrepopulatedEngine;
@@ -289,11 +289,11 @@ index 9988b34bf347e..2533fe715316c 100644
  
    source_set(source_set_name) {
 diff --git a/tools/json_to_struct/json_to_struct.py b/tools/json_to_struct/json_to_struct.py
-index e1e285dbe99df..53461147187f2 100755
+index 054f722956e45..be14260e6a67a 100755
 --- a/tools/json_to_struct/json_to_struct.py
 +++ b/tools/json_to_struct/json_to_struct.py
-@@ -104,7 +104,7 @@ def _GenerateHeaderGuard(h_filename):
-   return re.sub(u'^_*', '', result) + u'_'  # Remove leading underscores.
+@@ -103,7 +103,7 @@ def _GenerateHeaderGuard(h_filename):
+   return re.sub('^_*', '', result) + '_'  # Remove leading underscores.
  
  
 -def _GenerateH(basepath, fileroot, head, namespace, schema, description):
@@ -301,25 +301,27 @@ index e1e285dbe99df..53461147187f2 100755
    """Generates the .h file containing the definition of the structure specified
    by the schema.
  
-@@ -151,11 +151,15 @@ def _GenerateH(basepath, fileroot, head, namespace, schema, description):
-       f.write(u'#include "%s"\n' % header)
-     f.write(u'\n')
+@@ -150,12 +150,17 @@ def _GenerateH(basepath, fileroot, head, namespace, schema, description):
+       f.write('#include "%s"\n' % header)
+     f.write('\n')
  
 +    for header in description.get(u'additionals_includes', []):
 +      f.write(u'#include "%s"\n' % header)
 +    f.write(u'\n')
 +
      if namespace:
-       f.write(u'namespace %s {\n' % namespace)
-       f.write(u'\n')
+       f.write('namespace %s {\n' % namespace)
+       f.write('\n')
  
--    f.write(struct_generator.GenerateStruct(
-+    f.write(struct_generator.GenerateStruct(excludetype,
-       schema['type_name'], schema['schema']))
-     f.write(u'\n')
+     f.write(
+-      struct_generator.GenerateStruct(schema['type_name'], schema['schema'])
++      struct_generator.GenerateStruct(excludetype,
++        schema['type_name'], schema['schema'])
+     )
+     f.write('\n')
  
-@@ -180,7 +184,7 @@ def _GenerateH(basepath, fileroot, head, namespace, schema, description):
-     f.write(u'#endif  // %s\n' % header_guard)
+@@ -180,7 +185,7 @@ def _GenerateH(basepath, fileroot, head, namespace, schema, description):
+     f.write('#endif  // %s\n' % header_guard)
  
  
 -def _GenerateCC(basepath, fileroot, head, namespace, schema, description):
@@ -327,25 +329,26 @@ index e1e285dbe99df..53461147187f2 100755
    """Generates the .cc file containing the static initializers for the
    of the elements specified in the description.
  
-@@ -215,7 +219,7 @@ def _GenerateCC(basepath, fileroot, head, namespace, schema, description):
-     f.write(element_generator.GenerateElements(schema['type_name'],
-         schema['schema'], description))
+@@ -219,7 +224,7 @@ def _GenerateCC(basepath, fileroot, head, namespace, schema, description):
+       )
+     )
  
 -    if not aggregation.export_items:
 +    if excludetype == False and not aggregation.export_items:
        f.write('\n}  // anonymous namespace \n\n')
  
      aggregated = GenerateCCAggregation(schema['type_name'], aggregation)
-@@ -302,7 +306,7 @@ def GenerateClass(basepath,
- 
- 
- def GenerateStruct(basepath, output_root, namespace, schema, description,
--                   description_filename, schema_filename, year=None):
-+                   description_filename, schema_filename, excludetype, year):
+@@ -318,7 +323,8 @@ def GenerateStruct(
+   description,
+   description_filename,
+   schema_filename,
+-  year=None,
++  excludetype,
++  year,
+ ):
    """Generates a C++ struct from a JSON description.
  
-   Args:
-@@ -321,8 +325,8 @@ def GenerateStruct(basepath, output_root, namespace, schema, description,
+@@ -338,8 +344,8 @@ def GenerateStruct(
    """
    year = int(year) if year else datetime.now().year
    head = HEAD % (year, schema_filename, description_filename)
@@ -354,11 +357,11 @@ index e1e285dbe99df..53461147187f2 100755
 +  _GenerateH(basepath, output_root, head, namespace, schema, description, excludetype)
 +  _GenerateCC(basepath, output_root, head, namespace, schema, description, excludetype)
  
+ 
  if __name__ == '__main__':
-   parser = optparse.OptionParser(
-@@ -337,11 +341,17 @@ if __name__ == '__main__':
-   parser.add_option('-s', '--schema', help='path to the schema file, '
-       'mandatory.')
+@@ -364,11 +370,17 @@ if __name__ == '__main__':
+     '-s', '--schema', help='path to the schema file, mandatory.'
+   )
    parser.add_option('-o', '--output', help='output filename, ')
 +  parser.add_option('-x', '--excludetype', help='exclude type generator, ')
    (opts, args) = parser.parse_args()
@@ -374,19 +377,21 @@ index e1e285dbe99df..53461147187f2 100755
    description_filename = os.path.normpath(args[0])
    root, ext = os.path.splitext(description_filename)
    shortroot = opts.output if opts.output else os.path.split(root)[1]
-@@ -358,4 +368,4 @@ if __name__ == '__main__':
-   schema = _Load(opts.schema)
-   description = _Load(description_filename)
-   GenerateStruct(basepath, output_root, opts.namespace, schema, description,
--                 description_filename, opts.schema)
-+                 description_filename, opts.schema, opts.excludetype, datetime.now().year)
+@@ -392,4 +404,7 @@ if __name__ == '__main__':
+     description,
+     description_filename,
+     opts.schema,
++    opts.excludetype,
++    datetime.now().year,
+   )
++
 diff --git a/tools/json_to_struct/struct_generator.py b/tools/json_to_struct/struct_generator.py
-index 9725f80a635fd..22454a3ac8aee 100644
+index 9f0b7ab32856e..254073bfe5848 100644
 --- a/tools/json_to_struct/struct_generator.py
 +++ b/tools/json_to_struct/struct_generator.py
-@@ -32,20 +32,24 @@ def GenerateField(field_info):
-   else:
+@@ -34,23 +34,28 @@ def GenerateField(field_info):
      raise RuntimeError('Unknown field type "%s"' % type)
+ 
  
 -def GenerateStruct(type_name, schema):
 +def GenerateStruct(excludetype, type_name, schema):
@@ -401,38 +406,45 @@ index 9725f80a635fd..22454a3ac8aee 100644
    lines.append('struct %s {' % type_name)
    for field_info in schema:
      if field_info['type'] == 'struct':
--      lines.insert(0, GenerateStruct(field_info['type_name'],
-+      lines.insert(0, GenerateStruct(excludetype, field_info['type_name'],
-                                      field_info['fields']))
-     elif (field_info['type'] == 'array'
-           and field_info['contents']['type'] == 'struct'):
+       lines.insert(
+-        0, GenerateStruct(field_info['type_name'], field_info['fields'])
++        0, GenerateStruct(excludetype, field_info['type_name'], field_info['fields'])
+       )
+     elif (
+       field_info['type'] == 'array'
+       and field_info['contents']['type'] == 'struct'
+     ):
        contents = field_info['contents']
--      lines.insert(0, GenerateStruct(contents['type_name'],
-+      lines.insert(0, GenerateStruct(excludetype, contents['type_name'],
-                                      contents['fields']))
+-      lines.insert(0, GenerateStruct(contents['type_name'], contents['fields']))
++      lines.insert(0, GenerateStruct(excludetype, contents['type_name'], contents['fields']))
++
      lines.append('  ' + GenerateField(field_info) + ';')
    lines.append('};')
+   return '\n'.join(lines) + '\n'
 diff --git a/tools/variations/fieldtrial_to_struct.py b/tools/variations/fieldtrial_to_struct.py
-index 931e584eb6cfc..d7a6bf940d2f6 100755
+index 4c1ecb080ab32..216ab94d5f39c 100755
 --- a/tools/variations/fieldtrial_to_struct.py
 +++ b/tools/variations/fieldtrial_to_struct.py
-@@ -218,14 +218,14 @@ def main(arguments):
-   json_to_struct.GenerateStruct(
-       basepath, output_root, opts.namespace, schema, description,
-       os.path.split(description_filename)[1], os.path.split(opts.schema)[1],
--      opts.year)
-+      False, opts.year)
+@@ -248,6 +248,7 @@ def main(arguments):
+     description,
+     os.path.split(description_filename)[1],
+     os.path.split(opts.schema)[1],
++    False,
+     opts.year,
+   )
  
-   # TODO(peilinwang) filter the schema by platform, form_factor, etc.
-   if opts.java:
-     json_to_struct.GenerateClass(basepath, output_root, opts.namespace, schema,
-                                  description,
-                                  os.path.split(description_filename)[1],
--                                 os.path.split(opts.schema)[1], opts.year)
-+                                 os.path.split(opts.schema)[1], False, opts.year)
+@@ -261,9 +262,11 @@ def main(arguments):
+       description,
+       os.path.split(description_filename)[1],
+       os.path.split(opts.schema)[1],
++      False,
+       opts.year,
+     )
  
  
++
  if __name__ == '__main__':
+   main(sys.argv[1:])
 -- 
 2.55.0
 

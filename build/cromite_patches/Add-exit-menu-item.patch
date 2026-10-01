@@ -1,4 +1,4 @@
-From 4ee3584914ba7360ae163672749b813cc8b32daa Mon Sep 17 00:00:00 2001
+From f63cbf485619aee3ea4d88f86f5f46621baf79a4 Mon Sep 17 00:00:00 2001
 From: Serg <serg.zhukovsky@gmail.com>
 Date: Tue, 31 Jan 2017 22:12:27 -0500
 Subject: Add exit menu item
@@ -16,22 +16,22 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  6 files changed, 36 insertions(+)
 
 diff --git a/chrome/android/java/res/values/ids.xml b/chrome/android/java/res/values/ids.xml
-index d81feb1aad5b3..1a2e54046921d 100644
+index 157ce8357eead..7bb6a04ba4956 100644
 --- a/chrome/android/java/res/values/ids.xml
 +++ b/chrome/android/java/res/values/ids.xml
-@@ -137,6 +137,7 @@ found in the LICENSE file.
-     <item type="id" name="ntp_feed_header_menu_item_toggle_switch" />
- 
-     <!-- App Menu -->
+@@ -204,6 +204,7 @@ found in the LICENSE file.
+     <item type="id" name="downloads_menu_id" />
+     <item type="id" name="duplicate_tab_menu_id" />
+     <item type="id" name="enable_price_tracking_menu_id" />
 +    <item type="id" name="exit_id" />
-     <item type="id" name="icon_row_menu_id" />
-     <item type="id" name="submenu_header_menu_id" />
-     <item type="id" name="back_menu_id" />
+     <item type="id" name="extensions_menu_menu_id" />
+     <item type="id" name="extensions_parent_menu_id" />
+     <item type="id" name="extensions_webstore_menu_id" />
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-index 55ee5710e9b02..c7c67313af024 100644
+index 13dc475e1ed71..74c80c1cad4af 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-@@ -428,6 +428,8 @@ import java.util.Set;
+@@ -431,6 +431,8 @@ import java.util.Set;
  import java.util.concurrent.atomic.AtomicBoolean;
  import java.util.function.Supplier;
  
@@ -40,7 +40,7 @@ index 55ee5710e9b02..c7c67313af024 100644
  /**
   * This is the main activity for ChromeMobile when not running in document mode. All the tabs are
   * accessible via a chrome specific tab switching UI.
-@@ -4519,6 +4521,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+@@ -4527,6 +4529,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                      .closeTabs(
                              TabClosureParams.closeTab(currentTab).build(), /* allowDialog= */ true);
              RecordUserAction.record("MobileTabClosed");
@@ -50,7 +50,7 @@ index 55ee5710e9b02..c7c67313af024 100644
              boolean allowUndo = TabClosureParamsUtils.shouldAllowUndo(triggeringMotion);
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
-index 61d01173d3c9b..87f78bd7d17fc 100644
+index 67ce688c4bbc1..279af4a48d786 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 @@ -74,6 +74,7 @@ import org.chromium.build.annotations.Nullable;
@@ -61,7 +61,7 @@ index 61d01173d3c9b..87f78bd7d17fc 100644
  import org.chromium.chrome.browser.ChromeActivitySessionTracker;
  import org.chromium.chrome.browser.ChromeApplicationImpl;
  import org.chromium.chrome.browser.ChromeKeyboardVisibilityDelegate;
-@@ -2964,6 +2965,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
+@@ -2960,6 +2961,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
              return true;
          }
  
@@ -74,30 +74,30 @@ index 61d01173d3c9b..87f78bd7d17fc 100644
              UpdateMenuItemHelper.getInstance(
                              getProfileProviderSupplier().get().getOriginalProfile())
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
-index eac5b98a8929b..093f9a3c54e27 100644
+index 5bdcf7189df01..375652e0b2831 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
-@@ -20,6 +20,7 @@ import org.chromium.build.annotations.MonotonicNonNull;
- import org.chromium.build.annotations.NullMarked;
- import org.chromium.chrome.browser.BrowserRestartActivity;
+@@ -22,6 +22,7 @@ import org.chromium.chrome.browser.BrowserRestartActivity;
  import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
+ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.LastSessionExitType;
+ import org.chromium.chrome.browser.multiwindow.TabbedStartupWindowPolicyDelegate;
 +import org.chromium.chrome.browser.incognito.IncognitoNotificationManager;
  
  /**
   * Answers requests to kill and (potentially) restart Chrome's main browser process.
-@@ -76,6 +77,7 @@ class ChromeLifetimeController
+@@ -72,6 +73,7 @@ class ChromeLifetimeController
  
      @Override
      public void onTerminate(boolean restart) {
 +        IncognitoNotificationManager.dismissIncognitoNotification();
          mRestartChromeOnDestroy = restart;
- 
-         // Tell all Chrome Activities to finish themselves.
+         TabbedStartupWindowPolicyDelegate.getInstance()
+                 .maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-index 630653e4a3265..73adf3f980ae9 100644
+index e4548b2f1ae1f..17ec05d48a0b9 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
-@@ -575,6 +575,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+@@ -577,6 +577,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
              modelList.add(buildContentFilterHelpCenterMenuItem(currentTab));
          }
  
@@ -114,7 +114,7 @@ index 630653e4a3265..73adf3f980ae9 100644
          // Default browser promo
          if (shouldShowDefaultBrowserPromo()) {
              RecordUserAction.record("MobileMenuDefaultBrowserPromoShown");
-@@ -761,6 +771,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+@@ -763,6 +773,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
              modelList.add(buildContentFilterHelpCenterMenuItem(currentTab));
          }
  
@@ -132,10 +132,10 @@ index 630653e4a3265..73adf3f980ae9 100644
          if (shouldShowDefaultBrowserPromo()) {
              // Used to track how many people saw the promo.
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index b478e5a473c6c..60a6ecaa2a2dd 100644
+index a66a48aa884f5..3bb70f888f8c2 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -4578,6 +4578,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
+@@ -4558,6 +4558,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
        <message name="IDS_MENU_MORE_TOOLS" desc="Menu item to more tools. [CHAR_LIMIT=27]">
          More tools
        </message>

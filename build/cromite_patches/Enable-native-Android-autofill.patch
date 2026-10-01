@@ -1,4 +1,4 @@
-From 013790a0190f8d9f074a086f8f94b4e2213efc87 Mon Sep 17 00:00:00 2001
+From bbc71bae48cafe4e7a6fcc75c71d15ef9c60f7f8 Mon Sep 17 00:00:00 2001
 From: uazo <uazo@users.noreply.github.com>
 Date: Sun, 24 Oct 2021 16:54:04 +0000
 Subject: Enable native Android autofill
@@ -19,8 +19,8 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 (cherry picked from commit 6f589c1e5bb7745161ffab192e888fb81766ed8e)
 ---
  .../settings/PasswordSettings.java            | 84 ++++++++++++++++++-
- .../chrome/browser/settings/MainSettings.java | 18 +---
- .../chromium/chrome/browser/tab/TabImpl.java  | 36 ++++++--
+ .../chrome/browser/settings/MainSettings.java | 13 +--
+ .../chromium/chrome/browser/tab/TabImpl.java  | 39 ++++++---
  chrome/browser/android/tab_android.cc         |  4 +-
  ...tor_one_time_token_filling_service_impl.cc |  9 --
  chrome/browser/autofill/android/BUILD.gn      |  2 +-
@@ -51,7 +51,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../core/browser/password_form_manager.cc     |  4 +
  .../core/browser/password_manager_client.cc   |  2 +
  .../core/browser/password_manager_client.h    |  2 +
- 33 files changed, 218 insertions(+), 131 deletions(-)
+ 33 files changed, 218 insertions(+), 129 deletions(-)
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/password_manager/settings/PasswordSettings.java
 index 68a4e35389ae4..e799de33dce34 100644
@@ -191,10 +191,10 @@ index 68a4e35389ae4..e799de33dce34 100644
          ChromeSwitchPreference autoSignInSwitch =
                  new ChromeSwitchPreference(getStyledContext(), null);
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-index 28c1719ae1596..43af35af4784e 100644
+index c5ec76f0fdc62..ae6010b0e7a78 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/MainSettings.java
-@@ -676,22 +676,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
+@@ -683,17 +683,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
      // TODO(crbug.com/482988366): Remove this method once the Autofill and passwords feature is
      // launched.
      private void updateAutofillPreferencesPreAutofillAndPasswords() {
@@ -206,12 +206,7 @@ index 28c1719ae1596..43af35af4784e 100644
 -        autofillOptionsPreference.setOnPreferenceClickListener(
 -                preference -> {
 -                    onPreferenceSelected(preference);
--                    SettingsNavigationFactory.createSettingsNavigation()
--                            .startSettings(
--                                    getContext(),
--                                    AutofillOptionsFragment.class,
--                                    AutofillOptionsFragment.createRequiredArgs(
--                                            AutofillOptionsReferrer.SETTINGS));
+-                    openAutofillOptions(getContext());
 -                    return true; // Means event is consumed.
 -                });
 +        removePreferenceIfPresent(PREF_AUTOFILL_SECTION);
@@ -220,10 +215,10 @@ index 28c1719ae1596..43af35af4784e 100644
                  .setOnPreferenceClickListener(
                          preference -> {
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
-index 994e1880ebeb8..0c2180c4ff683 100644
+index 33c2ad6addb26..10e2719c24997 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java
-@@ -91,7 +91,6 @@ import org.chromium.components.autofill.AutofillManagerWrapper;
+@@ -92,7 +92,6 @@ import org.chromium.components.autofill.AutofillManagerWrapper;
  import org.chromium.components.autofill.AutofillProvider;
  import org.chromium.components.autofill.AutofillProviderUMA;
  import org.chromium.components.autofill.AutofillSelectionActionMenuDelegate;
@@ -231,8 +226,8 @@ index 994e1880ebeb8..0c2180c4ff683 100644
  import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
  import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
  import org.chromium.components.embedder_support.util.UrlConstants;
-@@ -132,6 +131,12 @@ import java.util.HashMap;
- import java.util.Map;
+@@ -134,6 +133,12 @@ import java.lang.ref.WeakReference;
+ import java.nio.ByteBuffer;
  import java.util.Objects;
  
 +import org.chromium.components.autofill.AutofillSelectionMenuItemHelper;
@@ -244,7 +239,7 @@ index 994e1880ebeb8..0c2180c4ff683 100644
  /**
   * Implementation of the interface {@link Tab}. Contains and manages a {@link ContentView}. This
   * class is not intended to be extended.
-@@ -1334,6 +1339,11 @@ class TabImpl implements Tab, TabInternal {
+@@ -1410,6 +1415,11 @@ class TabImpl implements Tab, TabInternal {
          }
  
          mObservers.clear();
@@ -256,7 +251,7 @@ index 994e1880ebeb8..0c2180c4ff683 100644
          if (!abortNavigationsFromTabClosures) mUserDataHost.destroy();
          mTabViewManager.destroy();
          hideNativePage(false, null);
-@@ -1725,6 +1735,7 @@ class TabImpl implements Tab, TabInternal {
+@@ -1739,6 +1749,7 @@ class TabImpl implements Tab, TabInternal {
       * @return iff the AutofillProvider should provide a ViewStructure when prompted.
       */
      boolean providesAutofillStructure() {
@@ -264,7 +259,7 @@ index 994e1880ebeb8..0c2180c4ff683 100644
          if (!mProfile.isNativeInitialized()) {
              return false;
          }
-@@ -2604,16 +2615,21 @@ class TabImpl implements Tab, TabInternal {
+@@ -2656,8 +2667,15 @@ class TabImpl implements Tab, TabInternal {
       * @return true if the the provider is available for the given WebContents.
       */
      private boolean prepareAutofillProvider(WebContents newWebContents) {
@@ -280,21 +275,27 @@ index 994e1880ebeb8..0c2180c4ff683 100644
 +        }
 +        if (!autofillEnabled) {
              maybeLogAutofillProviderDoesntUseVirtualStructureMetric();
-             mAutofillProvider = null;
+             if (mAutofillProvider != null) {
+                 mAutofillProvider.destroy();
+@@ -2665,13 +2683,8 @@ class TabImpl implements Tab, TabInternal {
+             }
              return false; // Autofill provider can't be prepared.
          }
 -        if (mAutofillProvider != null) {
 -            // Provider already existed. Swapping contents suffices.
 -            mAutofillProvider.setWebContents(newWebContents);
+-            if (mContentView != null) {
+-                mAutofillProvider.onContainerViewChanged(mContentView);
+-            }
 -        } else {
 +        assert isInitialized();
 +        if (mAutofillProvider == null) {
              // TODO: crbug.com/432447902 — Provide only an activity context and push changes.
              mAutofillProvider =
                      new AutofillProvider(
-@@ -2623,7 +2639,13 @@ class TabImpl implements Tab, TabInternal {
-                             getContext().getString(R.string.app_name));
-             TabImplJni.get().initializeAutofillIfNecessary(mNativeTabAndroid);
+@@ -2683,7 +2696,13 @@ class TabImpl implements Tab, TabInternal {
+                 TabImplJni.get().initializeAutofillIfNecessary(mNativeTabAndroid);
+             }
          }
 +        mAutofillProvider.setWebContents(newWebContents);
 +        mContentView.setWebContents(newWebContents);
@@ -307,10 +308,10 @@ index 994e1880ebeb8..0c2180c4ff683 100644
      }
  
 diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_android.cc
-index ebc8d769d5a02..cd145018c0afa 100644
+index ec48143154c4d..8255df1b2fa18 100644
 --- a/chrome/browser/android/tab_android.cc
 +++ b/chrome/browser/android/tab_android.cc
-@@ -43,6 +43,7 @@
+@@ -47,6 +47,7 @@
  #include "chrome/browser/sync/glue/synced_tab_delegate_android.h"
  #include "chrome/browser/tab/web_contents_state.h"
  #include "chrome/browser/tab_contents/tab_util.h"
@@ -318,7 +319,7 @@ index ebc8d769d5a02..cd145018c0afa 100644
  #include "chrome/browser/ui/android/context_menu_helper.h"
  #include "chrome/browser/ui/android/tab_model/tab_model.h"
  #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
-@@ -471,8 +472,7 @@ void TabAndroid::InitializeAutofillIfNecessary() {
+@@ -488,8 +489,7 @@ void TabAndroid::InitializeAutofillIfNecessary() {
          ->MaybeInitKeyboardSuppressor();
      return;
    }
@@ -329,10 +330,10 @@ index ebc8d769d5a02..cd145018c0afa 100644
    // We need to initialize the keyboard suppressor before creating any
    // AutofillManagers and after the autofill client is available.
 diff --git a/chrome/browser/autofill/actor/one_time_tokens/actor_one_time_token_filling_service_impl.cc b/chrome/browser/autofill/actor/one_time_tokens/actor_one_time_token_filling_service_impl.cc
-index c00d3319f5c9f..2fc9eb746a401 100644
+index c7b4b5c49cb85..80c8e59e19e9e 100644
 --- a/chrome/browser/autofill/actor/one_time_tokens/actor_one_time_token_filling_service_impl.cc
 +++ b/chrome/browser/autofill/actor/one_time_tokens/actor_one_time_token_filling_service_impl.cc
-@@ -84,15 +84,6 @@ GetAutofillManager(const tabs::TabInterface& tab) {
+@@ -80,15 +80,6 @@ GetAutofillManager(const tabs::TabInterface& tab) {
    if (!profile) {
      return base::unexpected(kAutofillNotAvailable);
    }
@@ -349,7 +350,7 @@ index c00d3319f5c9f..2fc9eb746a401 100644
        ContentAutofillClient::FromWebContents(tab.GetContents());
    if (!client) {
 diff --git a/chrome/browser/autofill/android/BUILD.gn b/chrome/browser/autofill/android/BUILD.gn
-index 5a3525d8f8aa6..1055489264a10 100644
+index a9b73de4fcd77..a28e6fedfafd3 100644
 --- a/chrome/browser/autofill/android/BUILD.gn
 +++ b/chrome/browser/autofill/android/BUILD.gn
 @@ -188,7 +188,7 @@ android_library("test_support_java") {
@@ -362,10 +363,10 @@ index 5a3525d8f8aa6..1055489264a10 100644
      "java/src/org/chromium/chrome/browser/autofill/AutofillImageFetcherFactory.java",
      "java/src/org/chromium/chrome/browser/autofill/AutofillProfileBridge.java",
 diff --git a/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/AutofillClientProviderUtils.java b/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/AutofillClientProviderUtils.java
-index 5ffb6d942d157..628fabc3369c9 100644
+index d34fc85e6aa1b..8b5990cf6d0af 100644
 --- a/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/AutofillClientProviderUtils.java
 +++ b/chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/AutofillClientProviderUtils.java
-@@ -83,9 +83,9 @@ public class AutofillClientProviderUtils {
+@@ -82,9 +82,9 @@ public class AutofillClientProviderUtils {
       * @return {@link AndroidAutofillAvailabilityStatus.AVAILABLE} if Android Autofill can be used
       *     or a reason why it can't.
       */
@@ -389,10 +390,10 @@ index 8c5bf42737661..e8d7ef0aaf66d 100644
              final String[] columns = {AUTOFILL_THIRD_PARTY_MODE_COLUMN};
              MatrixCursor cursor = new MatrixCursor(columns, 1);
 diff --git a/chrome/browser/password_manager/chrome_password_manager_client.cc b/chrome/browser/password_manager/chrome_password_manager_client.cc
-index 17694871c2f6e..43ba9a7f73bc6 100644
+index 600c32e35281b..d20c12c8167bb 100644
 --- a/chrome/browser/password_manager/chrome_password_manager_client.cc
 +++ b/chrome/browser/password_manager/chrome_password_manager_client.cc
-@@ -541,6 +541,12 @@ bool ChromePasswordManagerClient::PromptUserToChooseCredentials(
+@@ -542,6 +542,12 @@ bool ChromePasswordManagerClient::PromptUserToChooseCredentials(
  }
  
  #if BUILDFLAG(IS_ANDROID)
@@ -406,7 +407,7 @@ index 17694871c2f6e..43ba9a7f73bc6 100644
      password_manager::ErrorMessageFlowType flow_type,
      password_manager::PasswordStoreBackendErrorType error_type) {
 diff --git a/chrome/browser/password_manager/chrome_password_manager_client.h b/chrome/browser/password_manager/chrome_password_manager_client.h
-index 21a61c167fd2b..263b115b63d36 100644
+index 7cbef71a921ec..0020196d59bd9 100644
 --- a/chrome/browser/password_manager/chrome_password_manager_client.h
 +++ b/chrome/browser/password_manager/chrome_password_manager_client.h
 @@ -171,6 +171,8 @@ class ChromePasswordManagerClient
@@ -419,7 +420,7 @@ index 21a61c167fd2b..263b115b63d36 100644
        password_manager::ErrorMessageFlowType flow_type,
        password_manager::PasswordStoreBackendErrorType error_type) override;
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 6ab62edacff10..ac9a83c8a79c9 100644
+index 0fdd111b80158..385e11af377ed 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 @@ -340,6 +340,12 @@ CHAR_LIMIT guidelines:
@@ -566,7 +567,7 @@ index 2f002d15c19cf..903cbd62168d1 100644
  
  }  // namespace autofill
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
-index 692ebd4c087d9..64c2f1af34784 100644
+index 446351a9d08f9..c366cd9974f45 100644
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
 @@ -397,11 +397,7 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
@@ -583,7 +584,7 @@ index 692ebd4c087d9..64c2f1af34784 100644
      ChromePasswordReuseDetectionManagerClient::CreateForWebContents(
          web_contents);
 diff --git a/components/android_autofill/browser/android_autofill_manager.cc b/components/android_autofill/browser/android_autofill_manager.cc
-index 5a7819a9cbc85..d0599ac1109c7 100644
+index 7c64c53b3d6a0..5a5716d602083 100644
 --- a/components/android_autofill/browser/android_autofill_manager.cc
 +++ b/components/android_autofill/browser/android_autofill_manager.cc
 @@ -38,6 +38,8 @@ AndroidAutofillManager::~AndroidAutofillManager() {
@@ -596,7 +597,7 @@ index 5a7819a9cbc85..d0599ac1109c7 100644
    return weak_ptr_factory_.GetWeakPtr();
  }
 diff --git a/components/android_autofill/browser/android_autofill_manager.h b/components/android_autofill/browser/android_autofill_manager.h
-index 3c716355dac5b..e22b6c9c0526e 100644
+index 2fe5e342f72b9..df677114b6bba 100644
 --- a/components/android_autofill/browser/android_autofill_manager.h
 +++ b/components/android_autofill/browser/android_autofill_manager.h
 @@ -34,6 +34,8 @@ class AndroidAutofillManager : public AutofillManager,
@@ -609,10 +610,10 @@ index 3c716355dac5b..e22b6c9c0526e 100644
      return weak_ptr_factory_.GetWeakPtr();
    }
 diff --git a/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillManagerWrapper.java b/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillManagerWrapper.java
-index 13be9288eb35f..b19b0f2bfe91e 100644
+index d169b3a86a8da..eeea9372d2066 100644
 --- a/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillManagerWrapper.java
 +++ b/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillManagerWrapper.java
-@@ -59,6 +59,7 @@ public class AutofillManagerWrapper {
+@@ -58,6 +58,7 @@ public class AutofillManagerWrapper {
              AutofillManagerWrapper manager = mManager.get();
              if (manager == null) return;
              manager.mIsAutofillInputUiShowing = (event == EVENT_INPUT_SHOWN);
@@ -620,15 +621,15 @@ index 13be9288eb35f..b19b0f2bfe91e 100644
              if (event == EVENT_INPUT_SHOWN) manager.notifyInputUiChange();
          }
      }
-@@ -120,6 +121,7 @@ public class AutofillManagerWrapper {
+@@ -119,6 +120,7 @@ public class AutofillManagerWrapper {
  
          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
              ComponentName componentName = getAutofillServiceComponentName(mAutofillManager);
 +            if (isLoggable()) log("componentName=" + componentName);
              if (componentName != null) {
                  mPackageName = componentName.getPackageName();
-                 mIsAwGCurrentAutofillService =
-@@ -352,7 +354,7 @@ public class AutofillManagerWrapper {
+                 mIsAwGCurrentAutofillService = AWG_PACKAGE_NAME.equals(mPackageName);
+@@ -350,7 +352,7 @@ public class AutofillManagerWrapper {
      /** Always check isLoggable() before call this method. */
      public static void log(String log) {
          // Log.i() instead of Log.d() is used here because Log.d() is stripped out in release build.
@@ -637,7 +638,7 @@ index 13be9288eb35f..b19b0f2bfe91e 100644
      }
  
      public static boolean isLoggable() {
-@@ -366,5 +368,6 @@ public class AutofillManagerWrapper {
+@@ -364,5 +366,6 @@ public class AutofillManagerWrapper {
          // NOTE: See the comment on TAG above for why this is still AwAutofillManager.
          // Check the system setting directly.
          sIsLoggable = Log.isLoggable(TAG, Log.DEBUG);
@@ -645,7 +646,7 @@ index 13be9288eb35f..b19b0f2bfe91e 100644
      }
  }
 diff --git a/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillProvider.java b/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillProvider.java
-index 5c2021d3934ba..da5b6e956ee93 100644
+index 1fbf25ba99c05..80c4a4e339e8a 100644
 --- a/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillProvider.java
 +++ b/components/android_autofill/browser/java/src/org/chromium/components/autofill/AutofillProvider.java
 @@ -253,6 +253,10 @@ public class AutofillProvider {
@@ -676,7 +677,7 @@ index 5c2021d3934ba..da5b6e956ee93 100644
          if (mRequest != null) notifyViewExitBeforeDestroyRequest();
  
 diff --git a/components/autofill/content/browser/content_autofill_driver.cc b/components/autofill/content/browser/content_autofill_driver.cc
-index 2b39c49d17a5f..8a571d2f5b2ee 100644
+index 7db951093ee6f..ec9a31af9ed79 100644
 --- a/components/autofill/content/browser/content_autofill_driver.cc
 +++ b/components/autofill/content/browser/content_autofill_driver.cc
 @@ -310,6 +310,14 @@ void RouteToManager(
@@ -694,7 +695,7 @@ index 2b39c49d17a5f..8a571d2f5b2ee 100644
        },
        source, Lift(source, std::forward<ActualArgs>(args))...);
  }
-@@ -787,6 +795,10 @@ bool ContentAutofillDriver::IsSafeToFill(
+@@ -804,6 +812,10 @@ bool ContentAutofillDriver::IsSafeToFill(
    return router().IsSafeToFill(field, filled_type, main_origin, trigger_origin);
  }
  
@@ -706,7 +707,7 @@ index 2b39c49d17a5f..8a571d2f5b2ee 100644
    form = Lift(*this, form);
  }
 diff --git a/components/autofill/content/browser/content_autofill_driver.h b/components/autofill/content/browser/content_autofill_driver.h
-index a62f20d3647ec..0fc3da008c14f 100644
+index 4d3c190086939..4816ed73b1c37 100644
 --- a/components/autofill/content/browser/content_autofill_driver.h
 +++ b/components/autofill/content/browser/content_autofill_driver.h
 @@ -146,6 +146,12 @@ class ContentAutofillDriver : public AutofillDriver,
@@ -722,7 +723,7 @@ index a62f20d3647ec..0fc3da008c14f 100644
    content::RenderFrameHost* render_frame_host() { return &*render_frame_host_; }
    const content::RenderFrameHost* render_frame_host() const {
      return &*render_frame_host_;
-@@ -364,6 +370,10 @@ class ContentAutofillDriver : public AutofillDriver,
+@@ -368,6 +374,10 @@ class ContentAutofillDriver : public AutofillDriver,
    // The factory that created this driver. Outlives `this`.
    const raw_ref<ContentAutofillDriverFactory> owner_;
  
@@ -764,10 +765,10 @@ index 8d628e4067178..72c5ec4caef66 100644
      for (auto& observer : observers()) {
        observer.OnAutofillDriverCreated(*this, *driver);
 diff --git a/components/autofill/content/renderer/autofill_agent.cc b/components/autofill/content/renderer/autofill_agent.cc
-index 82c5c5b51676d..78d5f1fb7cccb 100644
+index d45f548ec3fb2..079535d7e4e9f 100644
 --- a/components/autofill/content/renderer/autofill_agent.cc
 +++ b/components/autofill/content/renderer/autofill_agent.cc
-@@ -1840,10 +1840,6 @@ void AutofillAgent::ShowSuggestions(
+@@ -1629,10 +1629,6 @@ void AutofillAgent::ShowSuggestions(
          password_generation_agent_->ShowPasswordGenerationSuggestions(
              input_element, form_cache)) {
        is_popup_possibly_visible_ = true;
@@ -779,10 +780,10 @@ index 82c5c5b51676d..78d5f1fb7cccb 100644
    }
  
 diff --git a/components/autofill/content/renderer/password_autofill_agent.cc b/components/autofill/content/renderer/password_autofill_agent.cc
-index b0d61c6efa7ae..6a7eebcd2c1f3 100644
+index abf1506a0c586..38b37fc07c997 100644
 --- a/components/autofill/content/renderer/password_autofill_agent.cc
 +++ b/components/autofill/content/renderer/password_autofill_agent.cc
-@@ -846,7 +846,10 @@ void PasswordAutofillAgent::UpdatePasswordStateForTextChange(
+@@ -860,7 +860,10 @@ void PasswordAutofillAgent::UpdatePasswordStateForTextChange(
  
  void PasswordAutofillAgent::TrackAutofilledElement(
      const WebFormControlElement& element) {
@@ -795,10 +796,10 @@ index b0d61c6efa7ae..6a7eebcd2c1f3 100644
  }
  
 diff --git a/components/autofill/core/browser/foundations/autofill_driver.h b/components/autofill/core/browser/foundations/autofill_driver.h
-index 05dd1dc5eacd1..9a34c085ba9b3 100644
+index c3ab67880f862..d9725b1b88631 100644
 --- a/components/autofill/core/browser/foundations/autofill_driver.h
 +++ b/components/autofill/core/browser/foundations/autofill_driver.h
-@@ -187,6 +187,8 @@ class AutofillDriver {
+@@ -186,6 +186,8 @@ class AutofillDriver {
    // Returns the AutofillManager owned by the AutofillDriver.
    virtual AutofillManager& GetAutofillManager() = 0;
  
@@ -823,10 +824,10 @@ index 1615254facca5..dd435abccfa22 100644
  
  }  // namespace autofill
 diff --git a/components/autofill/core/browser/foundations/autofill_manager.h b/components/autofill/core/browser/foundations/autofill_manager.h
-index ef0ef830d7999..b37b9f28ba725 100644
+index 54fe71d5b9f3c..83417b296bcba 100644
 --- a/components/autofill/core/browser/foundations/autofill_manager.h
 +++ b/components/autofill/core/browser/foundations/autofill_manager.h
-@@ -316,6 +316,8 @@ class AutofillManager
+@@ -324,6 +324,8 @@ class AutofillManager
        LifecycleState new_state,
        base::PassKey<AutofillDriverFactory> pass_key);
  
@@ -836,10 +837,10 @@ index ef0ef830d7999..b37b9f28ba725 100644
    const AutofillClient& client() const { return driver_->GetAutofillClient(); }
  
 diff --git a/components/autofill/core/browser/foundations/browser_autofill_manager.cc b/components/autofill/core/browser/foundations/browser_autofill_manager.cc
-index e0da4e81d608a..e53208dc68137 100644
+index dcb1eae29bef9..986b438e28422 100644
 --- a/components/autofill/core/browser/foundations/browser_autofill_manager.cc
 +++ b/components/autofill/core/browser/foundations/browser_autofill_manager.cc
-@@ -852,6 +852,8 @@ base::WeakPtr<AutofillManager> BrowserAutofillManager::GetWeakPtr() {
+@@ -766,6 +766,8 @@ base::WeakPtr<AutofillManager> BrowserAutofillManager::GetWeakPtr() {
    return weak_ptr_factory_.GetWeakPtr();
  }
  
@@ -849,10 +850,10 @@ index e0da4e81d608a..e53208dc68137 100644
    if (!credit_card_access_manager_) {
      credit_card_access_manager_ =
 diff --git a/components/autofill/core/browser/foundations/browser_autofill_manager.h b/components/autofill/core/browser/foundations/browser_autofill_manager.h
-index ef6c2a8287907..089d0463ca20d 100644
+index 347fe6f324547..3f65d588e564b 100644
 --- a/components/autofill/core/browser/foundations/browser_autofill_manager.h
 +++ b/components/autofill/core/browser/foundations/browser_autofill_manager.h
-@@ -478,6 +478,8 @@ class BrowserAutofillManager : public AutofillManager {
+@@ -475,6 +475,8 @@ class BrowserAutofillManager : public AutofillManager {
    // latter check is needed because IPC messages can arrive out of order.
    void UpdateInitialInteractionTimestamp(base::TimeTicks interaction_timestamp);
  
@@ -862,10 +863,10 @@ index ef6c2a8287907..089d0463ca20d 100644
    // kLimitBeforeRefill after the filling and records metrics for this. This
    // method should be called after we learned that JavaScript modified an
 diff --git a/components/autofill/core/common/autofill_prefs.cc b/components/autofill/core/common/autofill_prefs.cc
-index 5f9171e0f5ac6..5bac6ebc8f8dd 100644
+index a208d6b9f9718..68af62ca61c04 100644
 --- a/components/autofill/core/common/autofill_prefs.cc
 +++ b/components/autofill/core/common/autofill_prefs.cc
-@@ -111,6 +111,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -112,6 +112,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
    registry->RegisterBooleanPref(kAutofillCreditCardFidoAuthOfferCheckboxState,
                                  true);
  #endif
@@ -874,7 +875,7 @@ index 5f9171e0f5ac6..5bac6ebc8f8dd 100644
    registry->RegisterIntegerPref(kAutocompleteLastVersionRetentionPolicy, 0);
    registry->RegisterStringPref(kAutofillUploadEncodingSeed, "");
    registry->RegisterDictionaryPref(kAutofillVoteUploadEvents);
-@@ -140,7 +142,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -141,7 +143,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
  #endif
  
  #if BUILDFLAG(IS_ANDROID)
@@ -884,7 +885,7 @@ index 5f9171e0f5ac6..5bac6ebc8f8dd 100644
                                  true);
    registry->RegisterStringPref(
 diff --git a/components/autofill/core/common/autofill_prefs.h b/components/autofill/core/common/autofill_prefs.h
-index 8c37919792d0a..89bf804d41546 100644
+index 8df5d8bc4c7cc..3203a83ec9b1d 100644
 --- a/components/autofill/core/common/autofill_prefs.h
 +++ b/components/autofill/core/common/autofill_prefs.h
 @@ -207,6 +207,11 @@ inline constexpr char kAutofillWasNameAndEmailProfileUsed[] =
@@ -900,7 +901,7 @@ index 8c37919792d0a..89bf804d41546 100644
      BUILDFLAG(IS_IOS) || BUILDFLAG(IS_CHROMEOS)
  // Boolean that is set when payment methods mandatory re-auth is enabled by the
 diff --git a/components/password_manager/core/browser/password_form_manager.cc b/components/password_manager/core/browser/password_form_manager.cc
-index a1b3b00cb7203..e0535978c079f 100644
+index 9b70b2fd58b50..5af5dce7cd72b 100644
 --- a/components/password_manager/core/browser/password_form_manager.cc
 +++ b/components/password_manager/core/browser/password_form_manager.cc
 @@ -1218,6 +1218,10 @@ void PasswordFormManager::FillNow() {
@@ -915,7 +916,7 @@ index a1b3b00cb7203..e0535978c079f 100644
    // filling and saving mode might be different so it is better not to cache
    // parse result, but to parse each time again.
 diff --git a/components/password_manager/core/browser/password_manager_client.cc b/components/password_manager/core/browser/password_manager_client.cc
-index 353a02408d9be..4e2923ce5e041 100644
+index 38b04fb652fe7..408ffd03fe98f 100644
 --- a/components/password_manager/core/browser/password_manager_client.cc
 +++ b/components/password_manager/core/browser/password_manager_client.cc
 @@ -53,6 +53,8 @@ bool PasswordManagerClient::IsAutoSignInEnabled() const {
@@ -928,10 +929,10 @@ index 353a02408d9be..4e2923ce5e041 100644
      ErrorMessageFlowType flow_type,
      password_manager::PasswordStoreBackendErrorType error_type) {}
 diff --git a/components/password_manager/core/browser/password_manager_client.h b/components/password_manager/core/browser/password_manager_client.h
-index 2653a48786c14..a4599f148a066 100644
+index ff1cd2fa74657..46f6db1a2ce28 100644
 --- a/components/password_manager/core/browser/password_manager_client.h
 +++ b/components/password_manager/core/browser/password_manager_client.h
-@@ -259,6 +259,8 @@ class PasswordManagerClient {
+@@ -260,6 +260,8 @@ class PasswordManagerClient {
    virtual void ShowKeyboardReplacingSurface(
        PasswordManagerDriver* driver,
        const autofill::PasswordSuggestionRequest& request);

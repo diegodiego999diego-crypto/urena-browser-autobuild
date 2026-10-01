@@ -1,4 +1,4 @@
-From 86b1a0eb758b9fe626044c1bd5a6705ddff29cca Mon Sep 17 00:00:00 2001
+From 74f8ab81d4a5a02afdadc438d37d3810e4862838 Mon Sep 17 00:00:00 2001
 From: Your Name <you@example.com>
 Date: Wed, 6 Sep 2023 17:55:01 +0000
 Subject: Fix chromium build bugs
@@ -6,19 +6,18 @@ Subject: Fix chromium build bugs
 because of
 https://bugs.chromium.org/p/chromium/issues/detail?id=1491776#c10
 ---
- BUILD.gn                                         |  1 -
- .../navigation_predictor_metrics_document_data.h |  2 ++
- chrome/browser/safe_browsing/BUILD.gn            |  1 +
- .../installer_policies/BUILD.gn                  |  1 +
- components/contextual_tasks/internal/BUILD.gn    |  1 +
- .../omnibox/browser/autocomplete_classifier.cc   |  4 ++--
- .../omnibox/browser/omnibox_field_trial.cc       |  4 ++--
- .../phishing_image_embedder.cc                   | 16 +++-------------
- content/browser/browser_interface_binders.cc     |  1 +
- 9 files changed, 13 insertions(+), 18 deletions(-)
+ BUILD.gn                                                      | 1 -
+ .../navigation_predictor_metrics_document_data.h              | 2 ++
+ chrome/browser/safe_browsing/BUILD.gn                         | 1 +
+ components/component_updater/installer_policies/BUILD.gn      | 1 +
+ components/contextual_tasks/internal/BUILD.gn                 | 1 +
+ components/omnibox/browser/autocomplete_classifier.cc         | 4 ++--
+ components/omnibox/browser/omnibox_field_trial.cc             | 4 ++--
+ content/browser/browser_interface_binders.cc                  | 1 +
+ 8 files changed, 10 insertions(+), 5 deletions(-)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index 0bd5d40ff7086..918aa2b072ff8 100644
+index 91357cb2e60a5..5dc9bf7f40d85 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -411,7 +411,6 @@ group("gn_all") {
@@ -43,10 +42,10 @@ index 9f214cef138f3..f014cc339311d 100644
      bool is_in_viewport = false;
      // True if the pointer is still hovering over the anchor element,
 diff --git a/chrome/browser/safe_browsing/BUILD.gn b/chrome/browser/safe_browsing/BUILD.gn
-index 026003299f01c..49faf37c7ba9e 100644
+index 48e85144fa1b3..71d081ca6a014 100644
 --- a/chrome/browser/safe_browsing/BUILD.gn
 +++ b/chrome/browser/safe_browsing/BUILD.gn
-@@ -379,6 +379,7 @@ static_library("safe_browsing") {
+@@ -384,6 +384,7 @@ static_library("safe_browsing") {
        "//components/version_info",
        "//content/public/browser",
        "//services/preferences/public/mojom",
@@ -55,7 +54,7 @@ index 026003299f01c..49faf37c7ba9e 100644
  
      public_deps += [ "//chrome/browser/security_events" ]
 diff --git a/components/component_updater/installer_policies/BUILD.gn b/components/component_updater/installer_policies/BUILD.gn
-index 63bd6e82ad0c2..24d6fb52e8a67 100644
+index 3a26a120fc14c..a246aca2d9b44 100644
 --- a/components/component_updater/installer_policies/BUILD.gn
 +++ b/components/component_updater/installer_policies/BUILD.gn
 @@ -42,6 +42,7 @@ static_library("installer_policies_no_content_deps") {
@@ -65,7 +64,7 @@ index 63bd6e82ad0c2..24d6fb52e8a67 100644
 +    "//third_party/re2",
    ]
  
-   if (is_chromeos || is_win || is_mac || is_linux) {
+   # Disallow depending on content.
 diff --git a/components/contextual_tasks/internal/BUILD.gn b/components/contextual_tasks/internal/BUILD.gn
 index 38219ba6ece53..4957981eb0d9c 100644
 --- a/components/contextual_tasks/internal/BUILD.gn
@@ -94,10 +93,10 @@ index 445caaae17ff3..57ea21e218f05 100644
    base::AutoReset<bool> reset(&inside_classify_, true);
    AutocompleteInput input(text, page_classification, *scheme_classifier_);
 diff --git a/components/omnibox/browser/omnibox_field_trial.cc b/components/omnibox/browser/omnibox_field_trial.cc
-index 228fe2527ebcc..6c1fe19f447fd 100644
+index 0bcfa73c94e57..081a3541ed2cc 100644
 --- a/components/omnibox/browser/omnibox_field_trial.cc
 +++ b/components/omnibox/browser/omnibox_field_trial.cc
-@@ -839,11 +839,11 @@ MLConfig& MLConfig::operator=(const MLConfig& other) = default;
+@@ -840,11 +840,11 @@ MLConfig& MLConfig::operator=(const MLConfig& other) = default;
  
  ScopedMLConfigForTesting::ScopedMLConfigForTesting()
      : original_config_(std::make_unique<MLConfig>(GetMLConfig())) {
@@ -111,38 +110,11 @@ index 228fe2527ebcc..6c1fe19f447fd 100644
  }
  
  MLConfig& ScopedMLConfigForTesting::GetMLConfig() {
-diff --git a/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc b/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
-index c0fcfa60e8b3b..f9f4b52d5af23 100644
---- a/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
-+++ b/components/safe_browsing/content/renderer/phishing_classifier/phishing_image_embedder.cc
-@@ -65,19 +65,9 @@ void PhishingImageEmbedder::BeginImageEmbedding(
- 
- void PhishingImageEmbedder::OnPlaybackDone(bool can_extract_visual_features,
-                                            std::unique_ptr<SkBitmap> bitmap) {
--  if (bitmap) {
--    bitmap_ = std::move(bitmap);
--
--    ScorerStorage::GetInstance()
--        ->GetScorer()
--        ->ApplyVisualTfLiteModelImageEmbedding(
--            *bitmap_,
--            base::BindOnce(&PhishingImageEmbedder::OnImageEmbeddingDone,
--                           weak_factory_.GetWeakPtr(),
--                           can_extract_visual_features));
--  } else {
--    RunFailureCallback(Result::kVisualExtractionFailed);
--  }
-+  // (UAZO) removed due error:
-+  // no member named 'ApplyVisualTfLiteModelImageEmbedding' in 'safe_browsing::Scorer
-+  RunFailureCallback(Result::kVisualExtractionFailed);
- }
- 
- void PhishingImageEmbedder::CancelPendingImageEmbedding() {
 diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
-index 94c73d97272c7..33046d4156c1b 100644
+index 21f2cabcc5926..9f0eda1ba46d2 100644
 --- a/content/browser/browser_interface_binders.cc
 +++ b/content/browser/browser_interface_binders.cc
-@@ -468,6 +468,7 @@ void BindDateTimeChooserForFrame(
+@@ -469,6 +469,7 @@ void BindDateTimeChooserForFrame(
  void BindTextSuggestionHostForFrame(
      RenderFrameHost* host,
      mojo::PendingReceiver<blink::mojom::TextSuggestionHost> receiver) {
