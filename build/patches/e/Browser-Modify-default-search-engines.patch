@@ -22,10 +22,10 @@ Signed-off-by: Saalim Quadri <danascape@gmail.com>
  10 files changed, 52 insertions(+), 68 deletions(-)
 
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.cc b/chrome/browser/android/locale/locale_template_url_loader.cc
-index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde514b388e1b 100644
+index 0ee23fb137e0d46f01aec45b8c27ecfa3a8ab621..fdeefd5ba3a3b06c5a6e677fdc292590dc8df361 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.cc
 +++ b/chrome/browser/android/locale/locale_template_url_loader.cc
-@@ -11,6 +11,7 @@
+@@ -9,6 +9,7 @@
  #include "base/debug/dump_without_crashing.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -33,7 +33,7 @@ index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde51
  #include "components/search_engines/template_url_data.h"
  #include "components/search_engines/template_url_prepopulate_data.h"
  #include "components/search_engines/template_url_service.h"
-@@ -82,19 +83,6 @@ bool LocaleTemplateUrlLoader::LoadTemplateUrls(JNIEnv* env) {
+@@ -73,19 +74,6 @@ bool LocaleTemplateUrlLoader::LoadTemplateUrls() {
      const TemplateURL* matching_url =
          template_url_service_->GetTemplateURLForKeyword(data_url->keyword());
      bool exists = matching_url != nullptr;
@@ -53,7 +53,7 @@ index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde51
  
      if (exists) {
        continue;
-@@ -138,8 +126,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(JNIEnv* env) {
+@@ -129,8 +117,7 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider() {
    // If the user has changed their default search provider, no-op.
    const TemplateURL* current_dsp =
        template_url_service_->GetDefaultSearchProvider();
@@ -63,11 +63,11 @@ index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde51
      return;
    }
  
-@@ -151,29 +138,6 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider(JNIEnv* env) {
+@@ -142,29 +129,6 @@ void LocaleTemplateUrlLoader::OverrideDefaultSearchProvider() {
    }
  }
  
--void LocaleTemplateUrlLoader::SetGoogleAsDefaultSearch(JNIEnv* env) {
+-void LocaleTemplateUrlLoader::SetGoogleAsDefaultSearch() {
 -  if (!template_url_service_) {
 -    // TODO(b/318339172): Test profile state from Java, switch to CHECK here.
 -    base::debug::DumpWithoutCrashing();  // Investigating b/317335096.
@@ -93,7 +93,7 @@ index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde51
  std::vector<std::unique_ptr<TemplateURLData>>
  LocaleTemplateUrlLoader::GetLocalPrepopulatedEngines() {
    if (!template_url_service_) {
-@@ -186,7 +150,7 @@ LocaleTemplateUrlLoader::GetLocalPrepopulatedEngines() {
+@@ -177,7 +141,7 @@ LocaleTemplateUrlLoader::GetLocalPrepopulatedEngines() {
  }
  
  int LocaleTemplateUrlLoader::GetDesignatedSearchEngineForChina() {
@@ -103,14 +103,14 @@ index 8e6c754e19271da886f720d2d44a09d8ccf40b3c..d1f00983a4678caaad7da31f8cfbde51
  
  LocaleTemplateUrlLoader::~LocaleTemplateUrlLoader() = default;
 diff --git a/chrome/browser/android/locale/locale_template_url_loader.h b/chrome/browser/android/locale/locale_template_url_loader.h
-index c623db5d658947dd274b048c99c800b125c3a048..a84eb62b25c0dcf0ab8c519006a3ba6494a55f15 100644
+index 8ade8dedb509229aef4941563a91840b709201fa..1fb118e9ce8b14d8286000659daa21f26659758b 100644
 --- a/chrome/browser/android/locale/locale_template_url_loader.h
 +++ b/chrome/browser/android/locale/locale_template_url_loader.h
-@@ -25,7 +25,6 @@ class LocaleTemplateUrlLoader : public ProfileObserver {
-   bool LoadTemplateUrls(JNIEnv* env);
-   void RemoveTemplateUrls(JNIEnv* env);
-   void OverrideDefaultSearchProvider(JNIEnv* env);
--  void SetGoogleAsDefaultSearch(JNIEnv* env);
+@@ -26,7 +26,6 @@ class LocaleTemplateUrlLoader : public ProfileObserver {
+   bool LoadTemplateUrls();
+   void RemoveTemplateUrls();
+   void OverrideDefaultSearchProvider();
+-  void SetGoogleAsDefaultSearch();
  
    LocaleTemplateUrlLoader(const LocaleTemplateUrlLoader&) = delete;
    LocaleTemplateUrlLoader& operator=(const LocaleTemplateUrlLoader&) = delete;
@@ -152,10 +152,10 @@ index 26c187bbcff33b2e7611195d2ef68993d4c5bd40..60a32065acd261aced91242e97d5c010
      }
  }
 diff --git a/components/regional_capabilities/regional_capabilities_service.cc b/components/regional_capabilities/regional_capabilities_service.cc
-index b46a43dc3c9e7c2fa3cf767f9a0345293f3ccd47..fd58c67448ab0f94774a3389797d3ba394578eaf 100644
+index e02ff4617c00f4f4951cfe462867dcdf3addd4c7..aac990a18c43ea7a0dd744030492940fed4262ad 100644
 --- a/components/regional_capabilities/regional_capabilities_service.cc
 +++ b/components/regional_capabilities/regional_capabilities_service.cc
-@@ -375,6 +375,11 @@ std::vector<raw_ptr<const PrepopulatedEngine>>
+@@ -383,6 +383,11 @@ std::vector<raw_ptr<const PrepopulatedEngine>>
  RegionalCapabilitiesService::GetRegionalPrepopulatedEngines() {
    std::vector<raw_ptr<const PrepopulatedEngine>> engines;
  
@@ -254,10 +254,10 @@ index 1e04bfeddf138e08562bcb97d81065c8af8d3038..ba2cee95ade1ca0abd703e170c358c32
  
    auto it = std::ranges::find_if(all_engines, [&](const auto& engine) {
 diff --git a/components/search_engines/template_url_prepopulate_data.cc b/components/search_engines/template_url_prepopulate_data.cc
-index 6e9eb43a1c7e1942a171b0619bd411afdb955aa7..c01b2b922cede8b2eb91fb57c50029bee7b8b608 100644
+index c58c7e06bf21a063466ef6061bc0f268e1e69d0f..21eff63eb0873de6e1c3e5ae2e3d0c0197f1d4f2 100644
 --- a/components/search_engines/template_url_prepopulate_data.cc
 +++ b/components/search_engines/template_url_prepopulate_data.cc
-@@ -198,7 +198,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
+@@ -204,7 +204,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetPrepopulatedEngines(
          regional_prepopulated_engines) {
    std::vector<std::unique_ptr<TemplateURLData>> t_urls =
        GetPrepopulatedEnginesChromium(prefs, regional_prepopulated_engines);
@@ -267,7 +267,7 @@ index 6e9eb43a1c7e1942a171b0619bd411afdb955aa7..c01b2b922cede8b2eb91fb57c50029be
    t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
    return t_urls;
  }
-@@ -229,7 +230,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
+@@ -235,7 +236,8 @@ std::vector<std::unique_ptr<TemplateURLData>> GetLocalPrepopulatedEngines(
                              country_id, prefs,
                              regional_capabilities::SearchEngineListType::kTopN),
                          &PrepopulatedEngineToTemplateURLData);
@@ -277,7 +277,7 @@ index 6e9eb43a1c7e1942a171b0619bd411afdb955aa7..c01b2b922cede8b2eb91fb57c50029be
    t_urls.push_back(TemplateURLDataFromPrepopulatedEngine(duckduckgo_light));
    return t_urls;
  }
-@@ -325,7 +327,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
+@@ -335,7 +337,7 @@ std::unique_ptr<TemplateURLData> GetPrepopulatedFallbackSearch(
      const std::vector<raw_ptr<const PrepopulatedEngine>>&
          regional_prepopulated_engines) {
    return FindPrepopulatedEngineInternal(prefs, regional_prepopulated_engines,
