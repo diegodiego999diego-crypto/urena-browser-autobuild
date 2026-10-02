@@ -25,7 +25,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../tab_management/TabGroupUiViewBinder.java  |   3 +
  .../TabListContainerViewBinder.java           |   2 +-
  .../tab_management/TabListCoordinator.java    | 131 +++++++++++++++++-
- .../TabListEmptyCoordinator.java              |  16 ++-
+ .../TabListEmptyCoordinator.java              |  17 ++-
  .../tab_management/TabSwitcherPaneBase.java   |   9 ++
  .../browser/feed/FeedSurfaceCoordinator.java  |   4 +
  .../java/res/layout/search_activity.xml       |   1 -
@@ -115,7 +115,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../render_widget_host_view_android.cc        |   3 +
  .../Move-navigation-bar-to-bottom.inc         |  17 +++
  .../renderer/core/frame/viewport_data.cc      |   1 +
- 101 files changed, 1178 insertions(+), 99 deletions(-)
+ 101 files changed, 1179 insertions(+), 99 deletions(-)
  create mode 100644 chrome/browser/hub/internal/android/java/src/org/chromium/chrome/browser/hub/ReversedLinearLayout.java
  create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Move-navigation-bar-to-bottom.inc
 
@@ -687,20 +687,21 @@ index aa2d5909bac842ccc089fd3b72cd224ae50e7705..1bd1f991ad461a7a63147a5a0f52766c
  
      private void initializeEmptyStateView() {
 diff --git a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabListEmptyCoordinator.java b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabListEmptyCoordinator.java
-index 1458cf701bdfc245017f86b46f99372e64978bb2..5d60b464b7004acc4ceb0bcb5dbd0d7ae2a85b46 100644
+index 1458cf701bdfc245017f86b46f99372e64978bb2..b3c5a0cfd0405674dfd56e88d015a47baad883e8 100644
 --- a/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabListEmptyCoordinator.java
 +++ b/chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/TabListEmptyCoordinator.java
-@@ -15,7 +15,9 @@ import android.view.View.OnLayoutChangeListener;
+@@ -15,7 +15,10 @@ import android.view.View.OnLayoutChangeListener;
  import android.view.ViewGroup;
  import android.widget.ImageView;
  import android.widget.TextView;
 +import android.widget.FrameLayout;
  
 +import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
++import org.chromium.chrome.browser.flags.ChromeFeatureList;
  import androidx.annotation.DrawableRes;
  import androidx.annotation.Px;
  import androidx.annotation.StringRes;
-@@ -52,12 +54,14 @@ class TabListEmptyCoordinator {
+@@ -52,12 +55,14 @@ class TabListEmptyCoordinator {
      private ImageView mImageView;
      private boolean mIsTabSwitcherShowing;
      private boolean mIsListObserverAttached;
@@ -716,7 +717,7 @@ index 1458cf701bdfc245017f86b46f99372e64978bb2..5d60b464b7004acc4ceb0bcb5dbd0d7a
          mRecyclerView = recyclerView;
          mRootView = rootView;
          mContext = rootView.getContext();
-@@ -65,6 +69,7 @@ class TabListEmptyCoordinator {
+@@ -65,6 +70,7 @@ class TabListEmptyCoordinator {
  
          // Observe TabListModel to determine when to add / remove empty state view.
          mModel = model;
@@ -724,7 +725,7 @@ index 1458cf701bdfc245017f86b46f99372e64978bb2..5d60b464b7004acc4ceb0bcb5dbd0d7a
          mListObserver =
                  new ListObserver<>() {
                      @Override
-@@ -185,6 +190,15 @@ class TabListEmptyCoordinator {
+@@ -185,6 +191,15 @@ class TabListEmptyCoordinator {
      public void attachEmptyView() {
          if (mEmptyView != null && mEmptyView.getParent() == null) {
              mRootView.addView(mEmptyView);
@@ -3275,7 +3276,7 @@ index ef5e179386d83db4e0d212339ea10e7d06a7638d..f83f2a0524e4c70a83d49fa9cd910be0
  
      /**
 diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/TopToolbarOverlayCoordinator.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/TopToolbarOverlayCoordinator.java
-index 05ac9d732d5b31e56bd3deba3793c3ee0d7216eb..dbe5dc2886f6d7d03857bdedf1ac6c25fe40ffb3 100644
+index 05ac9d732d5b31e56bd3deba3793c3ee0d7216eb..5e5d368d95bba099986e2e2a782dc948ec01e4ef 100644
 --- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/TopToolbarOverlayCoordinator.java
 +++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/TopToolbarOverlayCoordinator.java
 @@ -24,11 +24,14 @@ import org.chromium.chrome.browser.theme.ToolbarThemeColorProvider;
@@ -3299,7 +3300,7 @@ index 05ac9d732d5b31e56bd3deba3793c3ee0d7216eb..dbe5dc2886f6d7d03857bdedf1ac6c25
                          .with(TopToolbarOverlayProperties.SHOW_SHADOW, true)
 +                        .with(TopToolbarOverlayProperties.VIEWPORT_HEIGHT, 0)
 +                        .with(TopToolbarOverlayProperties.TOOLBAR_HEIGHT,
-+                                browserControlsStateProvider.getTopControlsHeight()
++                                browserControlsVisibilityManager.getTopControlsHeight()
 +                                    + (DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
 +                                        ? context.getResources().getDimensionPixelSize(R.dimen.toolbar_hairline_height)
 +                                        : -context.getResources().getDimensionPixelSize(R.dimen.toolbar_hairline_height)))
