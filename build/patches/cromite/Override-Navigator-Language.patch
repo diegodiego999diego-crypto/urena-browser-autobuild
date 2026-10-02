@@ -9,15 +9,15 @@ and fix the selection in the UI for the browser language
 Original License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- .../browser/language/AppLocaleUtils.java      | 22 ++++++++++++++++++-
- .../renderer_host/render_process_host_impl.cc |  6 ++++-
- 2 files changed, 26 insertions(+), 2 deletions(-)
+ .../browser/language/AppLocaleUtils.java      | 28 ++++++++++++++++++-
+ .../renderer_host/render_process_host_impl.cc |  6 +++-
+ 2 files changed, 32 insertions(+), 2 deletions(-)
 
 diff --git a/chrome/browser/language/android/java/src/org/chromium/chrome/browser/language/AppLocaleUtils.java b/chrome/browser/language/android/java/src/org/chromium/chrome/browser/language/AppLocaleUtils.java
-index b66efb36ace8e439d692da0000db64794a1b6e0e..ac9a85087d10eaa23e9c86aaf434fd567495412b 100644
+index 75105b41265356e09a70d1482585db6a78db487d..5f2afc3538102c7c4e422ba0b3e6df7328795640 100644
 --- a/chrome/browser/language/android/java/src/org/chromium/chrome/browser/language/AppLocaleUtils.java
 +++ b/chrome/browser/language/android/java/src/org/chromium/chrome/browser/language/AppLocaleUtils.java
-@@ -35,6 +35,10 @@ import java.util.Locale;
+@@ -37,6 +37,10 @@ import java.util.Locale;
  public class AppLocaleUtils {
      private AppLocaleUtils() {}
  
@@ -28,7 +28,7 @@ index b66efb36ace8e439d692da0000db64794a1b6e0e..ac9a85087d10eaa23e9c86aaf434fd56
      // Value of AppLocale preference when the system language is used.
      public static final @Nullable String APP_LOCALE_USE_SYSTEM_LANGUAGE = null;
  
-@@ -106,6 +110,22 @@ public class AppLocaleUtils {
+@@ -108,6 +112,28 @@ public class AppLocaleUtils {
          return locales.get(0).toLanguageTag();
      }
  
@@ -36,6 +36,12 @@ index b66efb36ace8e439d692da0000db64794a1b6e0e..ac9a85087d10eaa23e9c86aaf434fd56
 +            String languageName, InstallListener listener) {
 +        InstallListener wrappedListener = (success) -> {
 +            if (success) {
++                // The locale change will trigger a process restart to apply the new
++                // language and reopen chrome when SettingsInTab is enabled. See
++                // https://crbug.com/545907093.
++                if (SettingsInTab.isEnabled()) {
++                    ApplicationLifetime.setRestartForLocaleSwitch(true);
++                }
 +                if (shouldUseSystemManagedLocale()) {
 +                    setSystemManagedAppLanguage(languageName);
 +                } else {
@@ -51,7 +57,7 @@ index b66efb36ace8e439d692da0000db64794a1b6e0e..ac9a85087d10eaa23e9c86aaf434fd56
      /**
       * Gets the first original system locale from {@link LocaleManager}. This is the language that
       * Chrome would use if there was no override set. If there are no possible UI languages en-US is
-@@ -189,7 +209,7 @@ public class AppLocaleUtils {
+@@ -191,7 +217,7 @@ public class AppLocaleUtils {
       */
      @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.TIRAMISU)
      public static boolean shouldUseSystemManagedLocale() {
@@ -61,7 +67,7 @@ index b66efb36ace8e439d692da0000db64794a1b6e0e..ac9a85087d10eaa23e9c86aaf434fd56
  
      /**
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
-index d50183018ba35f1ff2f94b80bddab1274eb32d27..24fb1e206ea0a9737461079261c31ac996edee0a 100644
+index 02ffde6ddbcea4c8681e0f2b166098956d6e0aab..3b348996458b51fbd77f4aaa9417e086c03dd71a 100644
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc
 @@ -76,6 +76,7 @@
@@ -72,7 +78,7 @@ index d50183018ba35f1ff2f94b80bddab1274eb32d27..24fb1e206ea0a9737461079261c31ac9
  #include "components/metrics/single_sample_metrics.h"
  #include "components/services/storage/privileged/mojom/indexed_db_control.mojom.h"
  #include "components/services/storage/public/cpp/buckets/bucket_id.h"
-@@ -3768,8 +3769,11 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
+@@ -3793,8 +3794,11 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
    PropagateBrowserCommandLineToRenderer(browser_command_line, command_line);
  
    // Pass on the browser locale.

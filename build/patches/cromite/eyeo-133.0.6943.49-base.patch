@@ -238,14 +238,14 @@ Based on Chromium 133.0.6943.49
  .../adblock/core/sitekey_storage_impl.h       |   59 +
  components/adblock/core/subscription/BUILD.gn |  186 +++
  .../core/subscription/conversion_executors.h  |   50 +
- .../core/subscription/domain_splitter.cc      |   74 +
+ .../core/subscription/domain_splitter.cc      |   76 +
  .../core/subscription/domain_splitter.h       |   56 +
  .../filtering_configuration_maintainer.h      |   55 +
  ...filtering_configuration_maintainer_impl.cc |  516 ++++++
  .../filtering_configuration_maintainer_impl.h |  124 ++
  .../subscription/installed_subscription.cc    |   46 +
  .../subscription/installed_subscription.h     |  147 ++
- .../installed_subscription_impl.cc            |  638 ++++++++
+ .../installed_subscription_impl.cc            |  640 ++++++++
  .../installed_subscription_impl.h             |  147 ++
  .../core/subscription/pattern_matcher.cc      |  277 ++++
  .../core/subscription/pattern_matcher.h       |   35 +
@@ -366,7 +366,7 @@ Based on Chromium 133.0.6943.49
  tools/eyeo/update_git_grafts.py               |  138 ++
  tools/gritsettings/resource_ids.spec          |   12 +
  .../histograms/metadata/extensions/enums.xml  |    8 +-
- 361 files changed, 48832 insertions(+), 9 deletions(-)
+ 361 files changed, 48836 insertions(+), 9 deletions(-)
  create mode 100644 components/adblock/BUILD.gn
  create mode 100644 components/adblock/CHANGELOG.md
  create mode 100644 components/adblock/LICENSE
@@ -33621,10 +33621,10 @@ index 0000000000000000000000000000000000000000..317624d4bb2e28b9a45f1efff8147459
 +#endif  // COMPONENTS_ADBLOCK_CORE_SUBSCRIPTION_CONVERSION_EXECUTORS_H_
 diff --git a/components/adblock/core/subscription/domain_splitter.cc b/components/adblock/core/subscription/domain_splitter.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..355019ba6553062bcf07a912b0549c71401bcbf8
+index 0000000000000000000000000000000000000000..0e380e24e49bff974ded3dd7b31b0a22a7a5daed
 --- /dev/null
 +++ b/components/adblock/core/subscription/domain_splitter.cc
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,76 @@
 +
 +/*
 + * This file is part of eyeo Chromium SDK,
@@ -33657,12 +33657,14 @@ index 0000000000000000000000000000000000000000..355019ba6553062bcf07a912b0549c71
 +  // prepare to also iterate over the domain without the registry, i.e.
 +  // "info.domain." in order to match wildcard filters.
 +  const size_t registry_length =
-+      net::registry_controlled_domains::GetCanonicalHostRegistryLength(
++      net::registry_controlled_domains::GetCanonicalHostRegistry(
 +          domain,
 +          net::registry_controlled_domains::UnknownRegistryFilter::
 +              EXCLUDE_UNKNOWN_REGISTRIES,
 +          net::registry_controlled_domains::PrivateRegistryFilter::
-+              EXCLUDE_PRIVATE_REGISTRIES);
++              EXCLUDE_PRIVATE_REGISTRIES)
++              .transform(&std::string_view::size)
++              .value_or(0);
 +  if (registry_length != 0) {
 +    domain_sans_registry_copy_ =
 +        domain.substr(0, domain.size() - registry_length);
@@ -34681,10 +34683,10 @@ index 0000000000000000000000000000000000000000..43395491ab984d9b339df1ffd2b4b3f7
 +#endif  // COMPONENTS_ADBLOCK_CORE_SUBSCRIPTION_INSTALLED_SUBSCRIPTION_H_
 diff --git a/components/adblock/core/subscription/installed_subscription_impl.cc b/components/adblock/core/subscription/installed_subscription_impl.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..f3c25293ad14964d03b7062961d4df48458294b3
+index 0000000000000000000000000000000000000000..7ab49225bfb9dcc7a1b6551657613f25c01afa4a
 --- /dev/null
 +++ b/components/adblock/core/subscription/installed_subscription_impl.cc
-@@ -0,0 +1,638 @@
+@@ -0,0 +1,640 @@
 +/*
 + * This file is part of eyeo Chromium SDK,
 + * Copyright (C) 2006-present eyeo GmbH
@@ -34748,12 +34750,14 @@ index 0000000000000000000000000000000000000000..f3c25293ad14964d03b7062961d4df48
 +    // Remove the registry from |document_domain| in order for it to also end
 +    // in a dot (e.g. "example.com" becomes "example.").
 +    const size_t registry_length =
-+        net::registry_controlled_domains::GetCanonicalHostRegistryLength(
++        net::registry_controlled_domains::GetCanonicalHostRegistry(
 +            document_domain,
 +            net::registry_controlled_domains::UnknownRegistryFilter::
 +                EXCLUDE_UNKNOWN_REGISTRIES,
 +            net::registry_controlled_domains::PrivateRegistryFilter::
-+                EXCLUDE_PRIVATE_REGISTRIES);
++                EXCLUDE_PRIVATE_REGISTRIES)
++              .transform(&std::string_view::size)
++              .value_or(0);
 +    // Remove the registry from document_domain:
 +    document_domain.remove_suffix(registry_length);
 +  }

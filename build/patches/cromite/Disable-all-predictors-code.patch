@@ -12,6 +12,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  ...ld_classification_model_service_factory.cc |  19 +--
  .../ai_embeddings_component_installer.cc      |  37 +-----
  .../background_download_service_factory.cc    |   2 +-
+ .../suggestions/contextual_cueing_service.cc  |   2 +-
  .../history_embeddings_utils.cc               |   5 +
  .../preloading_model_keyed_service.cc         |   2 +
  .../preloading_model_keyed_service_factory.cc |   9 +-
@@ -74,7 +75,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../core/hints/hints_fetcher.cc               |   1 +
  .../core/hints/hints_manager.cc               |   2 +
  .../private_ai_model_execution_fetcher.cc     |   4 +
- .../core/optimization_guide_features.cc       |  13 +-
+ .../core/optimization_guide_features.cc       |  12 +-
  components/optimization_guide/features.gni    |   2 +-
  .../page_category_classifier_bridge_impl.cc   |   4 +
  .../page_category_classifier_bridge_impl.h    |   3 +
@@ -127,7 +128,7 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../core/html/parser/html_document_parser.cc  |   1 +
  .../document_speculation_rules.cc             |   1 +
  .../platform/runtime_enabled_features.json5   |   2 +-
- 121 files changed, 390 insertions(+), 438 deletions(-)
+ 122 files changed, 390 insertions(+), 439 deletions(-)
  create mode 100644 cromite_flags/chrome/browser/browser_features_cc/Disable-all-predictors-code.inc
  create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Disable-all-predictors-code.inc
  create mode 100644 cromite_flags/chrome/common/chrome_features_cc/Disable-all-predictors-code.inc
@@ -303,6 +304,19 @@ index 4186182fe793adc3a4bccc4c88f331ab5d8c3371..1f092b5357f77b3510d9c2f4e77d1943
      clients->insert(std::make_pair(
          download::DownloadClient::OPTIMIZATION_GUIDE_PREDICTION_MODELS,
          std::make_unique<download::DeferredClientWrapper>(
+diff --git a/chrome/browser/glic/suggestions/contextual_cueing_service.cc b/chrome/browser/glic/suggestions/contextual_cueing_service.cc
+index 58fcd0d6e07d87fd6e7ce279e5428678952db648..8baf332a8aa15ec15da3043bb1d0df313408d906 100644
+--- a/chrome/browser/glic/suggestions/contextual_cueing_service.cc
++++ b/chrome/browser/glic/suggestions/contextual_cueing_service.cc
+@@ -153,7 +153,7 @@ ContextualCueingService::ContextualCueingService(
+       pref_service_(pref_service),
+       template_url_service_(template_url_service),
+       identity_manager_(identity_manager),
+-      mes_url_(optimization_guide::GetModelExecutionServiceURL()) {
++      mes_url_(GURL()) {
+   if (optimization_guide_keyed_service_ && IsZeroStateSuggestionsEnabled()) {
+     optimization_guide_keyed_service_->RegisterOptimizationTypes(
+         {optimization_guide::proto::GLIC_ZERO_STATE_SUGGESTIONS});
 diff --git a/chrome/browser/history_embeddings/history_embeddings_utils.cc b/chrome/browser/history_embeddings/history_embeddings_utils.cc
 index 8198ba0c74bbfb0e68f8334f9592dddccb182c28..69bca304bf93a6fec3ee941ecc4ba269b20f83a0 100644
 --- a/chrome/browser/history_embeddings/history_embeddings_utils.cc
@@ -2242,7 +2256,7 @@ index e35319dc47d8235b869dea3998eb1c2fd3576612..0a6f4ec0b6b9c88c21f297bdc09c4ee8
  
    private_ai::proto::PaicMessage paic_message;
 diff --git a/components/optimization_guide/core/optimization_guide_features.cc b/components/optimization_guide/core/optimization_guide_features.cc
-index 075524a7d03d72e63c2101456af9b4871d2d6158..2838d0441a84e25d5ef941b250fb57eaa5015d55 100644
+index 075524a7d03d72e63c2101456af9b4871d2d6158..5579917135140a9712d7b964ad27f026e7478698 100644
 --- a/components/optimization_guide/core/optimization_guide_features.cc
 +++ b/components/optimization_guide/core/optimization_guide_features.cc
 @@ -47,11 +47,7 @@ constexpr char kOptimizationGuideServiceAPIKeySwitch[] =
@@ -2267,7 +2281,7 @@ index 075524a7d03d72e63c2101456af9b4871d2d6158..2838d0441a84e25d5ef941b250fb57ea
  }
  
  RequestContextSet GetAllowedContextsForPersonalizedMetadata() {
-@@ -497,4 +492,10 @@ std::optional<base::TimeDelta> GetAIPageContentGetImageBytesTimeout() {
+@@ -497,4 +492,9 @@ std::optional<base::TimeDelta> GetAIPageContentGetImageBytesTimeout() {
    return kGetAIPageContentGetImageBytesTimeoutParam.Get();
  }
  
@@ -2275,7 +2289,6 @@ index 075524a7d03d72e63c2101456af9b4871d2d6158..2838d0441a84e25d5ef941b250fb57ea
 +SET_CROMITE_FEATURE_DISABLED(kOptimizationTargetPrediction);
 +SET_CROMITE_FEATURE_DISABLED(kPreventLongRunningPredictionModels);
 +SET_CROMITE_FEATURE_DISABLED(kOptimizationGuideFetchingForSRP);
-+SET_CROMITE_FEATURE_DISABLED(kOptimizationGuideOnDeviceModel);
 +SET_CROMITE_FEATURE_DISABLED(kLogOnDeviceMetricsOnStartup);
  }  // namespace optimization_guide::features
 diff --git a/components/optimization_guide/features.gni b/components/optimization_guide/features.gni
