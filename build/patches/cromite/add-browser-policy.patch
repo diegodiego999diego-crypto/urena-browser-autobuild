@@ -31,14 +31,14 @@ License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
  .../ExtensionManifestV2Availability.yaml      |   5 +-
  .../Miscellaneous/SyncDisabled.yaml           |   2 +-
  .../policy/resources/webui/policy_row.html.ts |   3 +
- .../policy/resources/webui/policy_row.ts      |   8 +
+ .../policy/resources/webui/policy_row.ts      |  10 ++
  components/policy_strings.grdp                |   4 +-
  components/search/ntp_features.cc             |   1 +
  components/signin/features.gni                |   2 +-
  .../gaia_cookie_manager_service.cc            |   4 +
  google_apis/gaia/gaia_auth_fetcher.cc         |   1 +
  net/socket/ssl_client_socket_impl.cc          |   1 +
- 33 files changed, 319 insertions(+), 164 deletions(-)
+ 33 files changed, 321 insertions(+), 164 deletions(-)
 
 diff --git a/base/win/win_util.cc b/base/win/win_util.cc
 index 1933efeb0db05f168a8d285c3c9921550ab654da..6930de635913168e1bb76759ec7e8d54aec67bb3 100644
@@ -131,7 +131,7 @@ index 1933efeb0db05f168a8d285c3c9921550ab654da..6930de635913168e1bb76759ec7e8d54
  }
  
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
-index dd8603588a11dd0826ae1ca386245353c9c7629c..b4bd1178b73e746c280ca601df753793dc3376e1 100644
+index e9ec0466b88aaa2f3845cd2cec3c8b41a01b4ba5..60c3e8c7316ecf0d53965cf236756995d14b6a03 100644
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
 @@ -81,9 +81,7 @@ by a child template that "extends" this file.
@@ -144,7 +144,7 @@ index dd8603588a11dd0826ae1ca386245353c9c7629c..b4bd1178b73e746c280ca601df753793
      <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
      <uses-permission android:name="android.permission.NFC"/>
      <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-@@ -101,7 +99,6 @@ by a child template that "extends" this file.
+@@ -103,7 +101,6 @@ by a child template that "extends" this file.
        resizeTo, moveBy}|).
      -->
      <uses-permission android:name="android.permission.REPOSITION_SELF_WINDOWS"/>
@@ -152,7 +152,7 @@ index dd8603588a11dd0826ae1ca386245353c9c7629c..b4bd1178b73e746c280ca601df753793
      <uses-permission-sdk-23 android:name="android.permission.USE_BIOMETRIC"/>
      <uses-permission-sdk-23 android:name="android.permission.USE_FINGERPRINT"/>
      <uses-permission android:name="android.permission.VIBRATE"/>
-@@ -154,7 +151,6 @@ by a child template that "extends" this file.
+@@ -165,7 +162,6 @@ by a child template that "extends" this file.
      <uses-permission android:name="com.chrome.permission.DEVICE_EXTRAS" />
      <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
  
@@ -224,10 +224,10 @@ index a85120cfe218e4d82698fc036e18a199d7c15068..df5db4a29a73fbe6aa6e2ad34832fdc2
  // preconnect. This will trigger the destruction of the previous receiver
  // (and also the remote), and also the re-creation of the observer.
 diff --git a/chrome/browser/policy/chrome_browser_policy_connector.cc b/chrome/browser/policy/chrome_browser_policy_connector.cc
-index c475e2858878bd22323098ea6612123968e505e7..c7d35b7de36651d9ffb12e7c5c5624e347767ba3 100644
+index 1761f93bfefa85685fe87f6ee2c8dcb3e54b9bf0..bd4f8edbb251837c14a27fd84cd0cab01d580c36 100644
 --- a/chrome/browser/policy/chrome_browser_policy_connector.cc
 +++ b/chrome/browser/policy/chrome_browser_policy_connector.cc
-@@ -134,9 +134,6 @@ bool ChromeBrowserPolicyConnector::HasMachineLevelPolicies() {
+@@ -132,9 +132,6 @@ bool ChromeBrowserPolicyConnector::HasMachineLevelPolicies() {
      return true;
    }
  #endif  // !BUILDFLAG(IS_CHROMEOS)
@@ -238,10 +238,10 @@ index c475e2858878bd22323098ea6612123968e505e7..c7d35b7de36651d9ffb12e7c5c5624e3
  }
  
 diff --git a/chrome/browser/policy/configuration_policy_handler_list_factory.cc b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-index bbcb61aa574f00fcd28a8e1a7e25729d698ab447..2e973f57ae705d6c3a046d33b7f500584197ed7d 100644
+index 59793a0a8630c3af11983ee3a3c546db50577f79..928d138ca361886038fd6791f9a9b2294e98a998 100644
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2600,9 +2600,9 @@ bool AreFuturePoliciesEnabledByDefault() {
+@@ -2607,9 +2607,9 @@ bool AreFuturePoliciesEnabledByDefault() {
    if (base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kTestType)) {
      return true;
    }
@@ -255,7 +255,7 @@ index bbcb61aa574f00fcd28a8e1a7e25729d698ab447..2e973f57ae705d6c3a046d33b7f50058
  
  }  // namespace
 diff --git a/chrome/browser/signin/account_consistency_mode_manager.cc b/chrome/browser/signin/account_consistency_mode_manager.cc
-index f11db47c92ff8bc14da47d494f6a14cd64832d41..6b2d7233c4efa698648cbe9f44c4a9e1ea071156 100644
+index 7d4c893cbcd995c48a00631f9cbfd736fb188e63..7fe77123dd48662a1d33c3daca418c9acbf1c9cd 100644
 --- a/chrome/browser/signin/account_consistency_mode_manager.cc
 +++ b/chrome/browser/signin/account_consistency_mode_manager.cc
 @@ -93,7 +93,8 @@ signin::AccountConsistencyMethod ComputeAccountConsistencyMethod(
@@ -340,10 +340,10 @@ index 01d9d7949630117ccaee75c4c68ae97eae8a40dd..64baebaa590794aa2ae2e637fb6938df
 +#endif
  }
 diff --git a/chrome/browser/signin/chrome_signin_client.cc b/chrome/browser/signin/chrome_signin_client.cc
-index 2de021a7b2bf0e8092895393f37db7bc22a7a81a..342f7af813d90af1f70ac05514c55238d26ac147 100644
+index 92e6766d07731f0e182392d8a432587c527f24f6..1ce0e2c7793475ec7a548dbc319801b4b2a02784 100644
 --- a/chrome/browser/signin/chrome_signin_client.cc
 +++ b/chrome/browser/signin/chrome_signin_client.cc
-@@ -312,7 +312,9 @@ void ChromeSigninClient::DoFinalInit() {
+@@ -308,7 +308,9 @@ void ChromeSigninClient::DoFinalInit() {
  bool ChromeSigninClient::ProfileAllowsSigninCookies(Profile* profile) {
    scoped_refptr<content_settings::CookieSettings> cookie_settings =
        CookieSettingsFactory::GetForProfile(profile);
@@ -354,7 +354,7 @@ index 2de021a7b2bf0e8092895393f37db7bc22a7a81a..342f7af813d90af1f70ac05514c55238
  }
  
  PrefService* ChromeSigninClient::GetPrefs() {
-@@ -430,6 +432,9 @@ bool ChromeSigninClient::AreNetworkCallsDelayed() {
+@@ -426,6 +428,9 @@ bool ChromeSigninClient::AreNetworkCallsDelayed() {
  }
  
  void ChromeSigninClient::DelayNetworkCall(base::OnceClosure callback) {
@@ -378,7 +378,7 @@ index 46522575f530c2a91d498084317ed535f0d0dbdd..d83454ecb38bee3c0b199f08d566d704
  const char kDiceEnableSyncHeaderAccountInfoIsPresent[] =
      "Signin.DiceEnableSyncHeaderAccountInfoIsPresent";
 diff --git a/chrome/browser/ui/webui/policy/policy_ui_handler.cc b/chrome/browser/ui/webui/policy/policy_ui_handler.cc
-index 7116091df4030d1e9e655cfbbadc8c3e79fd2b67..3e00f47653106d0dd7d4e08f0da3489446f95301 100644
+index 69855e9669dd9c9846e71932aaea2b579ab8177c..bd68b7473c75117546461a1ee30f6a198833c9bb 100644
 --- a/chrome/browser/ui/webui/policy/policy_ui_handler.cc
 +++ b/chrome/browser/ui/webui/policy/policy_ui_handler.cc
 @@ -27,6 +27,7 @@
@@ -408,7 +408,7 @@ index 7116091df4030d1e9e655cfbbadc8c3e79fd2b67..3e00f47653106d0dd7d4e08f0da34894
  #if !BUILDFLAG(IS_CHROMEOS)
    web_ui()->RegisterMessageCallback(
        "uploadReport", base::BindRepeating(&PolicyUIHandler::HandleUploadReport,
-@@ -524,8 +530,102 @@ void PolicyUIHandler::SendPolicies() {
+@@ -531,8 +537,102 @@ void PolicyUIHandler::SendPolicies() {
        "policies-updated",
        base::Value(
            policy_value_and_status_aggregator_->GetAggregatedPolicyNames()),
@@ -514,7 +514,7 @@ index 7116091df4030d1e9e655cfbbadc8c3e79fd2b67..3e00f47653106d0dd7d4e08f0da34894
  
  void PolicyUIHandler::SendStatus() {
 diff --git a/chrome/browser/ui/webui/policy/policy_ui_handler.h b/chrome/browser/ui/webui/policy/policy_ui_handler.h
-index 50c25069fc70d554260b98a5e999b7d13765af07..d3aa225863a5e86698f08e4f304ca805cd2c4dc9 100644
+index a3addf52e2d7cb8b218566679df08e1445d5b615..b74793fe50c6521af5d45f85d4ad3acef7185cb4 100644
 --- a/chrome/browser/ui/webui/policy/policy_ui_handler.h
 +++ b/chrome/browser/ui/webui/policy/policy_ui_handler.h
 @@ -94,6 +94,8 @@ class PolicyUIHandler : public content::WebUIMessageHandler,
@@ -527,7 +527,7 @@ index 50c25069fc70d554260b98a5e999b7d13765af07..d3aa225863a5e86698f08e4f304ca805
    void HandleReloadPolicies(const base::ListValue& args);
    void HandleSetLocalTestPolicies(const base::ListValue& args);
 diff --git a/components/browser_ui/strings/android/browser_ui_strings.grd b/components/browser_ui/strings/android/browser_ui_strings.grd
-index 4f7690d677abdc0f786fd683729ba47cf31864e4..c70cbe99936a03d047fde5b0564ff313e26748fc 100644
+index ab01d6f330d2c8fcbab3ad1170658ed6cd281bbb..e1962da2921eaf68400179f643a32c97cf66f4c7 100644
 --- a/components/browser_ui/strings/android/browser_ui_strings.grd
 +++ b/components/browser_ui/strings/android/browser_ui_strings.grd
 @@ -383,7 +383,7 @@
@@ -845,7 +845,7 @@ index 04522708a96931c0b8eede573c152edfc4918aa1..2463c5d24740ea2217c8ce6cf1bedb02
  // Boolean policy preference to disable the BackForwardCache feature.
  inline constexpr char kBackForwardCacheEnabled[] =
 diff --git a/components/policy/core/common/policy_service_impl.cc b/components/policy/core/common/policy_service_impl.cc
-index 6e917d43e15c326c78d4d07b931d162d90c9bdf8..c35d5efa396264fb0a8ccdf2003b3cdafe1e9555 100644
+index 1e30db35565a06933771efab267d7380271efa5a..ed103a28aa88d732dfd05c2c6eeeb1a1907d34cb 100644
 --- a/components/policy/core/common/policy_service_impl.cc
 +++ b/components/policy/core/common/policy_service_impl.cc
 @@ -55,6 +55,9 @@ namespace {
@@ -934,21 +934,22 @@ index 5982600aae5121e19c741e4f79058f113a66328d..1fb7c22e1ab30a7857ecb6f8c6b53b28
      </a>
    </div>
 diff --git a/components/policy/resources/webui/policy_row.ts b/components/policy/resources/webui/policy_row.ts
-index 879c4483ffd6d19823f26542c39227d42198a58d..d8c9416948e651ff055ef9eaab5281bc75201b14 100644
+index a29b16fcce26c38f8f09534f4abc5b1590a63f01..8834c55747fd5f81942767d52f3dae0af5b6cc89 100644
 --- a/components/policy/resources/webui/policy_row.ts
 +++ b/components/policy/resources/webui/policy_row.ts
-@@ -26,6 +26,7 @@ export interface ConflictItem {
- export interface Policy {
-   ignored?: boolean;
-   name: string;
-+  disabled: boolean;
-   level: string;
+@@ -20,6 +20,7 @@ import {getHtml} from './policy_row.html.js';
+ // Policy type definition in policy.mojom should only contain fields set by C++.
+ // This interface definition is for additional fields set by the frontend.
+ export interface PolicyUiModel extends Policy {
++  disabled?: boolean;
    link?: string;
-   scope: string;
-@@ -101,6 +102,13 @@ export class PolicyRowElement extends CrLitElement {
+   isExtension?: boolean;
+   status?: string;
+@@ -86,6 +87,15 @@ export class PolicyRowElement extends CrLitElement {
+     }
    }
  
- 
++
 +  protected onEnabledChange(e: Event) {
 +    if (!this.policy) {
 +      return;
@@ -956,9 +957,10 @@ index 879c4483ffd6d19823f26542c39227d42198a58d..d8c9416948e651ff055ef9eaab5281bc
 +    const target = e.currentTarget as HTMLInputElement;
 +    chrome.send('setEnabledPolicy', [this.policy.name, target.checked]);
 +  }
- 
++
    protected getShowMoreLessLabel(): string {
      return loadTimeData.getString(this.expanded ? 'showLess' : 'showMore');
+   }
 diff --git a/components/policy_strings.grdp b/components/policy_strings.grdp
 index 568ccbf017dd9451184c4839e042862bb5426be2..b7ebdcf9b3d2ba4c358ad22ba8e366002332e6ec 100644
 --- a/components/policy_strings.grdp
@@ -975,7 +977,7 @@ index 568ccbf017dd9451184c4839e042862bb5426be2..b7ebdcf9b3d2ba4c358ad22ba8e36600
    <message name="IDS_POLICY_SOURCE_CLOUD" desc="Indicates that the policy originates from the cloud.">
      Cloud
 diff --git a/components/search/ntp_features.cc b/components/search/ntp_features.cc
-index 25de20c479a9253a2bb098c344ea02d7b5473b85..d8ed605d0ee3d64e7b403585c3f85751035739b3 100644
+index 82dbe3e790416ee93d7dc58a9dedf8de25e14f5b..a870e6826fdcece749f076c1b756473f7d20f4e3 100644
 --- a/components/search/ntp_features.cc
 +++ b/components/search/ntp_features.cc
 @@ -97,6 +97,7 @@ BASE_FEATURE(kNtpChromeCartModule,
@@ -1034,7 +1036,7 @@ index d0d556de9c078e15317a8d4cb5219d3219178bd0..e422abba05aab01c4456f35b3df54ecf
        " ",  // To force an HTTP POST.
        kFormEncodedContentType, headers, list_accounts_gurl_,
 diff --git a/net/socket/ssl_client_socket_impl.cc b/net/socket/ssl_client_socket_impl.cc
-index 7c733a466a5ab86033f76a125e4a580ff925bb9c..b6da58fa008d70bd64c4dfa321a1579a46fcdebe 100644
+index 4d8eb32ff3ba2b4830e36be221efa247e4d46e5b..17b43c108b499ae472648c363de730d9dde1ed9a 100644
 --- a/net/socket/ssl_client_socket_impl.cc
 +++ b/net/socket/ssl_client_socket_impl.cc
 @@ -828,6 +828,7 @@ int SSLClientSocketImpl::Init() {

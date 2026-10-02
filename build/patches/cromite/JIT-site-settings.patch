@@ -282,7 +282,7 @@ index 0000000000000000000000000000000000000000..23333c500ffc0810a18e41fe21617e9b
 +    .set_blocked_exceptions_ui(IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_BLOCK)
 +    .set_mid_sentence_ui(IDS_JAVASCRIPT_JIT_PERMISSION_TITLE);
 diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
-index 9912595c34b8ba5c65af52d7668fc69c74f238da..c3cf20d454ebebc3e54805c2eacf4b732fe08df6 100644
+index 2dbd84e5acb3e08e35d9559b3b86db93f1c0837e..53293e979df381010eefce3e1dc76a14069f444a 100644
 --- a/components/content_settings/core/browser/content_settings_registry.cc
 +++ b/components/content_settings/core/browser/content_settings_registry.cc
 @@ -570,7 +570,7 @@ void ContentSettingsRegistry::Init() {
@@ -295,10 +295,10 @@ index 9912595c34b8ba5c65af52d7668fc69c74f238da..c3cf20d454ebebc3e54805c2eacf4b73
             /*valid_settings=*/{CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK},
             WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index ad9a6613af57e2919fedcd3f7166572c3c8b2169..3b1403b9a4f395198cb0c6be4b65b56dc63e44e9 100644
+index f60c70941a5f6bab9188a71f5eb28dd49a0a1eec..746b34d15f3f69de20a61e2de11098d4a1117465 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
-@@ -4603,12 +4603,18 @@ UrlInfo NavigationRequest::GetUrlInfo() {
+@@ -4661,11 +4661,17 @@ UrlInfo NavigationRequest::GetUrlInfo() {
    // Compute the WebExposedIsolationInfo that will be bundled into UrlInfo.
    auto web_exposed_isolation_info = ComputeWebExposedIsolationInfo();
  
@@ -311,18 +311,17 @@ index ad9a6613af57e2919fedcd3f7166572c3c8b2169..3b1403b9a4f395198cb0c6be4b65b56d
    url_info_init.WithOACHeaderRequest(oac_header_request)
        .WithCOOPSiteIsolation(ShouldRequestSiteIsolationForCOOP())
        .WithWebExposedIsolationInfo(web_exposed_isolation_info)
-       .WithEmbedderIsolationInfo(embedder_isolation_info_)
--      .WithMatchesAdFilterWithHost(response() && is_ad_tagged());
-+      .WithMatchesAdFilterWithHost(response() && is_ad_tagged())
+-      .WithEmbedderIsolationInfo(embedder_isolation_info_);
++      .WithEmbedderIsolationInfo(embedder_isolation_info_)
 +      .WithTopOrigin(top_origin);
  
-   // Compute the CrossOriginIsolationKey for the navigation.
-   std::optional<AgentClusterKey::CrossOriginIsolationKey>
+   if (base::FeatureList::IsEnabled(features::kExcludeAdsFromOriginIsolation)) {
+     // When excluding ads from origin isolation, an ad navigation is treated as
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
-index 24fb1e206ea0a9737461079261c31ac996edee0a..95fb8170dd91739b6c4fa9383ca55b8c880a7790 100644
+index 3b348996458b51fbd77f4aaa9417e086c03dd71a..21ad13967ffd2414afa40c78f90d51e45bf2091c 100644
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc
-@@ -3786,6 +3786,9 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
+@@ -3811,6 +3811,9 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
    if (IsJitDisabled()) {
      AppendToCommaSeparatedSwitch(
          command_line, blink::switches::kJavaScriptFlags, "--jitless");
@@ -333,10 +332,10 @@ index 24fb1e206ea0a9737461079261c31ac996edee0a..95fb8170dd91739b6c4fa9383ca55b8c
      AppendToCommaSeparatedSwitch(command_line,
                                   blink::switches::kJavaScriptFlags,
 diff --git a/content/browser/site_info.cc b/content/browser/site_info.cc
-index 584b4e663bdac95460527fc21b0819e436c1916a..2e49f955b77a87518502b85d272bf8ded02e0676 100644
+index 3dc7f800d858c74a072c7e14992aefe48481b18a..5a495af0665ad77696f75f120d8281d3d1daf047 100644
 --- a/content/browser/site_info.cc
 +++ b/content/browser/site_info.cc
-@@ -328,6 +328,13 @@ SiteInfo SiteInfo::Create(const IsolationContext& isolation_context,
+@@ -329,6 +329,13 @@ SiteInfo SiteInfo::Create(const IsolationContext& isolation_context,
    is_jitless =
        is_jitless || GetContentClient()->browser()->IsJitDisabledForSite(
                          browser_context, agent_cluster_url_or_default);
@@ -351,10 +350,10 @@ index 584b4e663bdac95460527fc21b0819e436c1916a..2e49f955b77a87518502b85d272bf8de
        browser_context, isolation_context.browsing_instance_id(),
        url_info.process_selection_user_data, agent_cluster_url_or_default);
 diff --git a/content/browser/url_info.cc b/content/browser/url_info.cc
-index 0e1d04ca95347188b0d07c3cf15c4f0e7eb51c71..55c7431ba60e2899dbcae326230b49894d216d0d 100644
+index e0f71fc3f7ea9dc3efca5085327f31b6793a24cf..b091e36e1ba341e2957fa54be61477c23ccf98d7 100644
 --- a/content/browser/url_info.cc
 +++ b/content/browser/url_info.cc
-@@ -26,6 +26,7 @@ UrlInfo::UrlInfo(const UrlInfoInit& init)
+@@ -28,6 +28,7 @@ UrlInfo::UrlInfo(const UrlInfoInit& init)
        is_prefetch_with_cross_site_contamination(
            init.is_prefetch_with_cross_site_contamination_),
        origin(init.origin_),
@@ -362,7 +361,7 @@ index 0e1d04ca95347188b0d07c3cf15c4f0e7eb51c71..55c7431ba60e2899dbcae326230b4989
        is_sandboxed(init.is_sandboxed_),
        unique_sandbox_id(init.unique_sandbox_id_),
        storage_partition_config(init.storage_partition_config_),
-@@ -151,6 +152,11 @@ UrlInfoInit& UrlInfoInit::WithOrigin(const url::Origin& origin) {
+@@ -157,6 +158,11 @@ UrlInfoInit& UrlInfoInit::WithOrigin(const url::Origin& origin) {
    return *this;
  }
  
@@ -375,7 +374,7 @@ index 0e1d04ca95347188b0d07c3cf15c4f0e7eb51c71..55c7431ba60e2899dbcae326230b4989
    is_sandboxed_ = is_sandboxed;
    return *this;
 diff --git a/content/browser/url_info.h b/content/browser/url_info.h
-index 94ffb1e40ebac27cc293ef920ddef1f008776c0e..9ece87ea40ebd2bc11e1dccbd276f859dbe5c62b 100644
+index fbb53c374f367060153a6379061e7311b9e0a0c6..558a722b62b815d9ccbf62522710bac4d45fd9c3 100644
 --- a/content/browser/url_info.h
 +++ b/content/browser/url_info.h
 @@ -128,6 +128,7 @@ struct CONTENT_EXPORT UrlInfo {

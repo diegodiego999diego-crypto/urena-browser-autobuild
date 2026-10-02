@@ -31,10 +31,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/add-custom-tab-intents-privacy-option.inc
 
 diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
-index 86a54ddceb6670815f4fe21e66239d8b51bdb931..1f5cf436be34914583844f0d2d2d0b5218c64caa 100644
+index a8d0b388b1488bf56c52bd1c009c60606ccb44b0..f3d40fe8de4f0d8e6b55ef6e1c7ab52edf6df976 100644
 --- a/chrome/android/java/res/xml/privacy_preferences.xml
 +++ b/chrome/android/java/res/xml/privacy_preferences.xml
-@@ -36,6 +36,21 @@ found in the LICENSE file.
+@@ -40,6 +40,21 @@ found in the LICENSE file.
          android:key="cromite_flags"
          android:title="@string/cromite_flags_title"
          app:url="@string/cromite_flags_url" />
@@ -53,11 +53,11 @@ index 86a54ddceb6670815f4fe21e66239d8b51bdb931..1f5cf436be34914583844f0d2d2d0b52
 +        android:title="@string/open_external_links_incognito_title"
 +        android:summary="@string/open_external_links_incognito_summary"
 +        android:defaultValue="false" />
-     <Preference
+     <org.chromium.components.browser_ui.settings.ChromeBasePreference
          android:key="preload_pages"
          android:title="@string/preload_pages_title"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
-index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c4bcdc259 100644
+index 6f3854fb96fdfbf983be6fb3b0bc37b8b0273975..67eab4359cf64841c098aebc4ba5f374bc5daef7 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java
 @@ -23,6 +23,7 @@ import androidx.core.os.BuildCompat;
@@ -68,7 +68,7 @@ index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c
  import org.chromium.base.IntentUtils;
  import org.chromium.base.Log;
  import org.chromium.base.metrics.RecordHistogram;
-@@ -54,6 +55,9 @@ import java.lang.annotation.Retention;
+@@ -57,6 +58,9 @@ import java.lang.annotation.Retention;
  import java.lang.annotation.RetentionPolicy;
  import java.util.Set;
  
@@ -78,7 +78,7 @@ index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c
  /**
   * Dispatches incoming intents to the appropriate activity based on the current configuration and
   * Intent fired.
-@@ -140,6 +144,9 @@ public class LaunchIntentDispatcher {
+@@ -181,6 +185,9 @@ public class LaunchIntentDispatcher {
       */
      public static boolean isCustomTabIntent(Intent intent) {
          if (intent == null) return false;
@@ -88,7 +88,7 @@ index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c
          Log.w(
                  TAG,
                  "CustomTabsIntent#shouldAlwaysUseBrowserUI() = "
-@@ -171,6 +178,10 @@ public class LaunchIntentDispatcher {
+@@ -212,6 +219,10 @@ public class LaunchIntentDispatcher {
          // Make sure the result of the CustomTabActivity is forwarded to the client.
          newIntent.addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
  
@@ -99,7 +99,7 @@ index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c
          // Since configureIntentForResizableCustomTab() might change the componenet/class
          // associated with the passed intent, it needs to be called after #setClassName(context,
          // CustomTabActivity.class.getName());
-@@ -354,6 +365,17 @@ public class LaunchIntentDispatcher {
+@@ -403,6 +414,17 @@ public class LaunchIntentDispatcher {
  
          if (Intent.ACTION_VIEW.equals(newIntent.getAction())
                  && !IntentHandler.wasIntentSenderChrome(newIntent)) {
@@ -118,7 +118,7 @@ index b18985812a8cbd726078424ab611d0abb4199293..1effd92e622a76ce15ce40fc9102795c
                  newIntent.putExtra(IntentHandler.EXTRA_STARTED_TABBED_CHROME_TASK, true);
              }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabIntentDataProvider.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabIntentDataProvider.java
-index 6b28427c827ea3df5f29d043e4a6648bc0f2fac4..1dfc7cd5a53466eac1ec8fadf627a94011f7c74a 100644
+index 31efed32e09e548154857dd08e6dc5c9681c0715..043d92df73036c996fab67f9d05090c662b75739 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabIntentDataProvider.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabIntentDataProvider.java
 @@ -253,16 +253,16 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
@@ -164,7 +164,7 @@ index 6b28427c827ea3df5f29d043e4a6648bc0f2fac4..1dfc7cd5a53466eac1ec8fadf627a940
              @BackgroundInteractBehavior
              int backgroundInteractBehavior =
                      IntentUtils.safeGetIntExtra(
-@@ -1425,7 +1425,9 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
+@@ -1428,7 +1428,9 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
      public @CustomTabProfileType int getCustomTabMode() {
          return AlwaysIncognitoLinkInterceptor.isAlwaysIncognito()
                  ? CustomTabProfileType.INCOGNITO
@@ -176,10 +176,10 @@ index 6b28427c827ea3df5f29d043e4a6648bc0f2fac4..1dfc7cd5a53466eac1ec8fadf627a940
  
      @Override
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabsConnection.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabsConnection.java
-index c7059d4a089ebaf672763f88dbb94021aef09cf1..2927bbbf21ac2c950284238ada8dc500730c9492 100644
+index 02fc10d1629f651ffeec3786b8a4b80533d95fa7..49b9b3692ceb0e0f377c1d92e4973e8f067219f8 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabsConnection.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabsConnection.java
-@@ -779,7 +779,7 @@ public class CustomTabsConnection {
+@@ -768,7 +768,7 @@ public class CustomTabsConnection {
          ThreadUtils.assertOnUiThread();
          if (extras == null) return;
          int[] experimentIds =
@@ -188,7 +188,7 @@ index c7059d4a089ebaf672763f88dbb94021aef09cf1..2927bbbf21ac2c950284238ada8dc500
          if (experimentIds == null) return;
          // When ids are set through cct, they should not override existing ids.
          boolean override = false;
-@@ -964,6 +964,7 @@ public class CustomTabsConnection {
+@@ -953,6 +953,7 @@ public class CustomTabsConnection {
          PostTask.postTask(
                  TaskTraits.UI_DEFAULT,
                  () -> {
@@ -243,10 +243,10 @@ index 2236e32c1c621107091ce43729322fa505f8ec83..58709762560a4f075c2d7cba71ec9171
      }
  
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf559ecb37a 100644
+index c40bbdb274dd4fde2f5afdda8569e61a1cedee2f..7c90cc1916306c3afacdd1fb867490c19651690c 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
-@@ -11,6 +11,7 @@ import android.content.Context;
+@@ -12,6 +12,7 @@ import android.content.Context;
  import android.content.Intent;
  import android.content.SharedPreferences;
  import android.graphics.drawable.Drawable;
@@ -254,7 +254,7 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
  import android.os.Bundle;
  import android.text.SpannableString;
  import android.text.SpannableStringBuilder;
-@@ -83,6 +84,15 @@ import org.chromium.ui.widget.ChromeBulletSpan;
+@@ -84,6 +85,15 @@ import org.chromium.ui.widget.ChromeBulletSpan;
  import java.util.concurrent.TimeUnit;
  import java.util.function.Consumer;
  
@@ -270,7 +270,7 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
  import androidx.preference.PreferenceCategory;
  import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
  import org.chromium.base.shared_preferences.SharedPreferencesManager;
-@@ -157,6 +167,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -159,6 +169,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
                  startTag, endTag, new ChromeClickableSpan(context, onClickCallback));
      }
  
@@ -280,7 +280,7 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
      @Override
      public void onCreatePreferencesCromite(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
          mPageTitle.set(getString(R.string.prefs_privacy_security));
-@@ -371,6 +384,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -377,6 +390,9 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
                  new SpanApplier.SpanInfo("<link2>", "</link2>", servicesLink));
      }
  
@@ -290,7 +290,7 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
      @Override
      public boolean onPreferenceChange(Preference preference, Object newValue) {
          String key = preference.getKey();
-@@ -391,6 +407,31 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -397,6 +413,31 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
          } else if (PREF_SEARCH_SUGGESTIONS.equals(key)) {
              UserPrefs.get(getProfile())
                      .setBoolean(Pref.SEARCH_SUGGEST_ENABLED, (boolean) newValue);
@@ -322,7 +322,7 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
          }
          return true;
      }
-@@ -423,6 +464,16 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+@@ -429,6 +470,16 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
                      UserPrefs.get(getProfile()).getBoolean(Pref.CAN_MAKE_PAYMENT_ENABLED));
          }
  
@@ -340,10 +340,10 @@ index 8809d221c81777de8d3217d06dfa5b1fdc5981b8..1c6013ff6cf2bd4a675439ce7e53abf5
          if (doNotTrackPref != null) {
              doNotTrackPref.setSummary(
 diff --git a/chrome/browser/flags/android/chrome_feature_list.cc b/chrome/browser/flags/android/chrome_feature_list.cc
-index 593c86d31e2611a36fa0df45adc567dbc2242d68..e994f875df3563f172a5b4f7bfc227bf2b01e7f8 100644
+index 6469fe3209247a0866575017020371cc2f8bca1f..f7f4d66906ce3d22c8e05d7aedc6006e65fbda74 100644
 --- a/chrome/browser/flags/android/chrome_feature_list.cc
 +++ b/chrome/browser/flags/android/chrome_feature_list.cc
-@@ -822,7 +822,9 @@ BASE_FEATURE(kLongScreenshotsNoMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -843,7 +843,9 @@ BASE_FEATURE(kLongScreenshotsNoMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
  // Enables an experimental feature which forces mayLaunchUrl to use a different
  // storage partition. This may reduce performance. This should not be enabled by
  // default.
@@ -355,10 +355,10 @@ index 593c86d31e2611a36fa0df45adc567dbc2242d68..e994f875df3563f172a5b4f7bfc227bf
  BASE_FEATURE(kMostVisitedTilesReselect, base::FEATURE_DISABLED_BY_DEFAULT);
  BASE_FEATURE(kMoveToFrontInLaunchIntentDispatcher, base::FEATURE_ENABLED_BY_DEFAULT);
 diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-index 3be90bc9f23105d2647783a58e582f577fbac3a7..7e4cff971bb8911da390936bf52beaf782d28926 100644
+index 8cdab9200b0d9158700cb5cf0eb0991e39f7bfdd..09e74f98ed11b5987f9d92f1ec632b31418b892a 100644
 --- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
 +++ b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
-@@ -1243,6 +1243,8 @@ public abstract class ChromeFeatureList {
+@@ -1287,6 +1287,8 @@ public abstract class ChromeFeatureList {
                      MOST_VISITED_TILES_CUSTOMIZATION,
                      /* defaultValue= */ true,
                      /* defaultValueInTests= */ true);
@@ -367,16 +367,16 @@ index 3be90bc9f23105d2647783a58e582f577fbac3a7..7e4cff971bb8911da390936bf52beaf7
      public static final CachedFlag sMostVisitedTilesReselect =
              newCachedFlag(MOST_VISITED_TILES_RESELECT, false);
      public static final CachedFlag sMoveToFrontInLaunchIntentDispatcher =
-@@ -1576,6 +1578,7 @@ public abstract class ChromeFeatureList {
+@@ -1617,6 +1619,7 @@ public abstract class ChromeFeatureList {
                      sMigrateManagementToWebUIOnMobile,
                      sMostVisitedTilesCustomization,
                      sMostVisitedTilesReselect,
 +                    sMayLaunchurlUsesSeparateStoragePartition,
                      sMoveToFrontInLaunchIntentDispatcher,
                      sMultiInstanceSharedPrefsMigration,
-                     sMvcUpdateViewWhenModelChanged,
+                     sNewTabPageCustomizationThemeSync,
 diff --git a/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabAssociatedApp.java b/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabAssociatedApp.java
-index e6e6b3ada3974e56873c8546079cf714272b0f3e..6304d299c752fe9b323a1f830baf45e2bb625e51 100644
+index 3e721ba0f320e97ee832a507f8a50bc8262e9d24..14f3bb5e8bc023aaa1702679a3ff0eb3fc29494b 100644
 --- a/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabAssociatedApp.java
 +++ b/chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabAssociatedApp.java
 @@ -90,7 +90,11 @@ public final class TabAssociatedApp extends TabWebContentsUserData implements Im
@@ -424,10 +424,10 @@ index 0000000000000000000000000000000000000000..3b3206c786f293df802f6c63316da49b
 +    </message>
 +</grit-part>
 diff --git a/components/content_relationship_verification/android/java/src/org/chromium/components/content_relationship_verification/OriginVerifier.java b/components/content_relationship_verification/android/java/src/org/chromium/components/content_relationship_verification/OriginVerifier.java
-index e1cc74e7fb2b8b4890a51caacb5dab2ce67476a8..3e3978e007c3d8517bc319b83668db4131dec76f 100644
+index 600f5f2d69bc7ad3760045022e5b934bf2489326..e071c40798bffce0c0d494bc83072293fcf0360b 100644
 --- a/components/content_relationship_verification/android/java/src/org/chromium/components/content_relationship_verification/OriginVerifier.java
 +++ b/components/content_relationship_verification/android/java/src/org/chromium/components/content_relationship_verification/OriginVerifier.java
-@@ -193,6 +193,11 @@ public abstract class OriginVerifier {
+@@ -195,6 +195,11 @@ public abstract class OriginVerifier {
          assert mNativeOriginVerifier != 0
                  : "Either provide a browserContextHandle to "
                          + "OriginVerifier#ctor or call initNativeOriginVerifier.";

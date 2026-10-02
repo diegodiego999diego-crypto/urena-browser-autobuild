@@ -147,7 +147,7 @@ suit Cromite logic.
  create mode 100644 cromite_flags/chrome/browser/about_flags_cc/Stricter-popup-blocker.inc
 
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
-index 9ccd28ea85398e36b4ce66b2bc56918292d27853..33d28a7a9582c19edd43c0e935ef82fc4704d2fe 100644
+index ac2a7480f8140832d00d9b87323cdabb7d789d9a..5e4b89d3379862a0a9d33406ac65650d09127b15 100644
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
 @@ -1,13 +1,4 @@
@@ -174,7 +174,7 @@ index 9ccd28ea85398e36b4ce66b2bc56918292d27853..33d28a7a9582c19edd43c0e935ef82fc
 -        android:order="17"
 -        android:title="@string/adblock_settings_title" />
  
-     <PreferenceCategory
+     <org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory
          android:key="advanced_section"
 @@ -114,6 +100,11 @@ Use of this source code is governed by the GPLv3 that can be found in the compon
          android:key="adblock"
@@ -185,7 +185,7 @@ index 9ccd28ea85398e36b4ce66b2bc56918292d27853..33d28a7a9582c19edd43c0e935ef82fc
 +        android:key="eyeo_adblock"
 +        android:order="13"
 +        android:title="@string/adblock_settings_title" />
-     <Preference
+     <org.chromium.components.browser_ui.settings.ChromeBasePreference
          android:key="notifications"
          android:order="22"
 diff --git a/chrome/browser/adblock/adblock_chrome_content_browser_client.cc b/chrome/browser/adblock/adblock_chrome_content_browser_client.cc
@@ -902,10 +902,10 @@ index 3f85bfb5171fa5db285b5dcf1f076cda7efa3a18..0dd8e5a6a4e985074bb8d1844b279aed
          return true;
      }
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 3361fe40fb1db5647a7c150f362b0583767ab8cc..025272c2bb28121dcf4351a2d8c60b67cef5a2c9 100644
+index faeacdf4f1cff1eacdba5e259a21bde6cb6ef469..e6d94c0e67711c4eeb8f9d7bf3ca01e726ff8692 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -6731,7 +6731,9 @@ ChromeContentBrowserClient::
+@@ -6716,7 +6716,9 @@ ChromeContentBrowserClient::
  }
  
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
@@ -916,7 +916,7 @@ index 3361fe40fb1db5647a7c150f362b0583767ab8cc..025272c2bb28121dcf4351a2d8c60b67
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    if (!frame) {
      return false;
-@@ -6769,9 +6771,11 @@ ChromeContentBrowserClient::GetWebSocketOptions(
+@@ -6754,9 +6756,11 @@ ChromeContentBrowserClient::GetWebSocketOptions(
  }
  
  void ChromeContentBrowserClient::CreateWebSocket(
@@ -929,10 +929,10 @@ index 3361fe40fb1db5647a7c150f362b0583767ab8cc..025272c2bb28121dcf4351a2d8c60b67
      const std::optional<std::string>& user_agent,
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
 diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
-index 34b4e978e88f034a261b3dded231e770929c7d65..ff9f6d8d28d1575c616f559cfa2800d5003aa351 100644
+index 2ea677f146e3d286fb040b9984f0a4cb6a9e575f..169e04f1d1bd2056d3dc93829f2fe7b369d6f14b 100644
 --- a/chrome/browser/chrome_content_browser_client.h
 +++ b/chrome/browser/chrome_content_browser_client.h
-@@ -710,13 +710,17 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+@@ -712,13 +712,17 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
        int64_t navigation_id,
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner)
        override;
@@ -1194,10 +1194,10 @@ index 33e5d57abfd4c24ab93f812a166ebe241be092ec..e2c9a6e6721f6f91974b15c5d8c9697e
    }
    return result;
 diff --git a/chrome/browser/extensions/api/settings_private/prefs_util.cc b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-index ffb3235de22f8f535efe85397c3f6fd78edf36c2..a5dde255d3bcce2716d18c76abb2e0bc45dd51a6 100644
+index 842c0c28963a2b09936733087c8f93d91a56de96..b0cd0dcd0af8a9ce6b58e15296ed86d8a4d6287e 100644
 --- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
 +++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
-@@ -37,6 +37,7 @@
+@@ -39,6 +39,7 @@
  #include "chrome/common/chrome_features.h"
  #include "chrome/common/extensions/api/settings_private.h"
  #include "chrome/common/pref_names.h"
@@ -1205,7 +1205,7 @@ index ffb3235de22f8f535efe85397c3f6fd78edf36c2..a5dde255d3bcce2716d18c76abb2e0bc
  #include "components/autofill/core/common/autofill_prefs.h"
  #include "components/bookmarks/common/bookmark_pref_names.h"
  #include "components/browsing_data/core/pref_names.h"
-@@ -220,6 +221,19 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
+@@ -222,6 +223,19 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
    }
    s_allowlist = new PrefsUtil::TypedPrefMap();
  
@@ -1226,10 +1226,10 @@ index ffb3235de22f8f535efe85397c3f6fd78edf36c2..a5dde255d3bcce2716d18c76abb2e0bc
    (*s_allowlist)[::embedder_support::kAlternateErrorPagesEnabled] =
        settings_api::PrefType::kBoolean;
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-index 36342e976d95b4c6aa9fef5c0d4b9a192ef393d4..319208109f281ff1a8c625ad845a96d6a7e53cc5 100644
+index f75d4a293e077b9c70ce78da08bee99de9b53a5a..f27dd923f7828577a7b44a382907fae75ca2994b 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-@@ -298,7 +298,6 @@
+@@ -300,7 +300,6 @@
  #include "chrome/common/buildflags.h"
  #include "chrome/common/chrome_features.h"
  #include "components/adblock/content/browser/factories/adblock_request_throttle_factory.h"
@@ -1237,7 +1237,7 @@ index 36342e976d95b4c6aa9fef5c0d4b9a192ef393d4..319208109f281ff1a8c625ad845a96d6
  #include "components/adblock/content/browser/factories/content_security_policy_injector_factory.h"
  #include "components/adblock/content/browser/factories/element_hider_factory.h"
  #include "components/adblock/content/browser/factories/resource_classification_runner_factory.h"
-@@ -1086,7 +1085,6 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -1077,7 +1076,6 @@ void ChromeBrowserMainExtraPartsProfiles::
    FederatedIdentityApiPermissionContextFactory::GetInstance();
    FederatedIdentityAutoReauthnPermissionContextFactory::GetInstance();
    FederatedIdentityPermissionContextFactory::GetInstance();
@@ -1246,7 +1246,7 @@ index 36342e976d95b4c6aa9fef5c0d4b9a192ef393d4..319208109f281ff1a8c625ad845a96d6
    adblock::ContentSecurityPolicyInjectorFactory::GetInstance();
    adblock::ElementHiderFactory::GetInstance();
 diff --git a/chrome/browser/resources/settings/BUILD.gn b/chrome/browser/resources/settings/BUILD.gn
-index 976b9be21f9c1379d782718127641d169a01d0d0..24eb3aa55c99bc93025a7aebdccdee0c45a55770 100644
+index 041905516f82d72a7f3ee15077c49f122d025784..dd552aca220f6fc9d98aee13e0bd7320a6482209 100644
 --- a/chrome/browser/resources/settings/BUILD.gn
 +++ b/chrome/browser/resources/settings/BUILD.gn
 @@ -64,6 +64,7 @@ build_webui("build") {
@@ -1257,7 +1257,7 @@ index 976b9be21f9c1379d782718127641d169a01d0d0..24eb3aa55c99bc93025a7aebdccdee0c
      "autofill_page/account_card.ts",
      "autofill_page/autofill_ai_add_or_edit_dialog.ts",
      "autofill_page/autofill_ai_entries_list.ts",
-@@ -543,6 +544,7 @@ build_webui("build") {
+@@ -563,6 +564,7 @@ build_webui("build") {
    ts_definitions = [
      "//tools/typescript/definitions/autofill_private.d.ts",
      "//tools/typescript/definitions/chrome_event.d.ts",
@@ -1854,13 +1854,13 @@ index a6b043271a7318309f7490d90f6ffd8ee4bc0a2a..02c34fcb11250a768159930ffe97ea45
    ADDRESSES: Route;
    ADVANCED: Route;
 diff --git a/chrome/browser/resources/settings/settings.ts b/chrome/browser/resources/settings/settings.ts
-index a1fd5590e47e4d8179a11de571d77770a25dba00..a3be48463e4d43a10b2e113947e98b2cf4c7a503 100644
+index b848b28a4f228489a473234cac5549e68c9f119d..29159f2a89011e70088248cc5ff0c7782ee29621 100644
 --- a/chrome/browser/resources/settings/settings.ts
 +++ b/chrome/browser/resources/settings/settings.ts
-@@ -77,6 +77,7 @@ export {PasswordCheckReferrer, PasswordManagerImpl, PasswordManagerPage} from '.
- export type {PasswordManagerProxy} from './autofill_page/password_manager_proxy.js';
- export {SettingsAutofillPageElement} from './autofill_page/autofill_page.js';
- export {SettingsAutofillPageIndexElement} from './autofill_page/autofill_page_index.js';
+@@ -77,6 +77,7 @@ export {SettingsAutofillPageIndexElement} from './autofill_page/autofill_page_in
+ export {CollapsibleCardElement} from './autofill_page/collapsible_autofill_settings_card.js';
+ export {PasswordCheckReferrer, PasswordManagerImpl, PasswordManagerPage} from './autofill_page/passwords/password_manager_proxy.js';
+ export type {PasswordManagerProxy} from './autofill_page/passwords/password_manager_proxy.js';
 +export {SettingsAdblockPageElement} from './adblock_page/adblock_page.js';
  export {BaseMixin} from './base_mixin.js';
  // <if expr="not is_chromeos">
@@ -1912,10 +1912,10 @@ index efde1c73dfca6509223b6a626ab426faeed9af76..c2285481606b9ca830d7b8d1aeeff2d3
          <a role="menuitem" id="system" href="/system" class="cr-nav-menu-item"
              hidden="[[!pageVisibility_.system]]">
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
-index 23505c3d5a8fb3e7231ff270f0d081de0a961833..df95c3d95573a0f774209cd00c08befb871fcab6 100644
+index b25a68fac8396b22ba49222e9189775918f9ee17..6d3dd920855377a4205c3e017333abc043e010a5 100644
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
-@@ -370,7 +370,9 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
+@@ -361,7 +361,9 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
    auto* original_profile = profile->GetOriginalProfile();
    adblock::EnsureBackgroundServicesStarted(original_profile);
    adblock::RegisterAdblockWebContentObserver<
@@ -1927,7 +1927,7 @@ index 23505c3d5a8fb3e7231ff270f0d081de0a961833..df95c3d95573a0f774209cd00c08befb
    // AutofillClientProvider initializes ContentAutofillClient for web_contents,
    // which is gated by enable_browser_autofill.
 diff --git a/chrome/common/extensions/api/_permission_features.json b/chrome/common/extensions/api/_permission_features.json
-index 97c6257ccb41f4a5a1b5a97037666c49f8a35696..20184c630d9d183885385736b57a7de0b4fb5845 100644
+index 3e1f22b65c4d0351d84886b57f3277916d24022b..b0af1e4e4ee5c8131c6626ad199f36f8a37216dd 100644
 --- a/chrome/common/extensions/api/_permission_features.json
 +++ b/chrome/common/extensions/api/_permission_features.json
 @@ -64,13 +64,6 @@
@@ -13253,10 +13253,10 @@ index c1becd05ae6176b3dda90d1c97c48958b8e2a449..eacd206bab5c108247a62048ebbd55c5
    }
  
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
-index 03b5d5b30fa1d778c3eaa17d57dfdd1cc8f64d1a..6e90461bd78a9e8e1e12c4931cd55c329b95d1f2 100644
+index ac9a525a3bdb9e2772dfdee6b55a03c2870e2c58..c520a28493b1cfcedd61525bfa58a11d96da9266 100644
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -1089,7 +1089,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -1095,7 +1095,7 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
    DCHECK(browser_context);
  }
  
@@ -13265,7 +13265,7 @@ index 03b5d5b30fa1d778c3eaa17d57dfdd1cc8f64d1a..6e90461bd78a9e8e1e12c4931cd55c32
    return false;
  }
  
-@@ -1106,9 +1106,11 @@ ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
+@@ -1112,9 +1112,11 @@ ContentBrowserClient::GetWebSocketOptions(RenderFrameHost* frame) {
  }
  
  void ContentBrowserClient::CreateWebSocket(
@@ -13278,10 +13278,10 @@ index 03b5d5b30fa1d778c3eaa17d57dfdd1cc8f64d1a..6e90461bd78a9e8e1e12c4931cd55c32
      const std::optional<std::string>& user_agent,
      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
-index 0db044d5ba5be8ee8846720ac389578b7fdc25a2..9d669a115511a42eb07d55c2699e582652049f55 100644
+index 933ff42f840d51de2ffa0b65a75405b957b06204..c2b7c215b787dad2d424a85d66224fa85e7cb302 100644
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
-@@ -1969,7 +1969,9 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -1976,7 +1976,9 @@ class CONTENT_EXPORT ContentBrowserClient {
        bool is_for_network_service);
  
    // Returns true when the embedder wants to intercept a websocket connection.
@@ -13292,7 +13292,7 @@ index 0db044d5ba5be8ee8846720ac389578b7fdc25a2..9d669a115511a42eb07d55c2699e5826
  
    struct CONTENT_EXPORT WebSocketOptions {
      WebSocketOptions();
-@@ -2004,9 +2006,11 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2011,9 +2013,11 @@ class CONTENT_EXPORT ContentBrowserClient {
    // Always called on the UI thread and only when the Network Service is
    // enabled.
    virtual void CreateWebSocket(
@@ -13338,10 +13338,10 @@ index 0000000000000000000000000000000000000000..86f63bcdb56482c7f35daaebc87bc1f5
 +
 +#endif // ifdef FLAG_SECTION
 diff --git a/third_party/blink/renderer/core/css/style_engine.cc b/third_party/blink/renderer/core/css/style_engine.cc
-index 9cb1b670ec0d4fc0459f354d860b875fa8f030be..c50323140bf364044a2d59ab63299ca620303aa9 100644
+index 1794c9f733b697d672770613e6c4c193613969a6..e2ee7faaf86cbad79aa03008ca391b40c105f404 100644
 --- a/third_party/blink/renderer/core/css/style_engine.cc
 +++ b/third_party/blink/renderer/core/css/style_engine.cc
-@@ -656,6 +656,14 @@ void StyleEngine::PrepareUpdateActiveStyleSheetsInShadow(
+@@ -655,6 +655,14 @@ void StyleEngine::PrepareUpdateActiveStyleSheetsInShadow(
    collection->PrepareUpdateActiveStyleSheets(medium);
  }
  
@@ -13357,10 +13357,10 @@ index 9cb1b670ec0d4fc0459f354d860b875fa8f030be..c50323140bf364044a2d59ab63299ca6
    DCHECK(user_style_dirty_);
  
 diff --git a/third_party/blink/renderer/core/css/style_engine.h b/third_party/blink/renderer/core/css/style_engine.h
-index 0fb444813691ae56c9c6887e02b89c209f3de156..c8d438ce67ba9c8dea186bf78436127f0d345fca 100644
+index f1ffc9a9f393a8af6bbf6eb68d96c4baf4c80f6b..01aba8ac3fac004ee09536d817f0bcf093907fe1 100644
 --- a/third_party/blink/renderer/core/css/style_engine.h
 +++ b/third_party/blink/renderer/core/css/style_engine.h
-@@ -292,6 +292,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
+@@ -298,6 +298,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
        const ComputedStyle* embedder_style) const;
    void ViewportStyleSettingChanged();
  
@@ -13385,7 +13385,7 @@ index 7198408bf121b088cfbb26ed19de4fe66df6b6ed..ed6f1404a85d4fbe0baccf0a779178f2
    // Return whether the event was cancelled or not to JS not that it
    // might have actually been default handled; so check only against
 diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_party/blink/renderer/core/exported/web_document.cc
-index c2d90f8e1645dda609740d03af5e92fa1aadbbf5..fbccd349134dfc675386c0e971bb426bc8d010fd 100644
+index 52c31265ec260cd45fccbde3c406c89a0d5c2836..ad10623aab5816ff05c1551ce55d7adea22a6e31 100644
 --- a/third_party/blink/renderer/core/exported/web_document.cc
 +++ b/third_party/blink/renderer/core/exported/web_document.cc
 @@ -329,6 +329,16 @@ WebStyleSheetKey WebDocument::InsertAbpElemhideStylesheet(
@@ -13416,10 +13416,10 @@ index c2d90f8e1645dda609740d03af5e92fa1aadbbf5..fbccd349134dfc675386c0e971bb426b
    return injection_key;
  }
 diff --git a/third_party/blink/renderer/core/html/html_element.cc b/third_party/blink/renderer/core/html/html_element.cc
-index 883fded42fef3c45e9f79156f2db2e1c745b916e..8e2ed29e0634d3d25dc9b4efc5856e62e3d14c43 100644
+index 83dd2944464bbec3022615dbb3bfa06eaa6a081f..7c715baded59196c67f30f1520ef6291bd2b2e94 100644
 --- a/third_party/blink/renderer/core/html/html_element.cc
 +++ b/third_party/blink/renderer/core/html/html_element.cc
-@@ -3625,13 +3625,7 @@ void HTMLElement::setSpellcheck(bool enable) {
+@@ -3687,13 +3687,7 @@ void HTMLElement::setSpellcheck(bool enable) {
  }
  
  void HTMLElement::click() {

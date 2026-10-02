@@ -7,7 +7,6 @@ Remove translate offer
 
 License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
 ---
- chrome/browser/BUILD.gn                       |   1 +
  chrome/browser/accessibility/BUILD.gn         |   4 +
  .../accessibility/live_caption/BUILD.gn       |   8 +
  .../live_translate_controller_factory.cc      |  13 --
@@ -31,20 +30,8 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  ...n_device_speech_recognition_engine_impl.cc |   2 +
  ...on_device_speech_recognition_engine_impl.h |   2 +
  media/base/media_switches.cc                  |   1 +
- 24 files changed, 56 insertions(+), 235 deletions(-)
+ 23 files changed, 55 insertions(+), 235 deletions(-)
 
-diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 176338bf8f2acc387f4d1c5c8411cff80bed6bf6..9d2407507c9ee9c2d7b64406e9457eebc9e06e77 100644
---- a/chrome/browser/BUILD.gn
-+++ b/chrome/browser/BUILD.gn
-@@ -3560,6 +3560,7 @@ source_set("browser") {
-       "//chrome/browser/updates:impl",
-       "//chrome/browser/updates:update_metrics",
-       "//chrome/updater:browser_sources",
-+      # "//components/on_device_translation",
-       "//components/supervised_user/core/common:features",
-       "//components/themes:policy",
-     ]
 diff --git a/chrome/browser/accessibility/BUILD.gn b/chrome/browser/accessibility/BUILD.gn
 index b74924c472e6eea4086ab23ec0ae5851742533f1..97b2d69effc00aa6697578f09963ca3b73ca8bf2 100644
 --- a/chrome/browser/accessibility/BUILD.gn
@@ -111,10 +98,10 @@ index 993f491a572feb362b94ece5299f1ff6f24b9058..a8d16e929242228a3fdc635016653358
        google_apis::GetAPIKey(), context);
  
 diff --git a/chrome/browser/global_features.h b/chrome/browser/global_features.h
-index 6aef02dc73a85c71a0a0227b2fa1f80d6590a59a..12cfbf44aeecbd148c4e1654ccab1a5b4930d1f0 100644
+index a23cdc2851c6e81d9ce3a49eade50380a30f79bf..d57ec9f3910202a80ec851d14ca04ee580a6d063 100644
 --- a/chrome/browser/global_features.h
 +++ b/chrome/browser/global_features.h
-@@ -300,8 +300,10 @@ class GlobalFeatures {
+@@ -333,8 +333,10 @@ class GlobalFeatures {
  #endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
  
  #if !BUILDFLAG(IS_ANDROID)
@@ -126,14 +113,14 @@ index 6aef02dc73a85c71a0a0227b2fa1f80d6590a59a..12cfbf44aeecbd148c4e1654ccab1a5b
    std::unique_ptr<ProfileLaunchObserver> profile_launch_observer_;
  
 diff --git a/chrome/browser/language/android/java/res/xml/languages_detailed_preferences.xml b/chrome/browser/language/android/java/res/xml/languages_detailed_preferences.xml
-index 96e3d591e088661819fba4b7b5433044ec8df697..05c2940d351f2ab208ce9a3fe7fa71a063f95162 100644
+index 162d280a4c523948421aaf3e0f9ddb7e63d391e4..8261e22c95d2f585dc5a2e916eaad3de23f662c7 100644
 --- a/chrome/browser/language/android/java/res/xml/languages_detailed_preferences.xml
 +++ b/chrome/browser/language/android/java/res/xml/languages_detailed_preferences.xml
 @@ -40,45 +40,4 @@ found in the LICENSE file.
  
-     </PreferenceCategory>
+     </org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory>
  
--    <PreferenceCategory
+-    <org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory
 -        android:key="translation_settings_section"
 -        android:order="5"
 -        android:title="@string/languages_settings_translation_title"
@@ -146,7 +133,7 @@ index 96e3d591e088661819fba4b7b5433044ec8df697..05c2940d351f2ab208ce9a3fe7fa71a0
 -            app:allowDividerAbove="false"
 -            app:allowDividerBelow="true"/>
 -
--        <PreferenceCategory
+-        <org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory
 -            android:key="translation_advanced_settings_section"
 -            android:title="@string/languages_settings_advanced"
 -            app:allowDividerAbove="true"
@@ -170,9 +157,9 @@ index 96e3d591e088661819fba4b7b5433044ec8df697..05c2940d351f2ab208ce9a3fe7fa71a0
 -              app:allowDividerAbove="false"
 -              app:allowDividerBelow="false" />
 -
--        </PreferenceCategory>
+-        </org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory>
 -
--    </PreferenceCategory>
+-    </org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory>
 -
  </PreferenceScreen>
 diff --git a/chrome/browser/language/android/java/res/xml/languages_preferences.xml b/chrome/browser/language/android/java/res/xml/languages_preferences.xml
@@ -397,7 +384,7 @@ index 82385498c8ad0771195249f4e37d48d60a15e348..b138904d1ef1823fb8d39a9bc664a98a
      }
  }
 diff --git a/chrome/browser/on_device_translation/BUILD.gn b/chrome/browser/on_device_translation/BUILD.gn
-index be91f8e15a5194244d3a18c21f4f72510fd00883..ec956f472500b7d2e8e72a4f60466c839bd5f88d 100644
+index 3e506f90e0666cf63d810b547f8e71f71b788e52..119328a4bcd9c26208984a0801f36deb783eb71a 100644
 --- a/chrome/browser/on_device_translation/BUILD.gn
 +++ b/chrome/browser/on_device_translation/BUILD.gn
 @@ -12,7 +12,7 @@ source_set("on_device_translation") {
@@ -444,10 +431,10 @@ index 1e4e64e78453d3aa9da22bea3f273c1a79c751e7..21574dca8361179b06cf105a98ce3e2a
  
    mojo::Receiver<media::mojom::OnDeviceSpeechRecognition> receiver_{this};
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index be0a0d0880bf9a2cf2ee5ad56fb5eb4a3520f6d5..a66a48aa884f5236f956fbf5fa0bf1f8ac1fbf9f 100644
+index 9f3f0267dcfcd3d8bdb8126d261787b2470dac7a..6189c8e35e3e4fd811805964b7b987c05e1332c7 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-@@ -1988,9 +1988,6 @@ Your Google account may have other forms of browsing history like searches and a
+@@ -1997,9 +1997,6 @@ Your Google account may have other forms of browsing history like searches and a
        <message name="IDS_LANGUAGES_LIST_DESCRIPTION" desc="Description on the Languages settings screen. Appears above a list of one or more languages that the user selects, to tell Chrome which languages they prefer to use to read website content.">
          Let websites know the languages you speak. They’ll show content in those languages, when possible.
        </message>
@@ -526,10 +513,10 @@ index 9891bd13f5a0fb24b47b21384397f1f408bbe4cc..1457fa95af8cdd064c6acec7873b0f46
  }
  
 diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
-index 62e11c5a7a4f2d235b97fdaae2abb26a8b9aa053..90c4e5fb337ce3ff78be58ab0bb86387851dd063 100644
+index abc2dc97418a44f58f380fe423714eb2388f69ec..db59906e3546efd9d97aa7d459e2c65067fe1ecd 100644
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -9433,10 +9433,12 @@ if (!is_android && !is_chromeos_device) {
+@@ -9543,10 +9543,12 @@ if (!is_android && !is_chromeos_device) {
  
      sources += [ "../browser/media/router/discovery/access_code/access_code_cast_sink_service_browsertest.cc" ]
  
@@ -677,10 +664,10 @@ index dbfb04ae1df81ac40011741e7254f711a720db18..69cb4b2a1af7f6946efb67b3f45f886e
      std::optional<int> sample_rate_hz_;
      std::string language_;
 diff --git a/media/base/media_switches.cc b/media/base/media_switches.cc
-index 34afc4aeb1880051176209fba1d573a1081c7666..92c544bc547320436c9ccbd5805cb10fb95e6608 100644
+index 83f9ab14f00e100d61c354ecc0d70452d7aaf5c5..345da7b7e8307579a073c174e5ae05e01c33f91a 100644
 --- a/media/base/media_switches.cc
 +++ b/media/base/media_switches.cc
-@@ -1861,6 +1861,7 @@ bool IsIamfAudioDecodingSupported() {
+@@ -1870,6 +1870,7 @@ bool IsIamfAudioDecodingSupported() {
  }
  
  bool IsLiveTranslateEnabled() {

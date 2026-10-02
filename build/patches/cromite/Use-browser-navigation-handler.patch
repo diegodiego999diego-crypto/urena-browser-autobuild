@@ -30,10 +30,10 @@ License: GPL-2.0-or-later - https://spdx.org/licenses/GPL-2.0-or-later.html
  create mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_h/Use-browser-navigation-handler.inc
 
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
-index b3631653e47d1820340038f99722ad51101795a3..bbc12b4c7911f7c5df1cdb2019e9e0286be0e529 100644
+index 8822e4a8ec0054c379ec62527fac30c20d10790b..39076493707c437a5864b077affcf1e965595f53 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/GestureNavigationProperties.java
-@@ -19,7 +19,7 @@ class GestureNavigationProperties {
+@@ -23,7 +23,7 @@ class GestureNavigationProperties {
      /**
       * Gesture navigation direction. {@code true} for forward navigation, {@code false} for back.
       */
@@ -42,7 +42,7 @@ index b3631653e47d1820340038f99722ad51101795a3..bbc12b4c7911f7c5df1cdb2019e9e028
  
      /** Gesture navigation edge as defined in {@link BackGestureEventSwipeEdge}. */
      static final WritableIntPropertyKey EDGE = new WritableIntPropertyKey();
-@@ -38,6 +38,6 @@ class GestureNavigationProperties {
+@@ -43,6 +43,6 @@ class GestureNavigationProperties {
      static final WritableIntPropertyKey CLOSE_INDICATOR = new WritableIntPropertyKey();
  
      static final PropertyKey[] ALL_KEYS = {
@@ -75,10 +75,10 @@ index 3af49db0d34368ee3fd1c9b2dbf6c12b6315cf9d..edad734dcaca113c22ff8a7fa9b89cc1
                  case GestureAction.RELEASE_BUBBLE:
                      topView.releaseBubble(model.get(ACTIVATION_STATUS));
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationCoordinator.java
-index 94649924da4d5a2b463274ef787e0b75b6f00046..1624a8b14e9f94a4b0f0d9522f05b14d0bbd610d 100644
+index 2a0e0ad82f7679eb4067336c5cd34e3260af54e6..7bcefbd67a0c7945a11902a9cf119d5f5a776237 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationCoordinator.java
-@@ -16,6 +16,7 @@ import org.chromium.build.annotations.MonotonicNonNull;
+@@ -18,6 +18,7 @@ import org.chromium.build.annotations.MonotonicNonNull;
  import org.chromium.build.annotations.NullMarked;
  import org.chromium.build.annotations.NullUnmarked;
  import org.chromium.build.annotations.Nullable;
@@ -86,15 +86,15 @@ index 94649924da4d5a2b463274ef787e0b75b6f00046..1624a8b14e9f94a4b0f0d9522f05b14d
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
  import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
  import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
-@@ -220,6 +221,9 @@ public class HistoryNavigationCoordinator
+@@ -217,6 +218,9 @@ public class HistoryNavigationCoordinator
       * @return {@code} true if the feature is enabled.
       */
      private boolean isFeatureEnabled() {
 +        if (sUseBrowserNavigationHandler.getInstance().isEnabled()) {
 +            return true;
 +        }
-         if (mForceFeatureEnabledForTesting != null) {
-             return mForceFeatureEnabledForTesting;
+         if (mForceFeatureEnabledForTesting != TriState.NOT_SET) {
+             return mForceFeatureEnabledForTesting == TriState.TRUE;
          }
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/HistoryNavigationLayout.java
 index 5a4ec3b0b9e4030541a2e482a514aa58ee98c1ca..d47a0afb6bcf598711f8b17fb32e6db9c3c8a542 100644
@@ -121,7 +121,7 @@ index 5a4ec3b0b9e4030541a2e482a514aa58ee98c1ca..d47a0afb6bcf598711f8b17fb32e6db9
          mSideSlideLayout.setCloseIndicator(closeIndicator);
          attachLayoutIfNecessary();
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/NavigationHandler.java b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/NavigationHandler.java
-index f05366524c4027e02d3c28a4b15fac89ad32d470..f328dbcc33fdb7297f8c82ded315bb124f910f20 100644
+index e3e6b79e5dab704bb171c3cb747d07c0e0856b82..0d06ef5ce751afbb376ada6e0ff029becb7e43ff 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/NavigationHandler.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/gesturenav/NavigationHandler.java
 @@ -10,7 +10,7 @@ import static org.chromium.chrome.browser.gesturenav.GestureNavigationProperties
@@ -133,7 +133,7 @@ index f05366524c4027e02d3c28a4b15fac89ad32d470..f328dbcc33fdb7297f8c82ded315bb12
  import static org.chromium.chrome.browser.gesturenav.GestureNavigationProperties.EDGE;
  
  import android.app.Activity;
-@@ -344,7 +344,11 @@ class NavigationHandler implements TouchEventObserver {
+@@ -342,7 +342,11 @@ class NavigationHandler implements TouchEventObserver {
  
          boolean forward = isForward();
  
@@ -146,7 +146,7 @@ index f05366524c4027e02d3c28a4b15fac89ad32d470..f328dbcc33fdb7297f8c82ded315bb12
          mModel.set(EDGE, mInitiatingEdge);
          if (canNavigate(forward)) {
              // Correct swipe, reset mIncorrectEdgeSwipeCount.
-@@ -605,12 +609,14 @@ class NavigationHandler implements TouchEventObserver {
+@@ -603,12 +607,14 @@ class NavigationHandler implements TouchEventObserver {
      }
  
      private boolean isForward() {
@@ -220,7 +220,7 @@ index 2537a71ecfc37aa69f7ebfac279de44a1699f6bd..657356a85e2936d2472050159830d9bb
  
      /**
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
-index 79e8b0982efe848a870b4a36da90156295d60acc..0ec709ab524040c70d1475452c3e9ec7292aec8f 100644
+index 80ab6b6e405df34b695eb083b88ce8e1b7a92643..c4b8c617c46795f2d998b05c99da7c5acba45adb 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedRootUiCoordinator.java
 @@ -112,6 +112,7 @@ import org.chromium.chrome.browser.firstrun.FirstRunStatus;
@@ -231,7 +231,7 @@ index 79e8b0982efe848a870b4a36da90156295d60acc..0ec709ab524040c70d1475452c3e9ec7
  import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
  import org.chromium.chrome.browser.fullscreen.FullscreenManager;
  import org.chromium.chrome.browser.gesturenav.BackActionDelegate;
-@@ -1148,7 +1149,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
+@@ -1207,7 +1208,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      @Override
      public void onInflationComplete() {
          mCoordinator = mActivity.findViewById(R.id.coordinator);
@@ -299,7 +299,7 @@ index 0000000000000000000000000000000000000000..60af782f8ca4f119ae868ca832c5322e
 +    </message>
 +</grit-part>
 diff --git a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
-index e878b1326cd00559834a9d0e99238ec6014dc8ea..1d8b40bd4e07969fbcb159e82a05eafdd11f2a41 100644
+index a7f4dd26329edafcd810d699bcdde8aa20134ad8..902a2e63523d0d8e88b9afa1da1792f9806d611c 100644
 --- a/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
 +++ b/components/browser_ui/accessibility/android/java/res/xml/accessibility_preferences.xml
 @@ -84,4 +84,13 @@ found in the LICENSE file.

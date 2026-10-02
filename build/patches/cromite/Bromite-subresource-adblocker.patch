@@ -49,10 +49,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  .../content/browser/ruleset_service.h         |   8 +-
  .../unindexed_ruleset_stream_generator.cc     |   3 +
  .../core/browser/ruleset_version.h            |   4 +
- .../browser/subresource_filter_features.cc    | 118 +-------
+ .../browser/subresource_filter_features.cc    | 115 +------
  .../core/browser/verified_ruleset_dealer.cc   |   4 +
  .../core/common/indexed_ruleset.cc            |   5 +-
- 39 files changed, 1289 insertions(+), 127 deletions(-)
+ 39 files changed, 1289 insertions(+), 124 deletions(-)
  create mode 100644 chrome/android/java/res/layout/adblock_editor.xml
  create mode 100644 chrome/android/java/res/xml/adblock_preferences.xml
  create mode 100644 chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
@@ -65,10 +65,10 @@ License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
  create mode 100644 components/component_updater/download_filters_task.h
 
 diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index b1895ca09e9c72a846527a6d2bf88119c4566994..892b1e536f985dfa0d4f0314783c0a3281571ebd 100644
+index 3e45a1245f912cbbda2002132d6e736c1b21841a..40ba44d53232f16e0f18165f3e3b0d94926208af 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
-@@ -341,6 +341,7 @@ if (_is_default_toolchain) {
+@@ -339,6 +339,7 @@ if (_is_default_toolchain) {
        "//chrome/android/features/tab_ui/public:ui_java_resources",
        "//chrome/android/modules/stack_unwinder/provider:java",
        "//chrome/android/webapk/libs/client:client_java",
@@ -77,10 +77,10 @@ index b1895ca09e9c72a846527a6d2bf88119c4566994..892b1e536f985dfa0d4f0314783c0a32
        "//chrome/android/webapk/libs/common:splash_java",
        "//chrome/android/webapk/libs/runtime_library:webapk_service_aidl_java",
 diff --git a/chrome/android/chrome_java_resources.gni b/chrome/android/chrome_java_resources.gni
-index 391d2cafd73d3a7c7a2d26a50ea08c6016839d5b..0c4fc6ec5d48f63201b0e9858bb8b9e6a3a63d84 100644
+index 3411e243457e93af9ae422a4d7cde2e1d2d0e0d4..3c97926361a108bdb7303b12a3683c390f3a4e97 100644
 --- a/chrome/android/chrome_java_resources.gni
 +++ b/chrome/android/chrome_java_resources.gni
-@@ -439,6 +439,7 @@ chrome_java_resources = [
+@@ -436,6 +436,7 @@ chrome_java_resources = [
    "java/res/layout/account_chooser_dialog_title.xml",
    "java/res/layout/account_management_account_row.xml",
    "java/res/layout/app_history_filter.xml",
@@ -88,7 +88,7 @@ index 391d2cafd73d3a7c7a2d26a50ea08c6016839d5b..0c4fc6ec5d48f63201b0e9858bb8b9e6
    "java/res/layout/auto_pip_permission_dialog.xml",
    "java/res/layout/auto_sign_in_first_run_dialog.xml",
    "java/res/layout/autofill_ai_loading_dialog.xml",
-@@ -670,6 +671,7 @@ chrome_java_resources = [
+@@ -665,6 +666,7 @@ chrome_java_resources = [
    "java/res/xml/account_management_preferences.xml",
    "java/res/xml/ad_services_config.xml",
    "java/res/xml/appearance_preferences.xml",
@@ -97,10 +97,10 @@ index 391d2cafd73d3a7c7a2d26a50ea08c6016839d5b..0c4fc6ec5d48f63201b0e9858bb8b9e6
    "java/res/xml/bookmark_widget_info.xml",
    "java/res/xml/clear_browsing_data_preferences.xml",
 diff --git a/chrome/android/chrome_java_sources.gni b/chrome/android/chrome_java_sources.gni
-index b44b5ab5bb475e33a2124759a09861e779eb6ff2..22aea8e0ee56988f3261abee81b4265838a9de66 100644
+index c69387f67bd1bb559448ad18791fdce235ceb3c0..cc78de89b44e7f891ed80f94424210d8387a1575 100644
 --- a/chrome/android/chrome_java_sources.gni
 +++ b/chrome/android/chrome_java_sources.gni
-@@ -1013,6 +1013,8 @@ chrome_java_sources = [
+@@ -1034,6 +1034,8 @@ chrome_java_sources = [
    "java/src/org/chromium/chrome/browser/permissions/PermissionBlockedDialog.java",
    "java/src/org/chromium/chrome/browser/permissions/PermissionUpdateRequester.java",
    "java/src/org/chromium/chrome/browser/photo_picker/DecoderServiceImpl.java",
@@ -183,10 +183,10 @@ index 0000000000000000000000000000000000000000..aced0dbca5a2be7e2dc03207a757a6c0
 +
 +</FrameLayout>
 diff --git a/chrome/android/java/res/values/styles.xml b/chrome/android/java/res/values/styles.xml
-index 61c459b15331c6bf7d09edd1eab4fb4f1bd7253b..46ba1b855cceeb8d10a6eaa85a4b45dc24120a3d 100644
+index 37a35688faa86baa16e2cf249eb45c5449bf6adc..2795812ffed398f8baf2042b550f0641836c8d03 100644
 --- a/chrome/android/java/res/values/styles.xml
 +++ b/chrome/android/java/res/values/styles.xml
-@@ -339,6 +339,24 @@ found in the LICENSE file.
+@@ -341,6 +341,24 @@ found in the LICENSE file.
          </item>
      </style>
  
@@ -258,7 +258,7 @@ index 0000000000000000000000000000000000000000..38acd6ad8250a821599a2f543c91e0ea
 +
 +</PreferenceScreen>
 diff --git a/chrome/android/java/res/xml/main_preferences.xml b/chrome/android/java/res/xml/main_preferences.xml
-index b108d1166359753c66730e0d5aa43ee12fb68e6d..6d8b385571fbcdf77f62349e97e0cd5bf66c9b08 100644
+index 014f5ab71fb00bfc3181cc5324e50c97377baa52..be36f10c57713ef44a415eeb3d422b64f0b2113e 100644
 --- a/chrome/android/java/res/xml/main_preferences.xml
 +++ b/chrome/android/java/res/xml/main_preferences.xml
 @@ -99,6 +99,11 @@ found in the LICENSE file.
@@ -270,7 +270,7 @@ index b108d1166359753c66730e0d5aa43ee12fb68e6d..6d8b385571fbcdf77f62349e97e0cd5b
 +        android:key="adblock"
 +        android:order="13"
 +        android:title="@string/prefs_adblock"/>
-     <Preference
+     <org.chromium.components.browser_ui.settings.ChromeBasePreference
          android:key="notifications"
          android:order="22"
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/AdBlockEditor.java
@@ -453,7 +453,7 @@ index 0000000000000000000000000000000000000000..6bc225055fa9c486d4cbe789ea4bc118
 +    }
 +}
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
-index 24fb255356593cd8442f4580189e557d257f6ce1..49259ba141af16cb0121829657c3d4fb071838c4 100644
+index 8427c451b59236dc54af1fdeb94bd13d4429e782..bba398a84e21efbcd097f1ec8f620016dd4d3361 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsActivity.java
 @@ -103,6 +103,8 @@ import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
@@ -478,10 +478,10 @@ index 510883360583dfabea0be24a9bab42186f10c9af..0906ca25fe762fb18e397be5b37590b0
          String className = fragment.getClass().getSimpleName();
          RecordHistogram.recordSparseHistogram("Settings.FragmentAttached", className.hashCode());
 diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
-index 8df3f66084dc0ad34dce22a07aaf8a69331a08c5..efd9dcdef62008e5efce4fcf2b5497f358a64aea 100644
+index d718a56fe4ed91dad2956eb8680e856865fa2dc0..22aef0182185e8c70606e4911fcce7ede8e039a3 100644
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -17514,6 +17514,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
+@@ -17511,6 +17511,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
        Never show this again.
      </message>
  
@@ -522,11 +522,11 @@ index 8fe921715edeef946279c4a2356dcb69099c4e7d..04be750c7efb1376b8e3a25221482e8c
  
  bool g_is_monitoring_started = false;
 diff --git a/chrome/browser/browser_process.h b/chrome/browser/browser_process.h
-index 4edb2e1824d07f3476b22c954439e824108886f1..c9063deaa575c12fec62baff8dfc2e441224c847 100644
+index 4dd79d836978ea62d2002af76d349b703251a997..2e7db876256c3d81d86412bfa1d9ac2dbb96011e 100644
 --- a/chrome/browser/browser_process.h
 +++ b/chrome/browser/browser_process.h
-@@ -96,6 +96,10 @@ namespace component_updater {
- class ComponentUpdateService;
+@@ -100,6 +100,10 @@ namespace speech {
+ class SpeechRecognitionSmallExpertModelInstaller;
  }
  
 +namespace adblock_updater {
@@ -536,7 +536,7 @@ index 4edb2e1824d07f3476b22c954439e824108886f1..c9063deaa575c12fec62baff8dfc2e44
  namespace gcm {
  class GCMDriver;
  }
-@@ -290,6 +294,7 @@ class BrowserProcess {
+@@ -294,6 +298,7 @@ class BrowserProcess {
    virtual activity_reporter::ActivityReporter* activity_reporter() = 0;
  
    virtual component_updater::ComponentUpdateService* component_updater() = 0;
@@ -545,10 +545,10 @@ index 4edb2e1824d07f3476b22c954439e824108886f1..c9063deaa575c12fec62baff8dfc2e44
  #if BUILDFLAG(IS_CHROMEOS)
    virtual MediaFileSystemRegistry* media_file_system_registry() = 0;
 diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
-index c917d239fbc6c751a91cd137f5e03efc14c7bd5e..530093336a87c2ec6aa80ee92a16a616fd6ddaf3 100644
+index 8a496e864b34f7ec1b8bbba42fc7dfe5d70e5086..c0a8ec834453ddd3893bdbabf9ce41cfc535ae17 100644
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -188,6 +188,8 @@
+@@ -186,6 +186,8 @@
  #include "ui/message_center/message_center.h"
  #endif
  
@@ -557,7 +557,7 @@ index c917d239fbc6c751a91cd137f5e03efc14c7bd5e..530093336a87c2ec6aa80ee92a16a616
  #if BUILDFLAG(IS_ANDROID)
  #include "chrome/browser/accessibility/accessibility_prefs/android/accessibility_prefs_controller.h"
  #include "chrome/browser/flags/android/chrome_feature_list.h"
-@@ -1439,6 +1441,34 @@ BrowserProcessImpl::component_updater() {
+@@ -1500,6 +1502,34 @@ BrowserProcessImpl::component_updater() {
    return component_updater_.get();
  }
  
@@ -593,10 +593,10 @@ index c917d239fbc6c751a91cd137f5e03efc14c7bd5e..530093336a87c2ec6aa80ee92a16a616
    if (is_keeping_alive) {
      Pin();
 diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
-index f97c57ba0e03e5fd97ef1ea6d1a0b1c011030fa3..dc1efb4544bb705235258a5c386ff616355a1aea 100644
+index 3fab4beb97fddec624b4dea4988af7e254df079a..e96d059853cc9f97f003d3bb6e3ee144e1064348 100644
 --- a/chrome/browser/browser_process_impl.h
 +++ b/chrome/browser/browser_process_impl.h
-@@ -223,6 +223,7 @@ class BrowserProcessImpl : public BrowserProcess,
+@@ -227,6 +227,7 @@ class BrowserProcessImpl : public BrowserProcess,
  
    activity_reporter::ActivityReporter* activity_reporter() override;
    component_updater::ComponentUpdateService* component_updater() override;
@@ -604,7 +604,7 @@ index f97c57ba0e03e5fd97ef1ea6d1a0b1c011030fa3..dc1efb4544bb705235258a5c386ff616
  #if BUILDFLAG(IS_CHROMEOS)
    MediaFileSystemRegistry* media_file_system_registry() override;
  #endif
-@@ -452,6 +453,7 @@ class BrowserProcessImpl : public BrowserProcess,
+@@ -460,6 +461,7 @@ class BrowserProcessImpl : public BrowserProcess,
    // to concerns over integrity of data shared between profiles,
    // but some users of component updater only install per-user.
    std::unique_ptr<component_updater::ComponentUpdateService> component_updater_;
@@ -613,10 +613,10 @@ index f97c57ba0e03e5fd97ef1ea6d1a0b1c011030fa3..dc1efb4544bb705235258a5c386ff616
  #if !BUILDFLAG(IS_ANDROID)
    // Used to create a singleton instance of SodaInstallerImpl, which can be
 diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
-index 1151b0f751d4e99be779271a888614d82820b7e3..bcf3dcd7282617ad9a64f8950138653a02cd29c1 100644
+index 61f2ca19d4596e7cd78bf2c631a4b7a4a84a2c13..49784612569421d4c076669f864e3cfeb39861d1 100644
 --- a/chrome/browser/chrome_browser_main.cc
 +++ b/chrome/browser/chrome_browser_main.cc
-@@ -485,6 +485,9 @@ StartupProfileInfo CreateInitialProfile(
+@@ -497,6 +497,9 @@ StartupProfileInfo CreateInitialProfile(
    // missing code in the above test.
    CHECK(profile_info.profile) << "Cannot get default profile.";
  
@@ -627,7 +627,7 @@ index 1151b0f751d4e99be779271a888614d82820b7e3..bcf3dcd7282617ad9a64f8950138653a
    profile_info =
        GetStartupProfile(/*cur_dir=*/base::FilePath(), parsed_command_line);
 diff --git a/chrome/browser/flags/BUILD.gn b/chrome/browser/flags/BUILD.gn
-index 84cee6e7cef9252cd5e5bdeefe671f10bbfd8045..9503eb03cedfff088e01460370dc56115c8dbde1 100644
+index 3a1a99b770ba26cfa04a694b2de4a983467a2bd0..0a9c4cd96979cbe50cd607d52241834cfcd982ac 100644
 --- a/chrome/browser/flags/BUILD.gn
 +++ b/chrome/browser/flags/BUILD.gn
 @@ -9,6 +9,7 @@ import("//third_party/jni_zero/jni_zero.gni")
@@ -730,10 +730,10 @@ index 0000000000000000000000000000000000000000..99f2d4ff9e10739d68c1efafbdf3a80c
 +    }
 +}
 diff --git a/chrome/browser/net/system_network_context_manager.cc b/chrome/browser/net/system_network_context_manager.cc
-index ad032d662476297591424248372b862cb1341276..f27e5adb7149449292dc3ca4943a609b1db97646 100644
+index 6a3afe1bcde26adaf91bb93d1d511f4a71d4c0d2..0aaeb21c15f6ea261ca3ce1e0bfd91e649ad7bf9 100644
 --- a/chrome/browser/net/system_network_context_manager.cc
 +++ b/chrome/browser/net/system_network_context_manager.cc
-@@ -717,6 +717,10 @@ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
+@@ -719,6 +719,10 @@ void SystemNetworkContextManager::RegisterPrefs(PrefRegistrySimple* registry) {
    DefaultDnsOverHttpsConfigSource::RegisterPrefs(registry);
    NetworkProcessLaunchWatcher::RegisterPrefs(registry);
  
@@ -745,7 +745,7 @@ index ad032d662476297591424248372b862cb1341276..f27e5adb7149449292dc3ca4943a609b
    registry->RegisterStringPref(prefs::kAuthSchemes,
                                 "basic,digest,ntlm,negotiate");
 diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
-index 385e11af377eddc7b6b73c93f33d3e2f332d72d8..0f4d8205065a613e7c0a50f3cb98a6fb03928a95 100644
+index a0e5390117507895600eb53d3e43de554d789329..2ec7fa3de3d877405d4b6c55b0f21c1474049244 100644
 --- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
 +++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
 @@ -240,6 +240,20 @@ CHAR_LIMIT guidelines:
@@ -770,10 +770,10 @@ index 385e11af377eddc7b6b73c93f33d3e2f332d72d8..0f4d8205065a613e7c0a50f3cb98a6fb
        <message name="IDS_NOTIFICATION_CATEGORY_GROUP_GENERAL" desc='Subheading for "General" section of a list of notification categories. [CHAR_LIMIT=32]'>
          General
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
-index f8fbca06953c366e6269643e60b1911f3859236f..fc191842ba97aa15c0265bfbde29b750efd58423 100644
+index 5f6ad9ac1f9a98043d23f83a45969c44293e7dc0..090c51e1ae8d4e389d6daf16f374094d16af032a 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -2222,6 +2222,11 @@ static_assert(std::string_view(kAudioCaptureAllowed) ==
+@@ -2225,6 +2225,11 @@ static_assert(std::string_view(kAudioCaptureAllowed) ==
  inline constexpr char kAudioCaptureAllowedUrls[] =
      "hardware.audio_capture_allowed_urls";
  
@@ -786,7 +786,7 @@ index f8fbca06953c366e6269643e60b1911f3859236f..fc191842ba97aa15c0265bfbde29b750
  // access to video capture devices.  When enabled or not set, the user is
  // prompted for device access.  When disabled, access to video capture devices
 diff --git a/components/browser_ui/strings/android/site_settings.grdp b/components/browser_ui/strings/android/site_settings.grdp
-index b2ebb542418410705ba61c3bb9775652d90ad33f..ed9d1eba0b4b123ad6318cbaecf60a792ae52f8c 100644
+index fb8ddb2f6ecce84cdcf42ed723350ae7dc892316..67eee01196f9b529deed13dd2ba9589c74d0d069 100644
 --- a/components/browser_ui/strings/android/site_settings.grdp
 +++ b/components/browser_ui/strings/android/site_settings.grdp
 @@ -421,6 +421,9 @@
@@ -1875,10 +1875,10 @@ index 89a6c3a25b89b3d768f01d7d508aad41683909dc..30ce5fd20d51a4e732ef45d481baeec2
  
  // Encapsulates the combination of the binary format version of the indexed
 diff --git a/components/subresource_filter/core/browser/subresource_filter_features.cc b/components/subresource_filter/core/browser/subresource_filter_features.cc
-index b617af5716568e1b86c3b91645fd453537f07d3e..bea57d905ec69f442d34ed58de74e7a1b04c7c1d 100644
+index 5a27b467964e135fd1546f77bb635516cf724b59..2d2f7ed3625f25abc2db5184d3dffd3a1b195dab 100644
 --- a/components/subresource_filter/core/browser/subresource_filter_features.cc
 +++ b/components/subresource_filter/core/browser/subresource_filter_features.cc
-@@ -54,75 +54,8 @@ class CommaSeparatedStrings {
+@@ -54,72 +54,8 @@ class CommaSeparatedStrings {
    const std::vector<std::string_view> pieces_;
  };
  
@@ -1925,9 +1925,6 @@ index b617af5716568e1b86c3b91645fd453537f07d3e..bea57d905ec69f442d34ed58de74e7a1
 -                 kActivationListSocialEngineeringAdsInterstitial)) {
 -    return ActivationList::SOCIAL_ENG_ADS_INTERSTITIAL;
 -  } else if (activation_lists.CaseInsensitiveContains(
--                 kActivationListSubresourceFilter)) {
--    return ActivationList::SUBRESOURCE_FILTER;
--  } else if (activation_lists.CaseInsensitiveContains(
 -                 kActivationListBetterAds)) {
 -    return ActivationList::BETTER_ADS;
 -  }
@@ -1955,7 +1952,7 @@ index b617af5716568e1b86c3b91645fd453537f07d3e..bea57d905ec69f442d34ed58de74e7a1
    // If ad tagging is enabled, turn on the dryrun automatically.
    bool ad_tagging_enabled = base::FeatureList::IsEnabled(kAdTagging);
    const struct {
-@@ -130,23 +63,16 @@ std::vector<Configuration> FillEnabledPresetConfigurations(
+@@ -127,23 +63,16 @@ std::vector<Configuration> FillEnabledPresetConfigurations(
      bool enabled_by_default;
      Configuration (*factory_method)();
    } kAvailablePresetConfigurations[] = {
@@ -1981,7 +1978,7 @@ index b617af5716568e1b86c3b91645fd453537f07d3e..bea57d905ec69f442d34ed58de74e7a1
        enabled_configurations.push_back(available_preset.factory_method());
      }
    }
-@@ -154,48 +80,12 @@ std::vector<Configuration> FillEnabledPresetConfigurations(
+@@ -151,48 +80,12 @@ std::vector<Configuration> FillEnabledPresetConfigurations(
    return enabled_configurations;
  }
  
