@@ -1,0 +1,153 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Serg <serg.zhukovsky@gmail.com>
+Date: Tue, 31 Jan 2017 22:12:27 -0500
+Subject: Add exit menu item
+
+Corrected Exit functionality
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/android/java/res/values/ids.xml        |  1 +
+ .../chrome/browser/ChromeTabbedActivity.java  |  4 +++
+ .../chrome/browser/app/ChromeActivity.java    |  6 +++++
+ .../init/ChromeLifetimeController.java        |  2 ++
+ .../TabbedAppMenuPropertiesDelegate.java      | 26 +++++++++++++++++++
+ .../strings/android_chrome_strings.grd        |  3 +++
+ 6 files changed, 42 insertions(+)
+
+diff --git a/chrome/android/java/res/values/ids.xml b/chrome/android/java/res/values/ids.xml
+index 157ce8357eeadc5c1436f18bf4d38387c86bd956..81bb7cc8d948d2f3b6b8c1c6221539c8098ba754 100644
+--- a/chrome/android/java/res/values/ids.xml
++++ b/chrome/android/java/res/values/ids.xml
+@@ -207,6 +207,7 @@ found in the LICENSE file.
+     <item type="id" name="extensions_menu_menu_id" />
+     <item type="id" name="extensions_parent_menu_id" />
+     <item type="id" name="extensions_webstore_menu_id" />
++    <item type="id" name="exit_id" />
+     <item type="id" name="find_in_page_id" />
+     <item type="id" name="forward_menu_id" />
+     <item type="id" name="get_image_descriptions_id" />
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+index e9d0518a6cc0cd77bf84e66bc24b57d31c352392..43b1d493659131639e4a43efbf22bfc3f63cd2a7 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -431,6 +431,8 @@ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicBoolean;
+ import java.util.function.Supplier;
+ 
++import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
++
+ /**
+  * This is the main activity for ChromeMobile when not running in document mode. All the tabs are
+  * accessible via a chrome specific tab switching UI.
+@@ -4531,6 +4533,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+                     .closeTabs(
+                             TabClosureParams.closeTab(currentTab).build(), /* allowDialog= */ true);
+             RecordUserAction.record("MobileTabClosed");
++        } else if (id == R.id.exit_id) {
++            ApplicationLifetime.terminate(false);
+         } else if (id == R.id.close_all_tabs_menu_id) {
+             boolean allowUndo = TabClosureParamsUtils.shouldAllowUndo(triggeringMotion);
+ 
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index 67ce688c4bbc1bf0b1f88e90e5279bc2b73f07e2..279af4a48d7869cf690654c5687927ba7d8edbba 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -74,6 +74,7 @@ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.R;
+ import org.chromium.chrome.browser.ActivityTabProvider;
+ import org.chromium.chrome.browser.ActivityUtils;
++import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
+ import org.chromium.chrome.browser.ChromeActivitySessionTracker;
+ import org.chromium.chrome.browser.ChromeApplicationImpl;
+ import org.chromium.chrome.browser.ChromeKeyboardVisibilityDelegate;
+@@ -2960,6 +2961,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
+             return true;
+         }
+ 
++        if (id == R.id.exit_id) {
++            ApplicationLifetime.terminate(false);
++            return true;
++        }
++
+         if (id == R.id.update_menu_id) {
+             UpdateMenuItemHelper.getInstance(
+                             getProfileProviderSupplier().get().getOriginalProfile())
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
+index 5bdcf7189df01af5560b9bb8cd0ebf97173ce9e4..f9be2bcbd1bc937438a6ab22f2c86a851ae987a9 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/init/ChromeLifetimeController.java
+@@ -19,6 +19,7 @@ import org.chromium.base.ThreadUtils;
+ import org.chromium.build.annotations.MonotonicNonNull;
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.chrome.browser.BrowserRestartActivity;
++import org.chromium.chrome.browser.incognito.IncognitoNotificationManager;
+ import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
+ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.LastSessionExitType;
+ import org.chromium.chrome.browser.multiwindow.TabbedStartupWindowPolicyDelegate;
+@@ -72,6 +73,7 @@ class ChromeLifetimeController
+ 
+     @Override
+     public void onTerminate(boolean restart) {
++        IncognitoNotificationManager.dismissIncognitoNotification();
+         mRestartChromeOnDestroy = restart;
+         TabbedStartupWindowPolicyDelegate.getInstance()
+                 .maybeSaveWindowStateOnSessionTermination(LastSessionExitType.QUIT);
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
+index e4548b2f1ae1f16bec004f318d62852bb724f0fe..58d2a2725eaad049f67f78e4ca9217ca211cf89d 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
+@@ -577,6 +577,19 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+             modelList.add(buildContentFilterHelpCenterMenuItem(currentTab));
+         }
+ 
++        modelList.add(
++                new MVCListAdapter.ListItem(
++                        AppMenuHandler.AppMenuItemType.STANDARD,
++                        AppMenuItemUtils.buildModelForStandardMenuItem(
++                                mContext,
++                                getAppMenuItemTheme(),
++                                R.id.exit_id,
++                                R.string.menu_exit,
++                                shouldShowIconBeforeItem()
++                                        ? R.drawable.ic_exit_to_app_white_24dp
++                                        : 0,
++                                isMenuIconAtStart())));
++
+         // Default browser promo
+         if (shouldShowDefaultBrowserPromo()) {
+             RecordUserAction.record("MobileMenuDefaultBrowserPromoShown");
+@@ -763,6 +776,19 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+             modelList.add(buildContentFilterHelpCenterMenuItem(currentTab));
+         }
+ 
++        modelList.add(
++                new MVCListAdapter.ListItem(
++                        AppMenuHandler.AppMenuItemType.STANDARD,
++                        AppMenuItemUtils.buildModelForStandardMenuItem(
++                                mContext,
++                                getAppMenuItemTheme(),
++                                R.id.exit_id,
++                                R.string.menu_exit,
++                                shouldShowIconBeforeItem()
++                                        ? R.drawable.ic_exit_to_app_white_24dp
++                                        : 0,
++                                isMenuIconAtStart())));
++
+         // Default browser promo menu item (entry point).
+         if (shouldShowDefaultBrowserPromo()) {
+             // Used to track how many people saw the promo.
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index a66a48aa884f5236f956fbf5fa0bf1f8ac1fbf9f..3bb70f888f8c2d5ec1156327a475e12197a03ceb 100644
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -4558,6 +4558,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
+       <message name="IDS_MENU_MORE_TOOLS" desc="Menu item to more tools. [CHAR_LIMIT=27]">
+         More tools
+       </message>
++      <message name="IDS_MENU_EXIT" desc="Menu item for exit browser. [CHAR-LIMIT=27]">
++        Exit
++      </message>
+       <message name="IDS_MENU_TASK_MANAGER" desc="Menu item to show the task manager. [CHAR_LIMIT=27]">
+         Task manager
+       </message>

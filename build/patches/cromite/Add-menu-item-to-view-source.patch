@@ -1,0 +1,148 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Mon, 13 Jul 2020 00:37:06 +0200
+Subject: Add menu item to view source
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ chrome/android/java/res/values/ids.xml        |  1 +
+ .../chrome/browser/ChromeTabbedActivity.java  |  2 ++
+ .../chrome/browser/app/ChromeActivity.java    |  5 ++++
+ .../AppMenuPropertiesDelegateImpl.java        | 27 +++++++++++++++++++
+ .../CustomTabAppMenuPropertiesDelegate.java   |  3 +++
+ .../TabbedAppMenuPropertiesDelegate.java      |  6 +++++
+ .../strings/android_chrome_strings.grd        |  4 +++
+ 7 files changed, 48 insertions(+)
+
+diff --git a/chrome/android/java/res/values/ids.xml b/chrome/android/java/res/values/ids.xml
+index 81bb7cc8d948d2f3b6b8c1c6221539c8098ba754..aa65d577426edbb9fa63f9af72dd768e3f13b4c7 100644
+--- a/chrome/android/java/res/values/ids.xml
++++ b/chrome/android/java/res/values/ids.xml
+@@ -289,6 +289,7 @@ found in the LICENSE file.
+     <item type="id" name="unmute_site_menu_id" />
+     <item type="id" name="unpin_tab_menu_id" />
+     <item type="id" name="update_menu_id" />
++    <item type="id" name="view_source_id" />
+     <item type="id" name="your_devices_header_menu_id" />
+     <!-- go/keep-sorted end -->
+ 
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+index 416435f81437595a0baf27093d9ffeaa809fd5a4..5812fefab98d2225015f0682e22ba6d54cb3e471 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -4600,6 +4600,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+                 NewTabPageUma.recordAction(NewTabPageUma.ACTION_OPENED_DOWNLOADS_MANAGER);
+             }
+             RecordUserAction.record("MobileMenuDownloadManager");
++        } else if (id == R.id.view_source_id) {
++            currentTab.getWebContents().getNavigationController().loadUrl(new LoadUrlParams("view-source:"+currentTab.getUrl().getSpec()));
+         } else if (id == R.id.open_recently_closed_tab) {
+             TabModel currentModel = mTabModelSelector.getCurrentModel();
+             if (!currentModel.isIncognito()) {
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+index 5d27c6c4035dd1b1efb519cd0ecbba89d08b5f73..5b12ea34103b9e178e8f93338defb7bb0b1ac652 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
+@@ -3193,6 +3193,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
+             return AppInstallMenuHandler.doOpenWebApk(this, currentTab);
+         }
+ 
++        if (id == R.id.view_source_id) {
++            currentTab.getWebContents().getNavigationController().loadUrl(new LoadUrlParams("view-source:"+currentTab.getUrl().getSpec()));
++            return true;
++        }
++
+         if (id == R.id.request_desktop_site_id || id == R.id.request_desktop_site_check_id) {
+             boolean usingDesktopUserAgent =
+                     currentTab.getWebContents().getNavigationController().getUseDesktopUserAgent();
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+index 340831772fa180bc051326f2bad81a3d2c749b0e..378bdc24c62a593605ca7cc237231d1b4a7872c1 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/app/appmenu/AppMenuPropertiesDelegateImpl.java
+@@ -941,6 +941,33 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
+         return false;
+     }
+ 
++    /**
++     * Updates the view source menu item's state.
++     *
++     * @param menu {@link Menu} for view source.
++     * @param currentTab      Current tab being displayed.
++     */
++    protected void buildAddViewSourceItem(
++            MVCListAdapter.ModelList modelList,
++            @Nullable Tab currentTab) {
++        boolean visible = false;
++        if (currentTab != null) {
++            String url = currentTab.getUrl().getSpec();
++            visible = !url.isEmpty() && !url.startsWith("view-source:");
++        }
++        if (visible) {
++            modelList.add(new MVCListAdapter.ListItem(
++                AppMenuHandler.AppMenuItemType.STANDARD,
++                 AppMenuItemUtils.buildModelForStandardMenuItem(
++                    mContext,
++                    mAppMenuItemTheme,
++                    R.id.view_source_id,
++                    R.string.view_source,
++                    shouldShowIconBeforeItem() ? R.drawable.ic_drive_document_24dp : 0,
++                    isMenuIconAtStart())));
++        }
++    }
++
+     /**
+      * Updates the bookmark item's visibility.
+      *
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabAppMenuPropertiesDelegate.java
+index 6048bcb2f50f27b60b70b8cd03dd3c6c32093ce8..357db58602be59b151f5b545d680b0a73459d16a 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabAppMenuPropertiesDelegate.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabAppMenuPropertiesDelegate.java
+@@ -422,6 +422,9 @@ public class CustomTabAppMenuPropertiesDelegate extends AppMenuPropertiesDelegat
+             modelList.add(buildOpenInAppItem());
+         }
+ 
++        // Add view source item
++        buildAddViewSourceItem(modelList, currentTab);
++
+         // --- Request Desktop Site ---
+         if (requestDesktopSiteVisible) {
+             MVCListAdapter.ListItem rdsListItem =
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
+index 9c64ddda1e9c817329f7c84759c9ee3f7f185f94..fc8b59791722b693fce35eb0bf006eff31ad2b89 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java
+@@ -527,6 +527,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+             modelList.add(buildOpenInAppItem());
+         }
+ 
++        // Add view source item
++        buildAddViewSourceItem(modelList, currentTab);
++
+         // RDS
+         ListItem rdsListItem =
+                 maybeBuildRequestDesktopSiteListItem(
+@@ -738,6 +741,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
+             modelList.add(buildOpenInAppItem());
+         }
+ 
++        // Add view source item
++        buildAddViewSourceItem(modelList, currentTab);
++
+         // RDS
+         ListItem rdsListItem =
+                 maybeBuildRequestDesktopSiteListItem(
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index 0f4d8205065a613e7c0a50f3cb98a6fb03928a95..0a1ccb5f5be7dbc2bca14d74b5ee909bdee3e6c2 100644
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -350,6 +350,10 @@ CHAR_LIMIT guidelines:
+         Chrome finds
+       </message>
+ 
++      <message name="IDS_VIEW_SOURCE" desc="Title for the menu command to view the source of the current page. [CHAR-LIMIT=40]">
++        View source
++      </message>
++
+       <!-- Sign-in, sync and personalization preferences -->
+       <message name="IDS_PREFS_SECTION_ACCOUNT_AND_GOOGLE_SERVICES" desc="Title for the group of account-related entries and google services in Settings. [CHAR_LIMIT=32]">
+         You and Google

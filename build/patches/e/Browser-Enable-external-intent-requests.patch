@@ -1,0 +1,203 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Tue, 5 Nov 2024 10:08:21 +0530
+Subject: Browser: Enable external intent requests
+
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
+---
+ .../java/res/xml/privacy_preferences.xml      |  3 +-
+ .../customtabs/CustomTabDelegateFactory.java  |  4 +--
+ .../ExternalNavigationDelegateImpl.java       |  6 ++--
+ .../privacy/settings/PrivacySettings.java     | 11 +++++++
+ .../cromite/sAllowExternalIntentRequests.java | 33 -------------------
+ ...ag-to-disable-external-intent-requests.inc | 13 --------
+ ...ag-to-disable-external-intent-requests.inc |  3 --
+ 7 files changed, 17 insertions(+), 56 deletions(-)
+ delete mode 100644 chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java
+ delete mode 100644 cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc
+ delete mode 100644 cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
+
+diff --git a/chrome/android/java/res/xml/privacy_preferences.xml b/chrome/android/java/res/xml/privacy_preferences.xml
+index b99d0e42438f521e684fa6254703eac64ca8be23..bdc4b1c6c3e7f858ff1396585465c5c42b442ce7 100644
+--- a/chrome/android/java/res/xml/privacy_preferences.xml
++++ b/chrome/android/java/res/xml/privacy_preferences.xml
+@@ -66,8 +66,7 @@ found in the LICENSE file.
+         android:key="allow_external_intent_requests"
+         android:title="@string/allow_external_intent_requests_title"
+         android:summary="@string/allow_external_intent_requests_summary"
+-        app:featureName="AllowExternalIntentRequests"
+-        app:needRestart="false" />
++        android:defaultValue="true" />
+     <PreferenceCategory
+         android:key="security_section"
+       android:title="@string/security_section_title" />
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+index 73df41f29b3b3cc025a95c851d8afa6df4ef90bd..54a0f8ba558e684233a1786d87be987a8dad6e93 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java
+@@ -11,6 +11,7 @@ import android.app.Activity;
+ import android.content.ActivityNotFoundException;
+ import android.content.ComponentName;
+ import android.content.Intent;
++import org.chromium.base.ContextUtils;
+ import android.content.pm.ResolveInfo;
+ import android.graphics.Rect;
+ import android.text.TextUtils;
+@@ -42,7 +43,6 @@ import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
+ import org.chromium.chrome.browser.externalnav.ExternalNavigationDelegateImpl;
+ import org.chromium.chrome.browser.flags.ActivityType;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+-import org.chromium.chrome.browser.flags.cromite.sAllowExternalIntentRequests;
+ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
+ import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+ import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
+@@ -172,7 +172,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
+ 
+         @Override
+         public boolean shouldDisableAllExternalIntents() {
+-            if (!sAllowExternalIntentRequests.getInstance().isEnabled()) return true;
++            if (!ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true)) return true;
+             return false;
+         }
+ 
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
+index 9061cc4659952e1d104f941e7b3da055e512d42f..31cbd42c4accc406542ab64f5cd9ead3606a0302 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java
+@@ -27,7 +27,6 @@ import org.chromium.base.ResettersForTesting;
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.browser.ChromeTabbedActivity2;
+-import org.chromium.chrome.browser.flags.cromite.sAllowExternalIntentRequests;
+ import org.chromium.chrome.browser.IntentHandler;
+ import org.chromium.chrome.browser.actor.ActorKeyedServiceFactory;
+ import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
+@@ -71,6 +70,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+ 
+     private static @Nullable Predicate<Intent> sWillChromeHandleIntentHookForTesting;
+ 
++    public static final String PREF_OPEN_EXTERNAL_INTENT = "allow_external_intent_requests";
++
+     public ExternalNavigationDelegateImpl(Tab tab) {
+         mTab = tab;
+         mTabModelSelectorSupplier = TabModelSelectorSupplier.from(tab.getWindowAndroid());
+@@ -143,8 +144,7 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
+     @Override
+     public boolean shouldDisableExternalIntentRequestsForUrl(
+             ExternalNavigationParams params, Intent intent) {
+-        if ("tel".equals(params.getUrl().getScheme())) return false;
+-        return !sAllowExternalIntentRequests.getInstance().isEnabled();
++        return !ContextUtils.getAppSharedPreferences().getBoolean(PREF_OPEN_EXTERNAL_INTENT, true);
+     }
+ 
+     @Override
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+index 1f2c65174f4ff3f8a453d86803354ea48d107b21..e70f6c31d052454c4453a145ed02396ff5d52631 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java
+@@ -175,6 +175,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+ 
+     private ChromeSwitchPreference allowCustomTabIntentsPref;
+     private ChromeSwitchPreference openExternalLinksPref;
++    private ChromeSwitchPreference openExternalIntentPref;
+ 
+     private static final String PREF_HISTORY_EXPIRE_DAYS_THRESHOLD = "history_expire_days_threshold";
+ 
+@@ -432,6 +433,7 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+ 
+     public static final String PREF_ALLOW_CUSTOM_TAB_INTENTS = "allow_custom_tab_intents";
+     public static final String PREF_OPEN_EXTERNAL_LINKS_INCOGNITO = "open_external_links_incognito";
++    public static final String PREF_OPEN_EXTERNAL_INTENT = "allow_external_intent_requests";
+ 
+     @Override
+     public boolean onPreferenceChange(Preference preference, Object newValue) {
+@@ -478,6 +480,10 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+             SharedPreferences.Editor sharedPreferencesEditor = ContextUtils.getAppSharedPreferences().edit();
+             sharedPreferencesEditor.putBoolean(PREF_OPEN_EXTERNAL_LINKS_INCOGNITO, (boolean)newValue);
+             sharedPreferencesEditor.apply();
++        } else if (PREF_OPEN_EXTERNAL_INTENT.equals(key)) {
++            SharedPreferences.Editor sharedPreferencesEditor = ContextUtils.getAppSharedPreferences().edit();
++            sharedPreferencesEditor.putBoolean(PREF_OPEN_EXTERNAL_INTENT, (boolean)newValue);
++            sharedPreferencesEditor.apply();
+         }
+         return true;
+     }
+@@ -520,6 +526,11 @@ public class PrivacySettings extends ChromeBaseSettingsFragment
+         openExternalLinksPref.setOnPreferenceChangeListener(this);
+         openExternalLinksPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
+ 
++        openExternalIntentPref =
++                (ChromeSwitchPreference) findPreference(PREF_OPEN_EXTERNAL_INTENT);
++        openExternalIntentPref.setOnPreferenceChangeListener(this);
++        openExternalIntentPref.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
++
+         Preference doNotTrackPref = findPreference(PREF_DO_NOT_TRACK);
+         if (doNotTrackPref != null) {
+             doNotTrackPref.setSummary(
+diff --git a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java b/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java
+deleted file mode 100644
+index 98a7d11ec4dbaeb35feeab15ed6a9a4aaaf805a3..0000000000000000000000000000000000000000
+--- a/chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/cromite/sAllowExternalIntentRequests.java
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/*
+-    This file is part of Cromite.
+-
+-    Cromite is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU General Public License as published by
+-    the Free Software Foundation, either version 3 of the License, or
+-    (at your option) any later version.
+-
+-    Cromite is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU General Public License for more details.
+-
+-    You should have received a copy of the GNU General Public License
+-    along with Cromite. If not, see <https://www.gnu.org/licenses/>.
+-*/
+-
+-package org.chromium.chrome.browser.flags.cromite;
+-
+-import org.chromium.components.cached_flags.CachedFlag;
+-import org.chromium.chrome.browser.flags.ChromeFeatureMap;
+-
+-public class sAllowExternalIntentRequests {
+-    private static final CachedFlag sInstance =
+-        new CachedFlag(ChromeFeatureMap.getInstance(),
+-            "AllowExternalIntentRequests", false);
+-
+-    private sAllowExternalIntentRequests() {}
+-
+-    public static CachedFlag getInstance() {
+-        return sInstance;
+-    }
+-}
+diff --git a/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc b/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc
+deleted file mode 100644
+index 292d587269804cf9f579a5df0f6a274d1d68794c..0000000000000000000000000000000000000000
+--- a/cromite_flags/chrome/browser/about_flags_cc/Add-flag-to-disable-external-intent-requests.inc
++++ /dev/null
+@@ -1,13 +0,0 @@
+-#if BUILDFLAG(IS_ANDROID)
+-
+-#ifdef FLAG_SECTION
+-
+-    {"allow-external-intent-requests",
+-     "Allow forward URL requests to external intents",
+-     "If disabled, URL requests will never"
+-     "allow for redirecting to an external intent.", kOsAndroid,
+-     SINGLE_DISABLE_VALUE_TYPE("disable-external-intent-requests")},
+-
+-#endif
+-
+-#endif
+diff --git a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc b/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
+deleted file mode 100644
+index c4015ad7de11996b7b0639dca8b9744de3e682e9..0000000000000000000000000000000000000000
+--- a/cromite_flags/chrome/browser/flags/android/chrome_feature_list_cc/Add-flag-to-disable-external-intent-requests.inc
++++ /dev/null
+@@ -1,3 +0,0 @@
+-CROMITE_FEATURE(kAllowExternalIntentRequests,
+-                "AllowExternalIntentRequests",
+-                base::FEATURE_DISABLED_BY_DEFAULT);

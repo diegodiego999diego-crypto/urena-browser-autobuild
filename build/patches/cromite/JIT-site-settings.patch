@@ -1,0 +1,404 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: fgei <fgei@gmail.com>
+Date: Sat, 29 Jan 2022 15:22:45 +0000
+Subject: JIT site settings
+
+Adds a content setting to manage Javascript JIT, disabled by default.
+Since the interface of the content settings foresees an eTLD origin
+it requires the activation of SitePerProcess and StrictOriginIsolation
+to make sure that the instantiated RenderProcess can have JIT correctly set.
+Without those features, the RenderProcess would be shared between all eTLD+1.
+
+note: needs SitePerProcess and StrictOriginIsolation flags enabled
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+Require: Content-settings-infrastructure.patch
+---
+ .../permission_javascript_jit.png             | Bin 0 -> 433 bytes
+ .../permission_javascript_jit.png             | Bin 0 -> 377 bytes
+ .../permission_javascript_jit.png             | Bin 0 -> 518 bytes
+ .../permission_javascript_jit.png             | Bin 0 -> 629 bytes
+ .../permission_javascript_jit.png             | Bin 0 -> 797 bytes
+ .../BromiteJavascriptJITContentSetting.java   |  93 ++++++++++++++++++
+ .../javascript_jit.grdp                       |  21 ++++
+ .../javascript_jit.inc                        |  12 +++
+ .../core/browser/content_settings_registry.cc |   2 +-
+ .../renderer_host/navigation_request.cc       |   8 +-
+ .../renderer_host/render_process_host_impl.cc |   3 +
+ content/browser/site_info.cc                  |   7 ++
+ content/browser/url_info.cc                   |   6 ++
+ content/browser/url_info.h                    |   3 +
+ 14 files changed, 153 insertions(+), 2 deletions(-)
+ create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-hdpi/permission_javascript_jit.png
+ create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-mdpi/permission_javascript_jit.png
+ create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-xhdpi/permission_javascript_jit.png
+ create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-xxhdpi/permission_javascript_jit.png
+ create mode 100644 components/browser_ui/site_settings/android/java/res/drawable-xxxhdpi/permission_javascript_jit.png
+ create mode 100644 components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteJavascriptJITContentSetting.java
+ create mode 100644 components/browser_ui/strings/bromite_content_settings/javascript_jit.grdp
+ create mode 100644 components/content_settings/core/browser/bromite_content_settings/javascript_jit.inc
+
+diff --git a/components/browser_ui/site_settings/android/java/res/drawable-hdpi/permission_javascript_jit.png b/components/browser_ui/site_settings/android/java/res/drawable-hdpi/permission_javascript_jit.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..88f0ec11d6b186923ace473eb426f80341adc5f1
+GIT binary patch
+literal 433
+zcmeAS@N?(olHy`uVBq!ia0y~yU{C>J4i*Lm25-&)VFm^UmUKs7M+SzC{oH>NSs54@
+zn3BBRT^Rni_n+C%z`(#>;_2(k{*+r(z}RXF_saVW3=B^_T^vI^j=!C1$aTm-!Y%&R
+zf?)m&H;<lWuHc*Qu>PT1FUP$D+!`q#x%}oi+BEHL4tb=o)MCb;EwLi|x1M}lTQ9`*
+z|Hz^Q!%Nbk6UuMJ|8(AKbx*PNW|;0ttFDx+c|H2-9uA_m-l7araZBgCVlv!!bN-jj
+znV**`BtOpH!V&z5@v2<ll@k%C7*}~3PR!Ch_Tz%p@+P+;>5Dx}I75oBU9dPRA8_GB
+z<Td8d$%_{mPg=xcemnB>$J?)?T>Ac>T~%+IStqfivCHP0j`PRu$1?5*r}0lX^kq)p
+zjFLaDVRhltuOAO!{^dSJed~6EU2$G7tr-{?R7+eVN>UO_QmvAUQWHy38H@~!40R0+
+zb&U)|3@oh-O{|Pev<(cb3=FjXzjH&;kei>9nO2EgL-eAsUknTk44$rjF6*2UngC?E
+Bq<sJY
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/browser_ui/site_settings/android/java/res/drawable-mdpi/permission_javascript_jit.png b/components/browser_ui/site_settings/android/java/res/drawable-mdpi/permission_javascript_jit.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..97b96dba01ebcae8a232a63f08bdf42ce997dc30
+GIT binary patch
+literal 377
+zcmeAS@N?(olHy`uVBq!ia0y~yV2}V|4i*Lm2CurW#S9D#Ea{HEjtmSN`?>!lvNA9*
+zFeQ1ryD<E3??1Djfq{X&#M9T6{VBJofU(sU?v?i$7#P-ix;TbdoIX2gBkv&t0oVDm
+z>D>~YnGuYY4IVrbMGRP6e`#oM=wI%z$+t1+=Ohaug?GC?*FXQCdiefSrt(LA!3(~|
+z9BXeh(eTz`=*xVN;1DUXI(M)4siu3g9~L*f4%@SH%IVLNQoL!2ze6S51sWsYIn|kk
+zF$rYvo#fB3>|f8jY4_aj7=8W7=CbhVh4;~$auO8}_ngSv_urJ~LFS#!9&a6;Gd^Bn
+zee1mY`g#9XtaI)fmoVQt!^ptEpjzS@QIe8al4_M)l$uzQ%3x$*WT<OssB2^xVqj@y
+uXkuk#qHSPcWniH7|D79(hTQy=%(P0}8lo44{bFEXVDNPHb6Mw<&;$TXMv1@x
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/browser_ui/site_settings/android/java/res/drawable-xhdpi/permission_javascript_jit.png b/components/browser_ui/site_settings/android/java/res/drawable-xhdpi/permission_javascript_jit.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..8f85eb32c30cc965440d44c2eee784c23ea1f2fc
+GIT binary patch
+literal 518
+zcmeAS@N?(olHy`uVBq!ia0y~yU@!n-4i*LmhQHi~JPZsBEa{HEjtmSN`?>!lvNA9*
+zFeQ1ryD<E3??1Djfq{X&#M9T6{VBJofU(sU?v?i$7#OWQT^vIq4!@md=*8?P(zbuQ
+zCl~kBhE~BXTfVV86HwYwJt0^2_7gc_#iil~<{LJL_e|x|WQi=$DZ8oC^yb_XU5$75
+zd2|l{-}`<4%*2JEt9?~}78PnJOBw|f)s`7gkF%fF@Okk)+1jU<?r)m>lG%k}@5EiU
+zUv?)q=ru@-dFoC%Q_f(a%eZNN{r25f|2m_0xxKnr6U_Z%a>Ef5E)SmRq17>p8t)p{
+z+4_W?`u1wUyxIa6#cy&A2ET6^M{GZTe^yrH%A1ZEU*iN#xi++|4sbXt88LZ7&&jSL
+z_Sq#54Vw*Gu1|0ln3sR?mrh;KpPB0?pO6kv&{ENES9l;7@p$v^@|Z1R7gl_le}AV8
+z!;$y1uI0rs%@AZhF-^@O?{tS<(DzmI&U#N{Dq(mhetetp1lw&}4^5o?Cg<0ZxRTZN
+ztMu!YeB56dF?2I9FsPQeMwFx^mZVxG7o{eaq%s&87#Zps8tNJuh8S2{8JbubnP?jr
+nSQ!{-{eS0%q9HdwB{QuOw}$9NVZRs{7#KWV{an^LB{Ts52#d+#
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/browser_ui/site_settings/android/java/res/drawable-xxhdpi/permission_javascript_jit.png b/components/browser_ui/site_settings/android/java/res/drawable-xxhdpi/permission_javascript_jit.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..54d86e9b38553720c860b0e0e5d7196fb0dc0dc6
+GIT binary patch
+literal 629
+zcmeAS@N?(olHy`uVBq!ia0y~yVDJE84i*LmhW}5h&oD4Bu%tWsIx;Y9?C1WI$jZRL
+zz?9_e?!xfDz5mR91_lQ95>H=O_NUyU0>)NbxL4k1U|?M7>EalYaqsQS-F}A+MB3`N
+z-&~-qqqBy!>=>WN9!4Qkrp|7OUqUU{9dx57H@a)^oLRFp{{WM8YJ$cL#nM+(_$Cw!
+zxfkr?+cxRdlgsbDbyx*h90iOtw%@lq&S`d~sIuQYU*e(FzNVjQTegdR2|ewv^{lR_
+z;PaF(*<okq^DT&Syzdt5Kda2WwB{v4L)85$IlCR4vcIns@;0qZEG|2~XUdE-UbnK-
+zS~i&c4&D<rZ-QU=bkh}2*MvwYsW>UAIEj=*Xe!D+YKl``FkRtgjhM<5^SLYR>RVG!
+zRIqjXb_BOOc7(U<99iou^60wa+D)!j=QuxHci~b{330JvS-7a=-?`JKT!oRE3m;A4
+zSgpfl`Yb(Y$)~Hc9A`PZE^(Q2<&W2s&|_<lY<N>SHR7A1pXxH<$BRV23x8=3Ud(6k
+z?uupbDoguwEtjU8*s$;Pq76w-G942*Ixp-O-emn%g16dpf0dzRddnG)+~wP)EKgmm
+z^qKW?!pwQ%obBiHF5Pn8d5QVWkIRP573ME*dgk8aFMNLXd0A1)?wS1uey6_@nf<hm
+zCCvG9_wIX(1Xvtb*u~F?iea0{uA9xkz@S><8c~vxSdwa$T$GwvlFDFYU}UIkXsBys
+z7-C>)WoTk$WTI_gU}a#S_5Yn4iiX_$l+3hB+!~@6h5ce+U|{fc^>bP0l+XkKaP$5c
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/browser_ui/site_settings/android/java/res/drawable-xxxhdpi/permission_javascript_jit.png b/components/browser_ui/site_settings/android/java/res/drawable-xxxhdpi/permission_javascript_jit.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f5d1daa259c9c5ac3c01ad685339305589299aa4
+GIT binary patch
+literal 797
+zcmeAS@N?(olHy`uVBq!ia0y~yU`POA4i*Lm29JsRH#0CWu%tWsIx;Y9?C1WI$jZRL
+zz?9_e?!xfDz5mR91_lQ95>H=O_NUyU0>)NbxL4k1U|<ULba4!+xb=4Ses5(*k>mGg
+zuylV`h+4h3OQF4VmheIQ14_}6N1`m=#QtZw__%Ayy^1IN7AHDe_bPP=>MmY;$1z7`
+zUGl=+lh5j#S-syITQlFpcy{W~y0WzLH1$XZM*$W`ftK^#ukLNwH$(ei*St{SI~Nzd
+zV87b3xNK>ep-V!p&Hm+Pi9ObD1m>0g{C{o!@qJ9$k0+OE6sY$cJh?w~@rA-|pMS6H
+z;14+Qezw;Qrq|v#jhEglwyD}u_bbf0UbkI$g7#8XyM~~hK>>WMU&`M_C~p)J*|hMg
+z&vm`>JCeI+yo={%ec)YEpU)=Lx>)(DLGGmYKQ{_6=D9RT3qEjT*&)c7*TEuVewC?@
+z+gelXK+k>4xqcNjZ#Q$?u>O6O(KB$jK;Cml@dX|I8V<tpz71M-lNe%aL>N!~;9%PF
+zacw_y^W*ZhuWKaU=PF*w;trT!dzwk+qb}EnBh%TXnx7xaTgAFVWKEeOAM5GI4bQDE
+z{7?Eeq3*z@I>F%WOow7S!Wf^Ld97?P;k%%@fHx(Ct3%nam+4hVlM`cQY{rKj23kj#
+zXV^xlJIz0HGmCX<XI;}<md$~8`dapx{aW>4f$Z!Tl?RH0^%~ka3Y3}dbTF7J9q8pK
+zNLDM>{c-E3>&JQ4w*sQ}GHo}wzq5VTqjMHKcX_;??Y~_5E@1J3LtCCntvFy@zGg?p
+zef{qoA^H!+%Qx&;F@OL1Di(%Y_FoLkw^+Q`fBp8dX@*DJ?8|4&Y)bX`&@FH)oZVb{
+zdG6+=>N$msURkD<>k}Ql%|rLbt~A}z%+aL4(WIc#E^hX^`DVxc-G>+$7*tDKBT7;d
+zOH!?pi&7IyQW=a4j0|-R4RwtSLkujf3{9+zOtcLQtPBja{=aiW(U6;;l9^VCTSN4s
+SuwM)e3=E#GelF{r5}E+*DNWn}
+
+literal 0
+HcmV?d00001
+
+diff --git a/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteJavascriptJITContentSetting.java b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteJavascriptJITContentSetting.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f9f41807f90cb804f33365701769e174d28eeb4c
+--- /dev/null
++++ b/components/browser_ui/site_settings/android/java/src/org/chromium/components/browser_ui/site_settings/impl/BromiteJavascriptJITContentSetting.java
+@@ -0,0 +1,93 @@
++/*
++    This file is part of Bromite.
++
++    Bromite is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    Bromite is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with Bromite. If not, see <https://www.gnu.org/licenses/>.
++*/
++
++package org.chromium.components.browser_ui.site_settings.impl;
++
++import org.chromium.components.browser_ui.site_settings.R;
++
++import org.chromium.components.browser_ui.site_settings.BromiteCustomContentSetting;
++import org.chromium.components.browser_ui.site_settings.ContentSettingsResources;
++import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
++import org.chromium.components.content_settings.ContentSetting;
++import org.chromium.components.content_settings.ContentSettingsType;
++import org.chromium.content_public.browser.BrowserContextHandle;
++
++import androidx.annotation.Nullable;
++import androidx.preference.Preference;
++import androidx.preference.PreferenceScreen;
++
++import java.util.ArrayList;
++
++public class BromiteJavascriptJITContentSetting extends BromiteCustomContentSetting {
++    public BromiteJavascriptJITContentSetting() {
++        super(/*contentSettingsType*/ ContentSettingsType.JAVASCRIPT_JIT,
++              /*defaultEnabledValue*/ ContentSetting.ALLOW,
++              /*defaultDisabledValue*/ ContentSetting.BLOCK,
++              /*allowException*/ true,
++              /*preferenceKey*/ "javascript_jit",
++              /*profilePrefKey*/ "javascript_jit");
++    }
++
++    @Override
++    public ContentSettingsResources.ResourceItem getResourceItem() {
++        return new ContentSettingsResources.ResourceItem(
++            /*icon*/ R.drawable.permission_javascript_jit,
++            /*title*/ R.string.javascript_jit_permission_title,
++            /*defaultEnabledValue*/ getDefaultEnabledValue(),
++            /*defaultDisabledValue*/ getDefaultDisabledValue(),
++            /*enabledSummary*/ R.string.website_settings_category_javascript_jit_enabled,
++            /*disabledSummary*/ R.string.website_settings_category_javascript_jit_disabled,
++            /*summaryOverrideForScreenReader*/ 0);
++    }
++
++    @Override
++    public int getCategorySummary(@Nullable @ContentSetting int value) {
++        switch (value) {
++            case ContentSetting.ALLOW:
++                return R.string.website_settings_category_javascript_jit_enabled;
++            case ContentSetting.BLOCK:
++                return R.string.website_settings_category_javascript_jit_disabled;
++            default:
++                return 0;
++        }
++    }
++
++    @Override
++    public int getCategoryDescription() {
++        return R.string.settings_site_settings_javascript_jit_description_cromite;
++    }
++
++    @Override
++    public boolean requiresTriStateContentSetting() {
++        return false;
++    }
++
++    @Override
++    public boolean showOnlyDescriptions() {
++        return true;
++    }
++
++    @Override
++    public int getAddExceptionDialogMessage() {
++        return R.string.website_settings_category_javascript_jit_enabled;
++    }
++
++    @Override
++    public @Nullable Boolean considerException(SiteSettingsCategory category, @ContentSetting int value) {
++        return value != ContentSetting.BLOCK;
++    }
++}
+diff --git a/components/browser_ui/strings/bromite_content_settings/javascript_jit.grdp b/components/browser_ui/strings/bromite_content_settings/javascript_jit.grdp
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c39f79ef913d814bf6f9395cf49597dae06ae8c
+--- /dev/null
++++ b/components/browser_ui/strings/bromite_content_settings/javascript_jit.grdp
+@@ -0,0 +1,21 @@
++<?xml version="1.0" encoding="utf-8"?>
++<grit-part>
++  <message name="IDS_JAVASCRIPT_JIT_PERMISSION_TITLE" desc="Title of the permission to run javascript [CHAR_LIMIT=32]" formatter_data="android_java">
++    JavaScript JIT
++  </message>
++  <message name="IDS_SETTINGS_SITE_SETTINGS_JAVASCRIPT_JIT_DESCRIPTION_CROMITE" desc="Description of the Javascript JIT content setting." formatter_data="android_java">
++    Enable the JIT compiler and WebAssembly support in V8
++  </message>
++  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_ENABLED" desc="Summary text explaining that sites are allowed to compile JavaScript in JIT mode." formatter_data="android_java">
++    Allow JIT and WebAssembly
++  </message>
++  <message name="IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_DISABLED" desc="Summary text explaining that sites are running JavaScript in JITless mode." formatter_data="android_java">
++    Block JIT and WebAssembly
++  </message>
++  <message name="IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_ALLOW" desc="The description for the allow Javascript JIT for website dialog." formatter_data="android_java">
++    Allow sites to use just-in-time compilation; more performant but a constant source of security vulnerabilities.
++  </message>
++  <message name="IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_BLOCK" desc="The description for the block Javascript JIT for website dialog." formatter_data="android_java">
++    Block sites from using just-in-time compilation, using only interpreted JavaScript; less performant but more secure against security vulnerabilities.
++  </message>
++</grit-part>
+diff --git a/components/content_settings/core/browser/bromite_content_settings/javascript_jit.inc b/components/content_settings/core/browser/bromite_content_settings/javascript_jit.inc
+new file mode 100644
+index 0000000000000000000000000000000000000000..23333c500ffc0810a18e41fe21617e9b51e0d47c
+--- /dev/null
++++ b/components/content_settings/core/browser/bromite_content_settings/javascript_jit.inc
+@@ -0,0 +1,12 @@
++  content_settings::WebsiteSettingsRegistry::GetInstance()
++    ->GetMutable(ContentSettingsType::JAVASCRIPT_JIT)
++    ->set_show_into_info_page()
++    .set_desktop_ui()
++    .set_is_renderer_content_setting()
++    .set_title_ui(IDS_JAVASCRIPT_JIT_PERMISSION_TITLE)
++    .set_description_ui(IDS_SETTINGS_SITE_SETTINGS_JAVASCRIPT_JIT_DESCRIPTION_CROMITE)
++    .set_allowed_ui(IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_ENABLED)
++    .set_blocked_ui(IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_DISABLED)
++    .set_allowed_exceptions_ui(IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_ALLOW)
++    .set_blocked_exceptions_ui(IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_BLOCK)
++    .set_mid_sentence_ui(IDS_JAVASCRIPT_JIT_PERMISSION_TITLE);
+diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
+index 9912595c34b8ba5c65af52d7668fc69c74f238da..c3cf20d454ebebc3e54805c2eacf4b732fe08df6 100644
+--- a/components/content_settings/core/browser/content_settings_registry.cc
++++ b/components/content_settings/core/browser/content_settings_registry.cc
+@@ -570,7 +570,7 @@ void ContentSettingsRegistry::Init() {
+            PermissionSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
+ 
+   Register(ContentSettingsType::JAVASCRIPT_JIT, "javascript-jit",
+-           CONTENT_SETTING_ALLOW, WebsiteSettingsInfo::UNSYNCABLE,
++           CONTENT_SETTING_BLOCK, WebsiteSettingsInfo::UNSYNCABLE,
+            /*allowlisted_primary_schemes=*/{},
+            /*valid_settings=*/{CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK},
+            WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+index ad9a6613af57e2919fedcd3f7166572c3c8b2169..3b1403b9a4f395198cb0c6be4b65b56dc63e44e9 100644
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -4603,12 +4603,18 @@ UrlInfo NavigationRequest::GetUrlInfo() {
+   // Compute the WebExposedIsolationInfo that will be bundled into UrlInfo.
+   auto web_exposed_isolation_info = ComputeWebExposedIsolationInfo();
+ 
++  url::Origin top_origin = frame_tree_node_
++      ->current_frame_host()
++      ->GetMainFrame()
++      ->GetLastCommittedOrigin();
++
+   UrlInfoInit url_info_init(GetURL());
+   url_info_init.WithOACHeaderRequest(oac_header_request)
+       .WithCOOPSiteIsolation(ShouldRequestSiteIsolationForCOOP())
+       .WithWebExposedIsolationInfo(web_exposed_isolation_info)
+       .WithEmbedderIsolationInfo(embedder_isolation_info_)
+-      .WithMatchesAdFilterWithHost(response() && is_ad_tagged());
++      .WithMatchesAdFilterWithHost(response() && is_ad_tagged())
++      .WithTopOrigin(top_origin);
+ 
+   // Compute the CrossOriginIsolationKey for the navigation.
+   std::optional<AgentClusterKey::CrossOriginIsolationKey>
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+index 24fb1e206ea0a9737461079261c31ac996edee0a..95fb8170dd91739b6c4fa9383ca55b8c880a7790 100644
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -3786,6 +3786,9 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
+   if (IsJitDisabled()) {
+     AppendToCommaSeparatedSwitch(
+         command_line, blink::switches::kJavaScriptFlags, "--jitless");
++    // disable jit but enable webassembly
++    // command_line->AppendSwitchASCII(blink::switches::kJavaScriptFlags,
++    //                                 "--no-maglev,--no-turbofan");
+   } else if (AreV8OptimizationsDisabled()) {
+     AppendToCommaSeparatedSwitch(command_line,
+                                  blink::switches::kJavaScriptFlags,
+diff --git a/content/browser/site_info.cc b/content/browser/site_info.cc
+index 584b4e663bdac95460527fc21b0819e436c1916a..2e49f955b77a87518502b85d272bf8ded02e0676 100644
+--- a/content/browser/site_info.cc
++++ b/content/browser/site_info.cc
+@@ -328,6 +328,13 @@ SiteInfo SiteInfo::Create(const IsolationContext& isolation_context,
+   is_jitless =
+       is_jitless || GetContentClient()->browser()->IsJitDisabledForSite(
+                         browser_context, agent_cluster_url_or_default);
++  if (!url_info.embedder_isolation_info.is_pdf() && url_info.top_origin.has_value()) {
++    GURL top_origin = url_info.top_origin->GetURL();
++    if (!GetContentClient()->browser()->IsJitDisabledForSite(
++            browser_context, top_origin)) {
++      is_jitless = false;
++    }
++  }
+   are_v8_optimizations_disabled = CheckShouldDisableV8Optimization(
+       browser_context, isolation_context.browsing_instance_id(),
+       url_info.process_selection_user_data, agent_cluster_url_or_default);
+diff --git a/content/browser/url_info.cc b/content/browser/url_info.cc
+index 0e1d04ca95347188b0d07c3cf15c4f0e7eb51c71..55c7431ba60e2899dbcae326230b49894d216d0d 100644
+--- a/content/browser/url_info.cc
++++ b/content/browser/url_info.cc
+@@ -26,6 +26,7 @@ UrlInfo::UrlInfo(const UrlInfoInit& init)
+       is_prefetch_with_cross_site_contamination(
+           init.is_prefetch_with_cross_site_contamination_),
+       origin(init.origin_),
++      top_origin(init.top_origin_),
+       is_sandboxed(init.is_sandboxed_),
+       unique_sandbox_id(init.unique_sandbox_id_),
+       storage_partition_config(init.storage_partition_config_),
+@@ -151,6 +152,11 @@ UrlInfoInit& UrlInfoInit::WithOrigin(const url::Origin& origin) {
+   return *this;
+ }
+ 
++UrlInfoInit& UrlInfoInit::WithTopOrigin(const url::Origin& origin) {
++  top_origin_ = origin;
++  return *this;
++}
++
+ UrlInfoInit& UrlInfoInit::WithSandbox(bool is_sandboxed) {
+   is_sandboxed_ = is_sandboxed;
+   return *this;
+diff --git a/content/browser/url_info.h b/content/browser/url_info.h
+index 94ffb1e40ebac27cc293ef920ddef1f008776c0e..9ece87ea40ebd2bc11e1dccbd276f859dbe5c62b 100644
+--- a/content/browser/url_info.h
++++ b/content/browser/url_info.h
+@@ -128,6 +128,7 @@ struct CONTENT_EXPORT UrlInfo {
+   // and origin checks that require a UrlInfo.  Investigate whether there's a
+   // cleaner way to organize these checks.  See https://crbug.com/1320402.
+   std::optional<url::Origin> origin;
++  std::optional<url::Origin> top_origin;
+ 
+   // If url is being loaded in a frame that is in a origin-restricted sandboxed,
+   // then this flag will be true.
+@@ -208,6 +209,7 @@ class CONTENT_EXPORT UrlInfoInit {
+   UrlInfoInit& WithCOOPSiteIsolation(bool requests_coop_isolation);
+   UrlInfoInit& WithCrossSitePrefetchContamination(bool contaminated);
+   UrlInfoInit& WithOrigin(const url::Origin& origin);
++  UrlInfoInit& WithTopOrigin(const url::Origin& origin);
+   UrlInfoInit& WithSandbox(bool is_sandboxed);
+   UrlInfoInit& WithUniqueSandboxId(int unique_sandbox_id);
+   UrlInfoInit& WithStoragePartitionConfig(
+@@ -234,6 +236,7 @@ class CONTENT_EXPORT UrlInfoInit {
+   bool requests_coop_isolation_ = false;
+   bool is_prefetch_with_cross_site_contamination_ = false;
+   std::optional<url::Origin> origin_;
++  std::optional<url::Origin> top_origin_;
+   bool is_sandboxed_ = false;
+   int64_t unique_sandbox_id_ = UrlInfo::kInvalidUniqueSandboxId;
+   std::optional<StoragePartitionConfig> storage_partition_config_;

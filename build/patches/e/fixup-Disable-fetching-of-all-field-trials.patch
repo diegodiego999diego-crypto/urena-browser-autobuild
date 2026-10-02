@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: althafvly <althafvly@gmail.com>
+Date: Wed, 20 Sep 2023 09:48:52 +0530
+Subject: fixup Disable fetching of all field trials
+
+---
+ .../services/SafeModeVariationsSeedContentProvider.java   | 8 +-------
+ build/android/gyp/proguard.py                             | 2 ++
+ .../variations/service/variations_field_trial_creator.cc  | 2 ++
+ 3 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
+index ad626ddfe4ef89a9a5ecc285a95e7d74bb838bf2..d6b55d4be62e4c1b8a9b909dfde90b20f7c35d7a 100644
+--- a/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
++++ b/android_webview/nonembedded/java/src/org/chromium/android_webview/services/SafeModeVariationsSeedContentProvider.java
+@@ -85,13 +85,7 @@ public class SafeModeVariationsSeedContentProvider extends ContentProvider {
+     }
+ 
+     private Boolean awaitSeedResults() {
+-        CountDownLatch countDownLatch = new CountDownLatch(1);
+-        try {
+-            return countDownLatch.await(TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+-        } catch (InterruptedException e) {
+-            Log.w(TAG, e.toString());
+-            return false;
+-        }
++        return false;
+     }
+ 
+     @Override
+diff --git a/build/android/gyp/proguard.py b/build/android/gyp/proguard.py
+index 11a7a5838ba398f446304b505e9007e4788bddb2..ce459cce17712d15335bee188277fa4f4a67941c 100755
+--- a/build/android/gyp/proguard.py
++++ b/build/android/gyp/proguard.py
+@@ -46,6 +46,8 @@ _IGNORE_WARNINGS = (
+             r'class \*+ implements',
+             # Ignore rules that opt out of this check.
+             r'!cr_allowunused',
++        # No fetching of trials
++        r'org\.chromium\.android_webview\.services\.AwVariationsSeedFetcher',
+             # https://crbug.com/1441225
+             r'EditorDialogToolbar',
+             # https://crbug.com/1441226
+diff --git a/components/variations/service/variations_field_trial_creator.cc b/components/variations/service/variations_field_trial_creator.cc
+index 213b96ce56f49bcc0145072959bbf0aa6870e916..fa5b2ba65fa757000f3dc662f9399102d280afb6 100644
+--- a/components/variations/service/variations_field_trial_creator.cc
++++ b/components/variations/service/variations_field_trial_creator.cc
+@@ -346,6 +346,8 @@ bool VariationsFieldTrialCreator::SetUpFieldTrials(
+         switches::kVariationsTestSeedJsonPath));
+     variations_source_.type = VariationsSourceType::kManualConfigFile;
+   }
++  platform_field_trials->RegisterFeatureOverrides(feature_list.get());
++
+ 
+   // Get client filterable state to be used by CreateTrialsFromSeed()
+   std::unique_ptr<ClientFilterableState> client_filterable_state = nullptr;
