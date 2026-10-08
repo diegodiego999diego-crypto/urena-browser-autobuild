@@ -1,0 +1,42 @@
+From 1f6969c7c9ee79f2a807b1b0334b5a0804fbaf83 Mon Sep 17 00:00:00 2001
+From: Nishith Khanna <nishith.khanna.ext@murena.com>
+Date: Thu, 8 Oct 2026 17:44:15 +0530
+Subject: Fix pages not loading when Secure DNS has no provider
+
+---
+ chrome/browser/net/stub_resolver_config_reader.cc | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/chrome/browser/net/stub_resolver_config_reader.cc b/chrome/browser/net/stub_resolver_config_reader.cc
+index 4a0dfdf9f9754..defe9bdfad59b 100644
+--- a/chrome/browser/net/stub_resolver_config_reader.cc
++++ b/chrome/browser/net/stub_resolver_config_reader.cc
+@@ -431,10 +431,6 @@ SecureDnsConfig StubResolverConfigReader::GetAndUpdateConfiguration(
+   if (secure_dns_mode != net::SecureDnsMode::kOff) {
+     doh_config = net::DnsOverHttpsConfig::FromStringLax(
+         GetDnsOverHttpsConfigSource()->GetDnsOverHttpsTemplates());
+-    if (secure_dns_mode == net::SecureDnsMode::kSecure &&
+-          GetDnsOverHttpsConfigSource()->GetDnsOverHttpsTemplates().empty()) {
+-      doh_config = net::DnsOverHttpsConfig::FromStringLax("https://doh.opendns.com/dns-query{?dns}");
+-    }
+     if (ShouldUseDohFallback(secure_dns_mode,
+                              *GetDnsOverHttpsConfigSource())) {
+       mode_details =
+@@ -463,8 +459,13 @@ SecureDnsConfig StubResolverConfigReader::GetAndUpdateConfiguration(
+         insecure_dns_mode = net::InsecureDnsMode::kEnabledBuiltIn;
+       }
+     }
++    net::SecureDnsMode network_secure_dns_mode = secure_dns_mode;
++    if (secure_dns_mode == net::SecureDnsMode::kSecure &&
++        doh_config.servers().empty()) {
++      network_secure_dns_mode = net::SecureDnsMode::kOff;
++    }
+     content::GetNetworkService()->ConfigureStubHostResolver(
+-        insecure_dns_mode, GetHappyEyeballsV3Enabled(), secure_dns_mode,
++        insecure_dns_mode, GetHappyEyeballsV3Enabled(), network_secure_dns_mode,
+         doh_config, additional_dns_query_types_enabled,
+         fallback_doh_nameservers);
+   }
+-- 
+2.55.0
+
