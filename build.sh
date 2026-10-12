@@ -8,7 +8,8 @@ if [ ! -d "$chromium_dir" ]; then
   chromium_dir=$root_dir
 fi
 chromium_version=$(grep 'chromium_version' versions.txt | awk -F'"' '{print $2}')
-chromium_code=$(echo "${chromium_version}" | tr -d '.' | cut -c1-8)
+e_revision=$(grep 'e_revision' versions.txt | awk -F'"' '{print $2}')
+e_revision=${e_revision:-0}
 chromium_url=https://github.com/chromium/chromium.git
 clean=0
 gsync=0
@@ -37,8 +38,22 @@ build() {
   build_args="$(cat "${root_dir}"/build/browser.gn_args) target_cpu=\"${1}\" "
 
   apk_arch=${1}
-  build_args+=' android_default_version_name="'$chromium_version'"'
-  build_args+=' android_default_version_code="'$chromium_code'"'
+  code_key=CHROME_VERSION_CODE
+  if [ "$1" == "arm64" ]; then
+    code_key=CHROME_HIGH_VERSION_CODE
+  fi
+  chromium_code=$(python3 build/util/android_chrome_version.py --version-name "$chromium_version" --arch "$1" |
+    grep "^${code_key}=" | cut -d= -f2)
+  if [ -z "$chromium_code" ]; then
+    echo "No ${code_key} for $1 from build/util/android_chrome_version.py"
+    exit 1
+  fi
+  version_name=$chromium_version
+  if [ "$e_revision" -gt 0 ]; then
+    version_name+="+e${e_revision}"
+  fi
+  build_args+=' android_override_version_name="'$version_name'"'
+  build_args+=' android_override_version_code="'$((chromium_code + e_revision * 10))'"'
 
   if [ $clean -eq 1 ]; then
     if [ -d "out/$1" ]; then
@@ -57,7 +72,7 @@ build() {
   build_args+=' android_keystore_name="platform"'
   build_args+=' android_keystore_password="platform"'
 
-  echo ">> [$(date)] Building chromium $chromium_version for $1"
+  echo ">> [$(date)] Building chromium $version_name for $1"
   gn gen "out/$1" --fail-on-unused-args --args="$build_args"
   build_targets="chrome_public_apk system_webview_apk"
 
