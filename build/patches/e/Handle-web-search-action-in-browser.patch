@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: fgei <fgei@gmail.com>
+Date: Wed, 28 Sep 2022 05:37:00 +0200
+Subject: Handle web search action in browser
+
+Signed-off-by: Saalim Quadri <danascape@gmail.com>
+---
+ .../src/org/chromium/base/PackageManagerUtils.java     | 10 ++++++++++
+ chrome/android/java/AndroidManifest.xml                |  4 ++++
+ .../browser/document/ChromeLauncherActivity.java       |  2 +-
+ 3 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/base/android/java/src/org/chromium/base/PackageManagerUtils.java b/base/android/java/src/org/chromium/base/PackageManagerUtils.java
+index 56b1dcd70350e9d7eaaa37b27032916158df9e41..71e7516db5b986d91905cb33582f2b80fe7077c7 100644
+--- a/base/android/java/src/org/chromium/base/PackageManagerUtils.java
++++ b/base/android/java/src/org/chromium/base/PackageManagerUtils.java
+@@ -90,6 +90,16 @@ public class PackageManagerUtils {
+         return canResolveActivity(intent, 0);
+     }
+ 
++    public static boolean canOnlyOthersResolveActivity(Intent intent, int flags) {
++        for (ResolveInfo ri: queryIntentActivities(intent, flags)) {
++            if (ContextUtils.getApplicationContext()
++                    .getPackageName().equals(ri.activityInfo.packageName)) {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     /** Check if the system has the given system feature available. */
+     public static boolean hasSystemFeature(String feature) {
+         PackageManager pm = ContextUtils.getApplicationContext().getPackageManager();
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index 2430615c60c12f5f0e6ede586ad8334e1601c516..6a6e8abdd6a49f7d59824551f31348bbe3c284f0 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -359,6 +359,10 @@ by a child template that "extends" this file.
+             <intent-filter>
+                 <action android:name="android.intent.action.SEARCH" />
+             </intent-filter>
++            <intent-filter> <!-- DOWNSTREAM -->
++                <action android:name="android.intent.action.WEB_SEARCH" />
++                <category android:name="android.intent.category.DEFAULT" />
++            </intent-filter> <!-- DOWNSTREAM -->
+             <intent-filter>
+                 <action android:name="com.sec.android.airview.HOVER" />
+             </intent-filter>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/document/ChromeLauncherActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/document/ChromeLauncherActivity.java
+index 5d1ba8a884af347b692fce4e55843c5fae4d9826..744a636efeb2621a4b3189349d024bef8842cb9d 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/document/ChromeLauncherActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/document/ChromeLauncherActivity.java
+@@ -223,7 +223,7 @@ public class ChromeLauncherActivity extends Activity {
+         Intent searchIntent = new Intent(Intent.ACTION_WEB_SEARCH);
+         searchIntent.putExtra(SearchManager.QUERY, query);
+ 
+-        if (PackageManagerUtils.canResolveActivity(
++        if (PackageManagerUtils.canOnlyOthersResolveActivity(
+                 searchIntent, PackageManager.GET_RESOLVED_FILTER)) {
+             startActivity(searchIntent);
+         } else {

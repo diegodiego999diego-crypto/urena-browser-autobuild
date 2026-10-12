@@ -1,0 +1,141 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Wed, 6 Sep 2023 17:55:01 +0000
+Subject: Fix chromium build bugs
+
+because of
+https://bugs.chromium.org/p/chromium/issues/detail?id=1491776#c10
+---
+ BUILD.gn                                                      | 4 ++--
+ .../navigation_predictor_metrics_document_data.h              | 2 ++
+ chrome/browser/safe_browsing/BUILD.gn                         | 1 +
+ components/component_updater/installer_policies/BUILD.gn      | 1 +
+ components/contextual_tasks/internal/BUILD.gn                 | 1 +
+ components/omnibox/browser/autocomplete_classifier.cc         | 4 ++--
+ components/omnibox/browser/omnibox_field_trial.cc             | 4 ++--
+ content/browser/browser_interface_binders.cc                  | 1 +
+ 8 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 91357cb2e60a51b6b3b5135af1ea5302d446849c..0d918bb0c1a1d658e21b17bcabf5f466a736dd75 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -40,6 +40,7 @@ import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
+ import("//ui/base/ui_features.gni")
+ import("//ui/gl/features.gni")
+ import("//v8/gni/v8.gni")
++import("//net/features.gni")
+ 
+ if (is_android) {
+   import("//build/config/android/config.gni")
+@@ -411,7 +412,6 @@ group("gn_all") {
+           "//android_webview:empty_group",
+           "//android_webview/test",
+           "//android_webview/tools/automated_ui_tests:webview_ui_test_app_test_apk",
+-          "//android_webview/tools/captured_sites_tests:captured_sites_test_app",
+           "//android_webview/tools/system_webview_shell",
+           "//chrome/android:chrome_junit_tests",
+           "//chrome/android:chrome_public_apk",
+@@ -602,7 +602,7 @@ group("gn_all") {
+         deps += [ "//chrome/test:chrome_app_unittests" ]
+       }
+ 
+-      if (!is_debug && !is_component_build && !is_castos) {
++      if (enable_mdns && !is_debug && !is_component_build && !is_castos) {
+         deps += [ "//chrome/tools/service_discovery_sniffer" ]
+       }
+     }
+diff --git a/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h b/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
+index 9f214cef138f3c6162e2111bd17e38bdd3ef20f6..f014cc339311d4ee6a301e6a6e358ffc015a88e7 100644
+--- a/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
++++ b/chrome/browser/navigation_predictor/navigation_predictor_metrics_document_data.h
+@@ -77,6 +77,8 @@ class NavigationPredictorMetricsDocumentData
+     UserInteractionsData(const UserInteractionsData&);
+     UserInteractionsData& operator=(const UserInteractionsData&);
+ 
++    UserInteractionsData& operator=(UserInteractionsData&&) noexcept = default;
++
+     // True if the anchor element is still in viewport, otherwise false.
+     bool is_in_viewport = false;
+     // True if the pointer is still hovering over the anchor element,
+diff --git a/chrome/browser/safe_browsing/BUILD.gn b/chrome/browser/safe_browsing/BUILD.gn
+index a3a661c88149b11b3987c5df9434859069273217..95ab70610053ad8537f7f5d4006c9050ca27d58c 100644
+--- a/chrome/browser/safe_browsing/BUILD.gn
++++ b/chrome/browser/safe_browsing/BUILD.gn
+@@ -384,6 +384,7 @@ static_library("safe_browsing") {
+       "//components/version_info",
+       "//content/public/browser",
+       "//services/preferences/public/mojom",
++      "//third_party/flatbuffers:flatbuffers",
+     ]
+ 
+     public_deps += [ "//chrome/browser/security_events" ]
+diff --git a/components/component_updater/installer_policies/BUILD.gn b/components/component_updater/installer_policies/BUILD.gn
+index 3a26a120fc14ccf5aeca77c6298d9982f9892103..a246aca2d9b44b79cc095c957fbad64fb0a266f4 100644
+--- a/components/component_updater/installer_policies/BUILD.gn
++++ b/components/component_updater/installer_policies/BUILD.gn
+@@ -42,6 +42,7 @@ static_library("installer_policies_no_content_deps") {
+     "//components/update_client",
+     "//mojo/public/cpp/base:protobuf_support",
+     "//services/network/public/cpp",
++    "//third_party/re2",
+   ]
+ 
+   # Disallow depending on content.
+diff --git a/components/contextual_tasks/internal/BUILD.gn b/components/contextual_tasks/internal/BUILD.gn
+index 38219ba6ece536b6ab93d4e0adc11d42f113f066..4957981eb0d9cf449538df4930ba5fafadb88587 100644
+--- a/components/contextual_tasks/internal/BUILD.gn
++++ b/components/contextual_tasks/internal/BUILD.gn
+@@ -53,6 +53,7 @@ source_set("internal") {
+     "//net",
+     "//ui/gfx",
+     "//url",
++    "//third_party/re2",
+   ]
+ }
+ 
+diff --git a/components/omnibox/browser/autocomplete_classifier.cc b/components/omnibox/browser/autocomplete_classifier.cc
+index 445caaae17ff3dd3d0e4515c72ad284bcc76b830..57ea21e218f05ec56d28788329e18bd6f3698c86 100644
+--- a/components/omnibox/browser/autocomplete_classifier.cc
++++ b/components/omnibox/browser/autocomplete_classifier.cc
+@@ -150,8 +150,8 @@ void AutocompleteClassifier::Classify(
+     metrics::OmniboxEventProto::PageClassification page_classification,
+     AutocompleteMatch* match,
+     GURL* alternate_nav_url) {
+-  TRACE_EVENT1("omnibox", "AutocompleteClassifier::Classify", "text",
+-               base::UTF16ToUTF8(text));
++  // TRACE_EVENT1("omnibox", "AutocompleteClassifier::Classify", "text",
++  //              base::UTF16ToUTF8(text));
+   DCHECK(!inside_classify_);
+   base::AutoReset<bool> reset(&inside_classify_, true);
+   AutocompleteInput input(text, page_classification, *scheme_classifier_);
+diff --git a/components/omnibox/browser/omnibox_field_trial.cc b/components/omnibox/browser/omnibox_field_trial.cc
+index 0bcfa73c94e57f235748369a9e1dd9d293cdb152..081a3541ed2cc09d3c53f1e5a9780a19b61f54a5 100644
+--- a/components/omnibox/browser/omnibox_field_trial.cc
++++ b/components/omnibox/browser/omnibox_field_trial.cc
+@@ -840,11 +840,11 @@ MLConfig& MLConfig::operator=(const MLConfig& other) = default;
+ 
+ ScopedMLConfigForTesting::ScopedMLConfigForTesting()
+     : original_config_(std::make_unique<MLConfig>(GetMLConfig())) {
+-  GetMLConfigInternal() = {};
++  //GetMLConfigInternal() = {};
+ }
+ 
+ ScopedMLConfigForTesting::~ScopedMLConfigForTesting() {
+-  GetMLConfigInternal() = *original_config_;
++  //GetMLConfigInternal() = *original_config_;
+ }
+ 
+ MLConfig& ScopedMLConfigForTesting::GetMLConfig() {
+diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
+index 21f2cabcc59264ddb958c52631432d253aefc602..9f0eda1ba46d22cd599aa6581c423f5934f62b31 100644
+--- a/content/browser/browser_interface_binders.cc
++++ b/content/browser/browser_interface_binders.cc
+@@ -469,6 +469,7 @@ void BindDateTimeChooserForFrame(
+ void BindTextSuggestionHostForFrame(
+     RenderFrameHost* host,
+     mojo::PendingReceiver<blink::mojom::TextSuggestionHost> receiver) {
++  if ((true)) return;
+   TextSuggestionHostAndroid::GetOrCreateForCurrentDocument(host)
+       ->BindTextSuggestionHost(std::move(receiver));
+ }

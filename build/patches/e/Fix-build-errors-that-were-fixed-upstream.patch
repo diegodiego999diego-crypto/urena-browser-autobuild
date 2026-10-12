@@ -1,0 +1,84 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Nishith Khanna <nishithkhanna@e.email>
+Date: Wed, 23 Sep 2026 10:13:32 +0000
+Subject: Fix build errors that were fixed upstream
+
+Some build errors were fixed in upstream in a patch which we don't add
+---
+ chrome/browser/BUILD.gn                                       | 1 -
+ chrome/browser/browser_process_impl.cc                        | 1 -
+ chrome/browser/ui/omnibox/omnibox_edit_model.cc               | 4 ++++
+ .../ui/webui/cr_components/searchbox/searchbox_handler.cc     | 4 ++++
+ 4 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 18fc3c79337a5fb08534d8c8f0c9ed17748211fd..bd03d69aa3a4b2a72ea1d3dbb9d996a95dc12d72 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1694,7 +1694,6 @@ source_set("core") {
+       "//chrome/browser/commerce",
+       "//chrome/browser/commerce/android:shopping_service_jni",
+       "//chrome/browser/composeplate/android:jni_headers",
+-      "//chrome/browser/dev_ui",
+       "//chrome/browser/facilitated_payments",
+       "//chrome/browser/feed",
+       "//chrome/browser/flags:flags_android",
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+index d7b704de781dcaebb993c3d84f20418834cfca77..c2e99b8832c4c6b4898544c0c3037af8632bb14e 100644
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -1465,7 +1465,6 @@ activity_reporter::ActivityReporter* BrowserProcessImpl::activity_reporter() {
+             base::BindRepeating([](const GURL& url) { return false; })),
+         base::BindRepeating(&chrome::GetChannel), base::BindRepeating([] {
+           std::string brand;
+-          google_brand::GetBrand(&brand);
+           return brand;
+         }),
+         base::BindRepeating(&updater::SetActive),
+diff --git a/chrome/browser/ui/omnibox/omnibox_edit_model.cc b/chrome/browser/ui/omnibox/omnibox_edit_model.cc
+index 97d8f09eb2e11de684ee008ac59c26f3b987661a..ac4a313047cac5f2276549a3ad34ee644af88787 100644
+--- a/chrome/browser/ui/omnibox/omnibox_edit_model.cc
++++ b/chrome/browser/ui/omnibox/omnibox_edit_model.cc
+@@ -1967,8 +1967,12 @@ gfx::Image OmniboxEditModel::GetMatchIcon(const AutocompleteMatch& match,
+     }
+   }
+ 
++#if BUILDFLAG(IS_ANDROID)
++  const auto& vector_icon_type = gfx::VectorIcon::EmptyIcon();
++#else
+   bool is_starred_match = IsStarredMatch(match);
+   const auto& vector_icon_type = match.GetVectorIcon(is_starred_match, turl);
++#endif
+ 
+   return controller_->client()->GetSizedIcon(vector_icon_type,
+                                              vector_icon_color);
+diff --git a/chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc b/chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc
+index 569803648f205e48f47dab4d11ed541d1c69e5d5..0291ec219a29ee940e0ea90e92e7c89f3f7d0529 100644
+--- a/chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc
++++ b/chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc
+@@ -960,6 +960,7 @@ SearchboxHandler::CreateAutocompleteMatch(
+   mojom_match->destination_url = match.destination_url;
+   mojom_match->suggestion_group_id =
+       match.suggestion_group_id.value_or(omnibox::GROUP_INVALID);
++#if !BUILDFLAG(IS_ANDROID)
+   const bool is_bookmarked =
+       bookmark_model->IsBookmarked(match.destination_url);
+   // For starter pack suggestions, use template url to generate proper vector
+@@ -970,6 +971,7 @@ SearchboxHandler::CreateAutocompleteMatch(
+           : turl_service->GetTemplateURLForKeyword(match.associated_keyword);
+   mojom_match->icon_path = AutocompleteIconToResourceName(
+       match.GetVectorIcon(is_bookmarked, associated_keyword_turl));
++#endif
+   OverrideIconPaths(match, mojom_match.get());
+   mojom_match->icon_url = match.icon_url;
+   // For featured enterprise search suggestions, use template url to generate
+@@ -1019,7 +1021,9 @@ SearchboxHandler::CreateAutocompleteMatch(
+ #endif
+       std::string icon_path;
+       if (action->GetIconImage().IsEmpty()) {
++#if !BUILDFLAG(IS_ANDROID)
+         icon_path = AutocompleteIconToResourceName(action->GetVectorIcon());
++#endif
+       } else {
+         icon_path = webui::GetBitmapDataUrl(action->GetIconImage().AsBitmap());
+       }
