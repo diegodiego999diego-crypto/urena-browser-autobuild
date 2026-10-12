@@ -1,0 +1,47 @@
+
+name: Build Murena Browser
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Chromium necesita mucho más espacio que un
+    # runner estándar de GitHub.
+    runs-on: [self-hosted, linux, x64, chromium-builder]
+
+    container:
+      image: registry.gitlab.e.foundation/e/os/docker-android-apps-cicd:chromium-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Prepare Cromite patches
+        run: |
+          git submodule update --init --recursive build/cromite
+          bash ./update_cromite_patches.sh
+
+      - name: Build ARM64
+        run: |
+          bash ./build.sh -c -s -a arm64
+
+      - name: Verify APK exists
+        run: |
+          test -s apks/arm64/ChromePublic.apk
+          ls -lh apks/arm64/ChromePublic.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: murena-browser-arm64
+          path: apks/arm64/ChromePublic.apk
+          if-no-files-found: error
+          retention-days: 7
+          
